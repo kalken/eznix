@@ -15,12 +15,12 @@
       ],
       "buttons": [
         {
-          "label": "Rebuild",
+          "label": "Rebuild Switch",
           "command": "sudo nixos-rebuild switch --flake \"/etc/nixos#default\"",
           "save_first": true
         },
         {
-          "label": "Update",
+          "label": "Update Flake",
           "command": "sudo nix flake update --flake /etc/nixos"
         },
         {

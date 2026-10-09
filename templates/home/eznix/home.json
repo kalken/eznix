@@ -15,12 +15,12 @@
       "passwordFile": "/home/YOUR-USER-NAME/.config/eznix-password",
       "buttons": [
         {
-          "label": "Rebuild",
+          "label": "Rebuild Switch",
           "command": "home-manager switch --flake \"$HOME/.config/home-manager#default\"",
           "save_first": true
         },
         {
-          "label": "Update",
+          "label": "Update Flake",
           "command": "nix flake update --flake ~/.config/home-manager"
         },
         {

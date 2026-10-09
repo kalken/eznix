@@ -49,7 +49,7 @@ usual password (on other Linux: the password you chose above).
 2. Change what you want. To add a setting, type its name in the field that says
    "Add option path…".
 3. Press **Save**.
-4. Press **Rebuild** at the bottom. It asks for your password in the terminal there, and
+4. Press **Rebuild Switch** at the bottom. It asks for your password in the terminal there, and
    your changes are in effect when it finishes.
 
 Nothing on your computer changes until you have saved and rebuilt.

@@ -15,12 +15,12 @@
       "flake": "~/.config/nix-darwin",
       "buttons": [
         {
-          "label": "Rebuild",
+          "label": "Rebuild Switch",
           "command": "sudo darwin-rebuild switch --flake \"$HOME/.config/nix-darwin#default\"",
           "save_first": true
         },
         {
-          "label": "Update",
+          "label": "Update Flake",
           "command": "nix flake update --flake ~/.config/nix-darwin"
         },
         {
