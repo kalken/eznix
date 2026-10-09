@@ -80,10 +80,7 @@ in
   # `eznix --generate-ca`: a no-op when the certificate exists and still carries these names.
   generateCa = eznix: lib.optionalString cfg.generateCert ''
     ${eznix} --generate-ca ${lib.escapeShellArg certDir} ${lib.concatMapStringsSep " " (n: "--san ${lib.escapeShellArg n}")
-      (lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen ++ cfg.certNames)} ${
-      # The address the interface has when the service starts; a later one gets its
-      # certificate at the next start.
-      lib.optionalString (cfg.interface != null) "--san-interface ${lib.escapeShellArg cfg.interface}"}
+      (lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen ++ cfg.certNames)}
   '';
 
   # The eznix-autocomplete command put on PATH: the generator, already told this install's flake
@@ -160,7 +157,7 @@ in
       type        = types.nullOr types.str;
       default     = null;
       example     = "wg0";
-      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. The interface's own address is accepted and put in the generated certificate without being listed; a host name you open it by still goes in certNames.";
+      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Give the name or address you open it by in certNames.";
     };
     port = mkOption {
       type        = types.port;

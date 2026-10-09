@@ -147,10 +147,7 @@ shell (`terminal_end_on_logout`). Any other GET that changes something would nee
 **`interface`** ties the listening socket itself to one network interface
 (`_bind_to_interface()`: `SO_BINDTODEVICE` on Linux, `IP_BOUND_IF` on macOS), because the
 user wanted that as a setting of eznix and not a firewall rule beside it. It shuts out the
-machine itself too (local traffic arrives through loopback). The interface's own address
-is accepted as a host name and goes into the generated certificate without being listed
-(`_interface_address()`, `--san-interface`): left to `certNames`, the first try on NixOS had
-saves refused and a certificate for the wrong names. On NixOS `openFirewall` then
+machine itself too (local traffic arrives through loopback). On NixOS `openFirewall` then
 opens the port on that interface only. Tried on macOS with the loopback interface; the Linux
 call, and a connection from another machine through a named interface, never ran.
 
