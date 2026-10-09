@@ -5,8 +5,10 @@ works on NixOS, on a Mac (nix-darwin) and on other Linux (home-manager).
 
 ## Install
 
-You need Nix. NixOS has it; anywhere else, install it first from https://nixos.org/download.
-Then copy the lines for your system into a terminal.
+You need Nix. NixOS has it. On a Mac or another Linux, install it first, with either
+[Determinate Nix](https://docs.determinate.systems/determinate-nix/) or the
+[official installer](https://nixos.org/download); both work. Then copy the lines for your
+system into a terminal.
 
 **NixOS** (your `configuration.nix` is kept as it is)
 
