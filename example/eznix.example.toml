@@ -38,13 +38,6 @@ terminal_auto_hide     = true         # hide the open panel on a click outside i
 terminal_end_on_logout = true
 # terminal_restart = ["systemctl", "--user", "restart", "eznix-terminal.service"]   # {user}, {uid} are filled in
 
-# A terminal run by something else (a service manager), for one user. dir and shell must be
-# what that terminal was started with.
-# [terminals.alice]
-# port     = 9091
-# key_file = "/run/eznix-terminal/alice/key"
-# dir      = "/etc/nixos"
-
 theme    = "nixos"                    # nixos, dark, gruvbox, osx-dark, osx-light, osx; "osx" on macOS
 # themes_dir = "/path/to/themes"      # your own, <name>.css each
 sections = "collapsed"                # or "expanded"
@@ -53,6 +46,22 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 
 # Plugins. The shipped ones are on; `enabled = false` leaves one out.
 # plugins_dir = "/path/to/plugins"    # your own, one folder each
+
+# From here on everything is a table: in TOML a plain setting written below a [table] line
+# belongs to that table, so the ones above have to stay above.
+
+# How long a login lasts. With nothing set here, until the browser is closed.
+# [session.cookies]
+# days  = 400                         # that many days; 400 is the longest a browser keeps a cookie
+# renew = true                        # count them from the last time the page was opened,
+#                                     # not from the login
+
+# A terminal run by something else (a service manager), for one user. dir and shell must be
+# what that terminal was started with.
+# [terminals.alice]
+# port     = 9091
+# key_file = "/run/eznix-terminal/alice/key"
+# dir      = "/etc/nixos"
 
 # Log in with one password instead of a system password (same as: eznix --password PW).
 # [plugin.password]

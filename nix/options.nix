@@ -37,6 +37,10 @@ let
     hosts            = cfg.hosts ++ cfg.certNames
                        ++ lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen;
     users            = cfg.users;
+    session.cookies  = {
+      days  = cfg.session.cookies.days;
+      renew = if cfg.session.cookies.renew then true else null;
+    };
     theme            = cfg.theme;
     themes_dir       = if cfg.themes != { } then "${themesDir}" else null;
     plugins_dir      = if cfg.extraPlugins != { } then "${pluginsDir}" else null;
@@ -91,6 +95,10 @@ in
   '';
 
   assertions = [
+    {
+      assertion = !(cfg.session.cookies.renew && cfg.session.cookies.days == null);
+      message   = "services.eznix.session.cookies.renew needs days: a login that lasts until the browser is closed has no days to count again.";
+    }
     {
       # What the templates (flake.nix, `templates`) put where the user's name goes. Left in, the
       # system builds and then nobody can log in, so say it here. On macOS `users` defaults to
@@ -164,6 +172,17 @@ in
       type        = types.listOf types.str;
       default     = [ ];
       description = "Who may log in with their system password.";
+    };
+    session.cookies.days = mkOption {
+      type        = types.nullOr (types.numbers.between 0.01 400);
+      default     = null;
+      example     = 400;
+      description = "How many days a login lasts, counted from the login. 400 is the longest a browser keeps a cookie, so there is nothing longer to choose. Left unset, a login lasts until the browser is closed.";
+    };
+    session.cookies.renew = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = "Count the days from the last time the page was opened, not from the login: someone who opens eznix more often than that is then never logged out. Needs days.";
     };
     password = mkOption {
       type        = types.nullOr types.str;

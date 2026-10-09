@@ -122,9 +122,13 @@ data is left out of it (it changes while the server runs) and has its own stamp 
 Polling, not `EventSource`: one reconnecting after a restart wiped Chromium's cookies for the
 origin.
 
-**Sessions**: a random token per login in the `eznix_session` cookie (400 days, renewed on
-every page load), stored hashed in `<state>/sessions.json`, so neither a restart nor quitting
-the browser logs anyone out.
+**Sessions**: a random token per login in the `eznix_session` cookie, stored hashed in
+`<state>/sessions.json`, so a restart of the server logs nobody out. How long the cookie
+lasts is set under `[session.cookies]` (`session.cookies.*` in the modules). `days` unset, which is the default the user chose, it has no lifetime and
+the browser drops it when it quits; set, it lasts that many days from the login, 400 at most
+because browsers cap cookies there. `renew` counts them from the last page load
+instead, which the user wanted as a separate, explicit choice. It used to be fixed at 400
+days and always renewed.
 
 **Requests must come from the page** (`_valid_origin()`): every POST but the login itself and the
 `/terminal` handshake are refused when the `Origin` header names another address than the `Host` the

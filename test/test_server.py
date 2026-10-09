@@ -85,6 +85,17 @@ def login(browser, password='pw'):
     return browser.request('/login', data)[0]
 
 
+def login_cookie():
+    """The Set-Cookie header a login answers with."""
+    conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
+    try:
+        conn.request('POST', '/login', urllib.parse.urlencode({'username': os.environ.get('USER') or os.getlogin(), 'password': 'pw'}),
+                     {'Content-Type': 'application/x-www-form-urlencoded'})
+        return conn.getresponse().getheader('Set-Cookie') or ''
+    finally:
+        conn.close()
+
+
 def main():
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(f'{tmp}/flake/eznix')
@@ -95,7 +106,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'hosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
+                           'conf.toml': f'hosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session.cookies]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -107,6 +118,9 @@ def main():
                   and anon.request('/plugins/system/system.js')[0] == 401)
             check('a wrong password is refused', login(Browser(), 'nope') == 401)
             check('the right one logs in', login(b) == 200)
+            cookie = login_cookie()
+            check('with no days set, the login cookie lasts until the browser is closed',
+                  cookie.startswith('eznix_session=') and 'max-age' not in cookie.lower() and 'expires' not in cookie.lower(), cookie)
 
             status, page = b.request('/')
             page = page.decode()
@@ -195,6 +209,11 @@ def main():
             b = Browser()
             login(b)
             page = b.request('/')[1].decode()
+            check('[session.cookies] days sets how long the login cookie lasts', 'Max-Age=43200;' in login_cookie() + ';', login_cookie())
+            conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
+            conn.request('GET', '/', headers={'Cookie': '; '.join(f'{c.name}={c.value}' for c in b.cookies)})
+            resp = conn.getresponse(); resp.read(); conn.close()
+            check('and opening the page does not start the count again', resp.status == 200 and not resp.getheader('Set-Cookie'), resp.getheader('Set-Cookie'))
             check('a changed configuration changes it', b.json('/api/v1/ping')[1]['page'] != first)
             check('your own plugin is loaded, with its settings', 'plugins/hello/hello.js' in page and '"hello": {"n": 3}' in page)
             check('and its server code answers', b.json('/api/v1/plugin/hello/hi')[1].get('n') == 3)

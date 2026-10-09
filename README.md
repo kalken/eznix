@@ -161,6 +161,8 @@ The common ones, the same in all three modules:
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
 | `exclude` | `[ ]` | paths in it that are not configuration |
 | `users` | | who may log in with their system password |
+| `session.cookies.days` | | days a login lasts, 400 at most; unset, until the browser is closed |
+| `session.cookies.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
 | `listen`, `port` | `127.0.0.1`, `9090` | where the editor listens |
 | `terminal` | `true` | the terminal panel |
