@@ -128,8 +128,9 @@ request was sent to, port included. The cookie's `SameSite=Strict` does not cove
 a page on another port of the same host counts as the same site. `hosts` is deliberately not
 used for it, except for an entry that is a whole origin (`"https://name"`, for a proxy that
 changes `Host`): the modules put the certificate's names in `hosts`, so matching host names
-would let any port of the protected host through. A GET that changes something would need
-the same check; there is none today.
+would let any port of the protected host through. `/logout` is a GET and is not
+checked: a page on another port of the host could log the user out, which also ends their
+shell (`terminal_end_on_logout`). Any other GET that changes something would need the check.
 
 **Login**: system passwords are built in (`users`; PAM in-process, or `auth_helper`). Any other
 way is a plugin calling `api.login(check, user)`; the shipped `password` plugin is the one
