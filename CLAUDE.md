@@ -4,12 +4,12 @@ Guidance for Claude Code sessions working in this repository.
 
 ## Git
 
-**As of 2026-10-09 work is committed to the `testing` branch, locally only**, on the user's
-instruction ("only commit locally for now as i want to test things here"). `origin` is
-`git@github.com:kalken/eznix.git`, which did not exist on GitHub when the remote was added;
-nothing has been pushed. Don't create it until the user says so; when they do, it is to be
-public. There is no `develop` or `master` yet, so the rule about them below
-waits until the user sets those up.
+Work is committed to the `testing` branch, the only branch so far (`origin` is
+`github.com/kalken/eznix`, public). There is no `develop` or `master` yet, so the rule about
+them below waits until those exist.
+
+Nothing about one person's machine belongs in this file (their paths, their flake, what
+their computer runs): it is checked in and public.
 
 Do not add Claude as co-author in commit messages.
 
@@ -26,7 +26,8 @@ Chrome, CDP, etc.) unless the user explicitly asks for it in that turn.
 `bin/eznix.py`), restart it before reporting back, without being asked. The server renders the
 page once at start, so an edit shows nothing until it restarts; an open tab then reloads by
 itself (see "Page checksum"). Its data lives *outside* the checkout, in `../.eznix-test/`
-(`eznix.toml`, a copy of a flake, state) -- inside it, `nix build path:.` would copy the test
+(`eznix.toml`, state, and usually a flake to edit; what `eznix.toml` points at can differ
+from one machine to the next, so read it instead of assuming) -- inside it, `nix build path:.` would copy the test
 state, keys included, into the Nix store.
 
 ```sh
@@ -38,12 +39,8 @@ sleep 2; curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/p
 http://127.0.0.1:9690, password `eznix`. eznix starts its own terminal there (port 9691), so
 restarting the server restarts the shell too.
 
-The test flake there is a nix-darwin configuration that takes eznix as a `path:` input. To
-fill in suggestions, run in its terminal (there is a "Suggestions" button for it):
-`python3 ~/Documents/projects/github/eznix/bin/eznix-autocomplete.py --flake . --output ../state/autocomplete`
-
-The user's own Mac still runs the earlier ezconf (https://localhost:9090, flake in
-`/etc/nix-darwin`); it has not been switched to eznix.
+To fill in suggestions, run in its terminal (there is a "Suggestions" button for it):
+`python3 PATH-TO-THIS-CHECKOUT/bin/eznix-autocomplete.py --flake . --output ../state/autocomplete`
 
 `python3 test/test_server.py` checks the server and the plugins' server halves against a
 throwaway flake. Run it after touching `bin/eznix.py` or a plugin's `.py`. It does not cover
