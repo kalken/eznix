@@ -252,6 +252,31 @@ up to your sudo setup:
   NixOS, for members of `wheel`. Anyone who can log into eznix as such a user is then
   effectively root.
 
+## Not typing passwords all the time
+
+There are two passwords involved, and each has its own setting.
+
+**Logging in to eznix.** By default a login lasts until the browser is closed. To stay
+logged in longer, give it a number of days, and have every visit start the count again:
+
+```nix
+services.eznix.session.cookies = { days = 30; renew = true; };
+```
+
+400 days is the most a browser allows. Without `renew` the days count from the login.
+
+**`sudo` in the terminal.** By default it asks again after a few minutes. To be asked once
+per login session instead, for one user (NixOS and nix-darwin):
+
+```nix
+security.sudo.extraConfig = "Defaults:alice timestamp_timeout=-1";
+```
+
+To never be asked for the rebuild itself, see
+[Running commands as root](#running-commands-as-root) above (on macOS the command there is
+`/run/current-system/sw/bin/darwin-rebuild`). Both make the machine easier to take over for
+anyone who gets to your eznix login, so they suit a machine only you can reach.
+
 ## Plugins
 
 Some features are plugins: a folder of page files, and optionally server code, that eznix
