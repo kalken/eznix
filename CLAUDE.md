@@ -244,6 +244,12 @@ HTTPS: off on localhost; `generateCert` (on by default when `listen` isn't local
 CA and certificate in the state folder. Nothing installs the CA into browsers or the keychain
 automatically; the README gives the command.
 
+With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
+`_redirect_to_https()`): the first byte of a connection says which it is. The TLS handshake
+moved from the listening socket into each connection's thread for that, which also stops a
+silent client from holding up `accept()`. Not in `test_server.py`, which has no
+`cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
+
 `trustCert` (off by default, as the user asked) adds that authority to the browsers of the
 machine eznix runs on: `trustCertScript` in `options.nix`, ported from ezconf's
 `installCerts`, which ran as root for a list of users and was on by default. Here it always

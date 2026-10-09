@@ -313,6 +313,8 @@ explains the variables and what to keep to.
 On `localhost` eznix serves plain HTTP, which browsers treat as secure. When `listen` is any
 other address, the modules turn on `generateCert`: eznix makes a certificate signed by a local
 authority of its own. Set `generateCert = true` to have that on `localhost` too.
+With HTTPS on, an `http://` address on the same port is answered with a redirect to
+`https://`, so old bookmarks keep working.
 
 Browsers warn until that authority is trusted. The login page has a link to download it
 (`eznix-HOSTNAME-ca.pem`); you add it once on each computer you browse from, for your own

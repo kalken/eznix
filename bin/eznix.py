@@ -1987,6 +1987,62 @@ def _start_terminal_for_self(cfg):
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
 
+class _Server(http.server.ThreadingHTTPServer):
+    """The web server. With a certificate (`tls` set), HTTPS and plain HTTP share the one port:
+    a connection that doesn't open with a TLS handshake is plain HTTP, and is answered with a
+    redirect to the same address over https. So a bookmark or a typed address from before
+    HTTPS was switched on still arrives, and nothing is ever served in the clear -- the
+    redirect is all a plain request gets, and the session cookie is marked Secure, so the
+    browser doesn't send it along with one.
+
+    The handshake is done here, in the connection's own thread, and not by wrapping the
+    listening socket as before: there it happened inside accept(), where one client that
+    connected and then said nothing held up everybody else."""
+    tls = None
+
+    def finish_request(self, request, client_address):
+        if not self.tls:
+            return super().finish_request(request, client_address)
+        try:
+            request.settimeout(10)
+            first = request.recv(1, socket.MSG_PEEK)
+            if not first:
+                return
+            if first != b'\x16':             # not a TLS record: a request in plain HTTP
+                return _redirect_to_https(request)
+            secure = self.tls.wrap_socket(request, server_side=True)
+            secure.settimeout(None)
+        except (OSError, ssl.SSLError):
+            return
+        try:
+            super().finish_request(secure, client_address)
+        finally:
+            # wrap_socket() took the connection over from `request`, which the caller goes on
+            # to close: that no longer closes anything, so the real one is closed here.
+            self.shutdown_request(secure)
+
+
+def _redirect_to_https(sock):
+    """Answer one plain-HTTP request with a redirect to the same host and path over https.
+    The host and path are the request's own, and go back out only when they hold nothing that
+    could end the header line or start another."""
+    head = b''
+    while b'\r\n\r\n' not in head and len(head) < 8192:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        head += chunk
+    lines = head.decode('iso-8859-1').split('\r\n')
+    target = (lines[0].split(' ') + ['', ''])[1]
+    host = next((l.split(':', 1)[1].strip() for l in lines[1:] if l.lower().startswith('host:')), '')
+    if not re.fullmatch(r'[A-Za-z0-9.\-:\[\]]+', host):
+        host = f'localhost:{WEB_PORT}'
+    if not re.fullmatch(r'/[\x21-\x7e]*', target):
+        target = '/'
+    sock.sendall((f'HTTP/1.1 301 Moved Permanently\r\nLocation: https://{host}{target}\r\n'
+                  'Content-Length: 0\r\nConnection: close\r\n\r\n').encode('ascii'))
+
+
 def _bind_to_interface(sock, name):
     """Tie a listening socket to one network interface, by name: connections that arrive
     through any other are not for it, whatever address they were sent to. The operating system
@@ -2152,7 +2208,7 @@ def main():
     PAGE_HASH = _compute_page_hash()
 
     try:
-        srv = http.server.ThreadingHTTPServer((BIND_ADDR, WEB_PORT), StaticHandler, bind_and_activate=False)
+        srv = _Server((BIND_ADDR, WEB_PORT), StaticHandler, bind_and_activate=False)
         if INTERFACE:
             _bind_to_interface(srv.socket, INTERFACE)
         srv.server_bind()
@@ -2162,7 +2218,7 @@ def main():
                  + (f' through {INTERFACE}' if INTERFACE else '') + f': {e}')
     if CERT_FILE:
         try:
-            srv.socket = make_ssl_context().wrap_socket(srv.socket, server_side=True)
+            srv.tls = make_ssl_context()
         except (OSError, ssl.SSLError) as e:
             sys.exit(f'eznix: cert/key: {e}')
         USE_TLS = True
