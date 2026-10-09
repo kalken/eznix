@@ -233,9 +233,11 @@ terminal survives rebuilds); the NixOS module on a NixOS machine ("works cleanly
 terminal restart notice with the one-stamp check, on both, across the update that changed
 the terminal's code (it appeared, and stayed away after the restart).
 
-- `flakeWritable` on NixOS: the activation script ran as part of that update, but nobody
-  has looked at the resulting permissions or tried a system import there. Its selection of
-  files was tried on a throwaway folder.
+- `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
+  permissions it sets (the flake and its files `root:eznix` and group-writable with the
+  owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
+  `.gitignore` untouched), but the user has not tried writing the flake through the editor,
+  and no system import has been done there.
 - The templates: each makes a flake that evaluates to a whole system (with a stub
   `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
 - The Documents button and the Import/Export/Restore buttons since their code moved out of
