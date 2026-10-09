@@ -24,6 +24,14 @@
           "command": "nix flake update --flake ~/.config/nix-darwin"
         },
         {
+          "label": "Generations",
+          "command": "sudo darwin-rebuild --list-generations"
+        },
+        {
+          "label": "Clean up",
+          "command": "sudo nix-collect-garbage -d"
+        },
+        {
           "label": "Suggestions",
           "command": "eznix-autocomplete"
         }

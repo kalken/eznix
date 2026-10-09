@@ -24,6 +24,14 @@
           "command": "sudo nix flake update --flake /etc/nixos"
         },
         {
+          "label": "Generations",
+          "command": "nixos-rebuild list-generations"
+        },
+        {
+          "label": "Clean up",
+          "command": "sudo nix-collect-garbage -d"
+        },
+        {
           "label": "Suggestions",
           "command": "eznix-autocomplete"
         }
