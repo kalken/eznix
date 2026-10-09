@@ -235,7 +235,7 @@ so it works the same everywhere and can be left out. Three ship with it:
 
 | Plugin | |
 |---|---|
-| `system` | export the whole flake as a zip, import one over it, restore an automatic backup |
+| `system` | export the whole flake as a zip, import one over it, back it up, restore a backup |
 | `documents` | read the flake's Markdown files beside the editor |
 | `password` | log in with one configured password |
 

@@ -162,6 +162,12 @@ def main():
                   status == 200 and result.get('written') == ['eznix/a.json'] and result.get('unchanged') == 3
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 9}, result)
             os.chmod(f'{tmp}/flake/flake.nix', 0o644)
+            before = b.json('/api/v1/plugin/system/backups')[1]['backups']
+            status, made = b.json('/api/v1/plugin/system/backup', b'', 'POST')
+            after = b.json('/api/v1/plugin/system/backups')[1]['backups']
+            check('system: a backup can be made on request, and is the newest in the list',
+                  status == 200 and made.get('files') == 4 and after[0]['name'] == made.get('name')
+                  and made['name'] not in [x['name'] for x in before], made)
             check('system: bad input is refused', b.request('/api/v1/plugin/system/import', b'not a zip', 'POST')[0] == 400
                   and b.request('/api/v1/plugin/system/restore?name=../x', b'', 'POST')[0] == 400)
 

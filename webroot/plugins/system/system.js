@@ -1,6 +1,7 @@
-// The system plugin: export the whole flake as a zip, import one over it, and restore one of
-// the automatic backups made before each of those. All three act on the files on disk at
-// once -- no Save step, no undo -- which is why they are a plugin: an install that doesn't
+// The system plugin: export the whole flake as a zip, import one over it, back it up on request,
+// and restore one of the backups (made by that button, and automatically before every import
+// and restore). All of it acts on the files on disk at once -- no Save step, no undo -- which
+// is why they are a plugin: an install that doesn't
 // want them leaves it out ([plugin.system] enabled = false). The work itself is done by
 // system.py in this folder; this file is the buttons and the confirmations.
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
@@ -42,6 +43,26 @@ async function restoreSystemBackup(name) {
     }
   } catch (e) {
     setStatus('Restore failed: ' + e.message, 4000, 'err');
+  }
+}
+
+// Backs the whole flake up now, into the same list Restore offers. It is what is on disk that
+// is saved, as with an export, so unsaved edits are not in it -- said in the message, since
+// "I backed up before trying this" is exactly when there are some. Nothing to confirm: it
+// changes no file of the flake. It can push the oldest backup out, like any new one.
+async function backupSystem() {
+  const btn = document.getElementById('backup-btn');
+  if (btn.disabled) return;
+  btn.disabled = true;
+  try {
+    const res = await apiFetch('/plugin/system/backup', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setStatus('Backup failed: ' + (data.error || res.status), 5000, 'err'); return; }
+    setStatus(`Backed up ${data.files} file(s) of ${NIXOS_TARGET}` + (isAnyDirty() ? ' as saved on disk — unsaved changes are not in it' : ''), 5000, 'ok');
+  } catch (e) {
+    setStatus('Backup failed: ' + e.message, 4000, 'err');
+  } finally {
+    btn.disabled = false;
   }
 }
 
@@ -100,11 +121,10 @@ function initSystemImportButton() {
 // only ever covers the whole-NIXOS_TARGET case now (see eznix.py's
 // backup_system()/_restore_system_zip()), so there's nothing left to choose between; it goes
 // straight to the list. Named "Restore" rather than "Backups" since every action in this menu is a
-// restore, not a way to make a new backup: there's no manual "back up now" trigger -- a system
-// backup is only ever created automatically, right before system-import/system-backup/restore
-// overwrites something (see backup_system()'s call sites in eznix.py), so the list here is really
-// a history of "state right before the last few destructive writes," which is the only thing a
-// backup is actually for. Clicking an entry restores it directly (via restoreSystemBackup()'s own
+// restore; making one is the Backup button beside it (backupSystem()). The list holds those and
+// the ones made automatically right before an import or a restore overwrites something, so it
+// is mostly a history of "state right before the last few destructive writes". Clicking an
+// entry restores it directly (via restoreSystemBackup()'s own
 // confirm()) -- there's no separate download action either, since downloading a system backup for
 // its own sake isn't something this app needs to support.
 async function showBackupsMenu(event) {
@@ -132,7 +152,7 @@ async function showBackupsMenu(event) {
         danger: true,
         onclick: () => restoreSystemBackup(b.name),
       }))
-    : [{ label: 'No system backups yet — one is made automatically before any system import or restore.', disabled: true }];
+    : [{ label: 'No system backups yet — Backup makes one, and so does any system import or restore, automatically.', disabled: true }];
   showContextMenu(anchor, items, { triggerEl: btn });
 }
 
@@ -148,9 +168,17 @@ eznix.on('init', () => {
   if (SYSTEM_BACKUP_ENABLED) {
     eznix.addButton('header', {
       id: 'restore-btn',
-      tooltip: 'Restore the whole system from an automatic backup',
+      tooltip: 'Restore the whole system from a backup',
       html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3.5-7.1"/><polyline points="3 3 3 8 8 8"/><path d="M12 7v5l4 2"/></svg> Restore',
       onclick: showBackupsMenu,
+    });
+    // Added after Restore, so it lands in front of it: addButton() puts each new header button
+    // first. The icon is a storage box (Lucide's "archive").
+    eznix.addButton('header', {
+      id: 'backup-btn',
+      tooltip: 'Back up the whole system now, as it is on disk',
+      html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> Backup',
+      onclick: backupSystem,
     });
   }
 });

@@ -2,16 +2,17 @@
 
   GET  export           download the flake as a zip
   POST import           replace the flake's files with an uploaded zip's
-  GET  backups          the automatic backups, newest first
+  GET  backups          the backups, newest first
+  POST backup           make one now
   POST restore?name=N   replace the flake's files with a backup's
 
 Import and restore are the same operation on a zip from two places. Both write straight to
 disk, and both delete every in-scope file the zip doesn't mention, so the tree ends up matching
 the zip exactly instead of merging into what was there. (Import used to be a merge; the
 surprising case turned out to be importing your own export and it *not* replacing the tree the
-way restoring the same kind of zip does.) Both snapshot the current tree first -- that is the
-only thing that ever makes a backup, so the list is a history of "the state right before the
-last few destructive writes".
+way restoring the same kind of zip does.) Both snapshot the current tree first, so the list is
+mostly a history of "the state right before the last few destructive writes"; the Backup button
+adds one on request. Only the newest `backups` are kept, whichever way they were made.
 
 Settings ([plugin.system] in eznix.toml):
   backups   how many backups to keep (default 5; 0: none)
@@ -52,22 +53,26 @@ def setup(api):
                 yield full, os.path.relpath(full, flake).replace(os.sep, '/')
 
     def backup():
-        """Zip the current tree into the backup folder and prune to the newest `keep`."""
+        """Zip the current tree into the backup folder and prune to the newest `keep`. Returns
+        (its name, how many files it holds), or None when backups are switched off."""
         if keep <= 0:
-            return
+            return None
         os.makedirs(backup_dir, exist_ok=True)
         stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         dest, i = os.path.join(backup_dir, f'{PREFIX}{stamp}.zip'), 1
         while os.path.exists(dest):
             dest, i = os.path.join(backup_dir, f'{PREFIX}{stamp}-{i}.zip'), i + 1
+        count = 0
         with zipfile.ZipFile(dest, 'w', zipfile.ZIP_DEFLATED) as zf:
             for full, arcname in tree_files():
                 zf.write(full, arcname)
+                count += 1
         for old in [b['name'] for b in listing()][keep:]:
             try:
                 os.remove(os.path.join(backup_dir, old))
             except OSError:
                 pass
+        return os.path.basename(dest), count
 
     def listing():
         items = []
@@ -188,7 +193,14 @@ def setup(api):
             backup()
             return apply(zf, plan)
 
+    def backup_now(req):
+        made = backup()
+        if not made:
+            raise api.Error(400, 'backups are switched off ([plugin.system] backups = 0)')
+        return {'ok': True, 'name': made[0], 'files': made[1]}
+
     api.get('export', export)
     api.get('backups', lambda req: {'backups': listing()})
+    api.post('backup', backup_now)
     api.post('import', import_)
     api.post('restore', restore)
