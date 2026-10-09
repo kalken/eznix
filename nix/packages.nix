@@ -52,9 +52,14 @@ rec {
   # The terminal, a derivation of its own so that a change to the page doesn't change it: the
   # modules never restart a running terminal by themselves, and the page tells a terminal that
   # is out of date by this file's hash.
+  #
+  # No version in it, for the same reason: `version` is the commit eznix was built from, so
+  # with it this would be a new store path after every commit, whatever the commit touched.
+  # NixOS and home-manager name that path in the terminal's unit, and then report the unit as
+  # changed and in need of a restart on every update -- while the page, which compares the
+  # file itself, rightly says nothing.
   eznix-terminal = pkgs.stdenv.mkDerivation {
-    pname = "eznix-terminal";
-    inherit version;
+    name = "eznix-terminal";
     src        = ../bin/eznix-terminal.py;
     dontUnpack = true;
     nativeBuildInputs = [ pkgs.makeWrapper ];
