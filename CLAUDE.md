@@ -263,11 +263,14 @@ Suggestions are never generated automatically and no button for it is added: it 
 
 ## Not verified
 
-What has run for real, by the user's report on 2026-10-09 and no closer than that: the
-nix-darwin module, activated on a Mac (the services start, system-password login works, the
-terminal survives rebuilds); the NixOS module on a NixOS machine ("works cleanly"); and the
-terminal restart notice with the one-stamp check, on both, across the update that changed
-the terminal's code (it appeared, and stayed away after the restart).
+What has run for real, by the user's reports on 2026-10-09 and no closer than that: all three
+modules. nix-darwin on a Mac (services, system-password login, the terminal surviving
+rebuilds, HTTPS on localhost with `trustCert` and its keychain dialog, the redirect from
+http); NixOS on a real machine ("works cleanly", including `interface` once `certNames` was
+set); home-manager on another Linux in a VM, where the terminal's missing environment and
+`home.packages` not being a package list were found and fixed. The terminal restart notice
+was seen on NixOS and macOS across an update that changed the terminal. The user tested
+"all I could" and it works on the three; the points below are what nobody went through.
 
 - `trustCert` on Linux: the NixOS units and the home-manager step have never run. (On macOS
   it has, on a real install: the rebuild added the authority to the keychain, and HTTPS on
@@ -281,5 +284,7 @@ the terminal's code (it appeared, and stayed away after the restart).
   `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
 - The Documents button and the Import/Export/Restore buttons since their code moved out of
   `index.html`: never opened in a browser by a session.
-- The home-manager module is evaluated only. System-password login on a non-NixOS Linux
-  through nixpkgs' PAM library.
+- System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
+  there uses a password file).
+- home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator
+  has a path for its options, untried on a real flake.
