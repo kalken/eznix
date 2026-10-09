@@ -52,9 +52,14 @@ anything that happens in the page.
 
 ## Documentation
 
-When a change adds, removes or changes what a user sees or sets, update `README.md` too
+When a change adds, removes or changes what a user sees or sets, update `REFERENCE.md` too
 (features and usage, for users), not only this file (how the code is put together, for the
 next session). `example/eznix.example.toml` lists every setting.
+
+`README.md` is kept short on purpose, for people who don't know Nix: what it is, three
+blocks of lines to copy for installing, four steps for using it, a pointer to
+`REFERENCE.md`. The user asked for that twice ("for people who dont know much", "its too
+much text"). Don't grow it: new material goes in `REFERENCE.md`.
 
 Most of the *why* lives in comments next to the code it explains, on purpose: many of them
 record an approach that was tried and reverted, and what broke. Read them before changing the
