@@ -108,7 +108,7 @@ in
     flake = mkOption {
       type        = types.str;
       default     = defaults.flake;
-      description = "The flake eznix edits: where the terminal starts, what the suggestions are generated from, and what a system export zips up.";
+      description = "The flake eznix edits: where the terminal starts, what the suggestions are generated from, and what a system export zips up. On macOS and with home-manager, where eznix runs as one person, this and configDir may start with `~/` for their home folder.";
     };
     configDir = mkOption {
       type        = types.str;

@@ -111,7 +111,7 @@ The common ones, the same in all three modules:
 
 | Option | Default | |
 |---|---|---|
-| `flake` | `/etc/nixos`, `/etc/nix-darwin`, `~/.config/home-manager` | the flake being edited |
+| `flake` | `/etc/nixos`, `/etc/nix-darwin`, `~/.config/home-manager` | the flake being edited (`~/` works on macOS and with home-manager) |
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
 | `exclude` | `[ ]` | paths in it that are not configuration |
 | `users` | | who may log in with their system password |

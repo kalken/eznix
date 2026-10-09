@@ -10,7 +10,13 @@
 self:
 { config, lib, pkgs, ... }:
 let
-  cfg      = config.services.eznix;
+  # "~/..." in flake and configDir is the home folder, settled here: the scripts these paths go
+  # to quote them, so no shell would expand it.
+  tilde    = p: if lib.hasPrefix "~/" p then config.home.homeDirectory + lib.removePrefix "~" p else p;
+  cfg      = config.services.eznix // {
+    flake     = tilde config.services.eznix.flake;
+    configDir = tilde config.services.eznix.configDir;
+  };
   packages = import ./packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
   stateDir = "${config.xdg.stateHome}/eznix";
   terminal = { port = cfg.terminalPort; key_file = "${stateDir}/terminal.key"; };

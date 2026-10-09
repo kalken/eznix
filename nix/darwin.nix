@@ -13,10 +13,16 @@
 self:
 { config, lib, pkgs, ... }:
 let
-  cfg      = config.services.eznix;
   packages = import ./packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
   user     = config.system.primaryUser;
   home     = config.users.users.${user}.home or "/Users/${user}";
+  # "~/..." in flake and configDir is the primary user's home, settled here: the paths also go
+  # to the activation script, which runs as root and quotes them, where "~" would be neither.
+  tilde    = p: if lib.hasPrefix "~/" p then home + lib.removePrefix "~" p else p;
+  cfg      = config.services.eznix // {
+    flake     = tilde config.services.eznix.flake;
+    configDir = tilde config.services.eznix.configDir;
+  };
   stateDir = "${home}/.local/state/eznix";
   terminal = { port = cfg.terminalPort; key_file = "${stateDir}/terminal.key"; };
   label    = "org.nixos.eznix-terminal";      # how nix-darwin names launchd.user.agents.eznix-terminal

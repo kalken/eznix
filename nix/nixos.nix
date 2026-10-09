@@ -73,6 +73,10 @@ in
         message   = "services.eznix.users needs at least one name: they are who can log in, and whose terminals it runs.";
       }
       {
+        assertion = !lib.hasPrefix "~" cfg.flake && !lib.hasPrefix "~" cfg.configDir;
+        message   = "services.eznix on NixOS serves several people from its own account, so `~` in flake or configDir is nobody's home in particular: give the whole path.";
+      }
+      {
         assertion = cfg.password == null && cfg.passwordFile == null;
         message   = "services.eznix on NixOS logs people in with their system passwords; password and passwordFile are for the home-manager and nix-darwin modules.";
       }
