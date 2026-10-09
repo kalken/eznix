@@ -7,7 +7,8 @@ Guidance for Claude Code sessions working in this repository.
 **As of 2026-10-09 work is committed to the `testing` branch, locally only**, on the user's
 instruction ("only commit locally for now as i want to test things here"). `origin` is
 `git@github.com:kalken/eznix.git`, which did not exist on GitHub when the remote was added;
-nothing has been pushed. There is no `develop` or `master` yet, so the rule about them below
+nothing has been pushed. Don't create it until the user says so; when they do, it is to be
+public. There is no `develop` or `master` yet, so the rule about them below
 waits until the user sets those up.
 
 Do not add Claude as co-author in commit messages.
