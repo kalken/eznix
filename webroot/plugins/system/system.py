@@ -78,12 +78,41 @@ def setup(api):
                     items.append({'name': name, 'mtime': st.st_mtime, 'size': st.st_size})
         return sorted(items, key=lambda b: b['mtime'], reverse=True)
 
-    def apply(zf):
-        """Make the tree match the zip. Every entry is checked before any is written. An entry
-        with an empty, '.', '..' or dot-prefixed path segment is skipped and reported: that
-        mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git or
-        .ssh) and is also what stops a path-traversal entry."""
-        plan, skipped = [], []
+    def same(target, zf, info):
+        try:
+            if os.path.getsize(target) != info.file_size:
+                return False
+            with zf.open(info) as a, open(target, 'rb') as b:
+                return a.read() == b.read()
+        except OSError:
+            return False
+
+    def writable(target):
+        """Could eznix write this file: over it when it exists, else into the nearest folder
+        that does."""
+        if os.path.lexists(target):
+            return os.access(target, os.W_OK)
+        folder = os.path.dirname(target)
+        while not os.path.exists(folder):
+            folder = os.path.dirname(folder)
+        return os.access(folder, os.W_OK | os.X_OK)
+
+    def prepare(zf):
+        """What making the tree match the zip takes, decided before anything is touched (the
+        snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
+        'unchanged'}.
+
+        An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
+        that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
+        or .ssh) and is also what stops a path-traversal entry.
+
+        A file that is already what the zip holds is left alone, and all the rest has to be
+        something eznix may change, or nothing is. That is for NixOS, where the service owns
+        its folder of *.json files and the rest of the flake is root's: writing what it could
+        and failing on flake.nix left the tree half one thing and half the other. This way an
+        import that only differs inside that folder goes through there, and any other is
+        refused whole, with the files named."""
+        write, skipped, unchanged, names = [], [], 0, set()
         for info in zf.infolist():
             if info.is_dir():
                 continue
@@ -95,22 +124,36 @@ def setup(api):
             if os.path.commonpath([flake, target]) != flake:
                 # Not expected after the check above; abort before writing anything.
                 raise api.Error(400, 'invalid entry path: ' + info.filename)
-            plan.append((target, info))
+            names.add(os.path.relpath(target, flake).replace(os.sep, '/'))
+            if same(target, zf, info):
+                unchanged += 1
+            else:
+                write.append((target, info))
+        remove = [(full, arcname) for full, arcname in tree_files() if arcname not in names]
+        denied = ([os.path.relpath(t, flake) for t, _ in write if not writable(t)]
+                  + [name for full, name in remove if not os.access(os.path.dirname(full), os.W_OK | os.X_OK)])
+        if denied:
+            raise api.Error(403, f'eznix may not change {len(denied)} of the files this would change '
+                                 f'({", ".join(denied[:3])}{", ..." if len(denied) > 3 else ""}); nothing was changed')
+        return {'write': write, 'remove': remove, 'skipped': skipped, 'unchanged': unchanged}
+
+    def apply(zf, plan):
+        """Carry out what prepare() decided."""
         written = []
-        for target, info in plan:
+        for target, info in plan['write']:
             os.makedirs(os.path.dirname(target), exist_ok=True)
             with zf.open(info) as src, open(target, 'wb') as dst:
                 shutil.copyfileobj(src, dst)
             written.append(os.path.relpath(target, flake).replace(os.sep, '/'))
-        removed, kept = [], set(written)
-        for full, arcname in list(tree_files()):
-            if arcname not in kept:
-                try:
-                    os.remove(full)
-                    removed.append(arcname)
-                except OSError:
-                    pass
-        return {'ok': True, 'written': written, 'skipped': skipped, 'removed': removed}
+        removed = []
+        for full, arcname in plan['remove']:
+            try:
+                os.remove(full)
+                removed.append(arcname)
+            except OSError:
+                pass
+        return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
+                'unchanged': plan['unchanged']}
 
     def export(req):
         buf = io.BytesIO()
@@ -124,9 +167,10 @@ def setup(api):
             zf = zipfile.ZipFile(io.BytesIO(req.body))
         except zipfile.BadZipFile:
             raise api.Error(400, 'not a valid zip file')
-        backup()
         with zf:
-            return apply(zf)
+            plan = prepare(zf)
+            backup()
+            return apply(zf, plan)
 
     def restore(req):
         name = req.query.get('name', '')
@@ -140,8 +184,9 @@ def setup(api):
         # The backup being restored may itself be pruned by the snapshot taken here, so it is
         # open before that happens.
         with zf:
+            plan = prepare(zf)
             backup()
-            return apply(zf)
+            return apply(zf, plan)
 
     api.get('export', export)
     api.get('backups', lambda req: {'backups': listing()})

@@ -156,6 +156,12 @@ JSON file would drop the boot loader and the user's account. The one thing to fi
 `github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
 checkout, `--override-input eznix path:.`.
 
+**A system import is all or nothing** (`prepare()` in the system plugin): what it would write
+or remove is worked out first, files already identical are left alone, and if eznix may not
+change any one of the rest, it refuses before the snapshot and before the first write. On
+NixOS the service can write only its JSON folder, and an import used to write what it could
+there and then fail on `flake.nix`.
+
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 

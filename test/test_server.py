@@ -142,6 +142,26 @@ def main():
             b.json('/api/v1/plugin/system/restore?name=' + backups['backups'][0]['name'], b'', 'POST')
             check('system: restore brings it back', open(f'{tmp}/flake/flake.nix').read() == 'changed'
                   and os.path.exists(f'{tmp}/flake/extra.nix'))
+            # As on NixOS, where the service owns its *.json folder and the rest is root's.
+            def zipped(files):
+                buf = io.BytesIO()
+                with zipfile.ZipFile(buf, 'w') as zf:
+                    for name, text in files.items():
+                        zf.writestr(name, text)
+                return buf.getvalue()
+            now = {n: zipfile.ZipFile(io.BytesIO(b.request('/api/v1/plugin/system/export')[1])).read(n).decode()
+                   for n in ('README.md', 'eznix/a.json', 'extra.nix', 'flake.nix')}
+            os.chmod(f'{tmp}/flake/flake.nix', 0o444)
+            before = len(b.json('/api/v1/plugin/system/backups')[1]['backups'])
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'flake.nix': 'other', 'eznix/a.json': '{"a": 9}'}), 'POST')
+            check('system: an import that would change a file eznix may not write changes nothing, and says which',
+                  status == 403 and 'flake.nix' in result.get('error', '') and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 2}
+                  and len(b.json('/api/v1/plugin/system/backups')[1]['backups']) == before, result)
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'eznix/a.json': '{"a": 9}'}), 'POST')
+            check('system: one that leaves that file as it is goes through',
+                  status == 200 and result.get('written') == ['eznix/a.json'] and result.get('unchanged') == 3
+                  and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 9}, result)
+            os.chmod(f'{tmp}/flake/flake.nix', 0o644)
             check('system: bad input is refused', b.request('/api/v1/plugin/system/import', b'not a zip', 'POST')[0] == 400
                   and b.request('/api/v1/plugin/system/restore?name=../x', b'', 'POST')[0] == 400)
 

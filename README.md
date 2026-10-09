@@ -119,6 +119,11 @@ is shared between the service and those users through the `eznix` group.
 Rebuilding from the terminal needs root, so it goes through `sudo` like it would in any
 terminal. See [Running commands as root](#running-commands-as-root).
 
+The service owns only the JSON folder; the rest of the flake stays root's. So importing a
+whole-flake zip (Import, System) works when it differs from what is there only inside that
+folder. One that would also change `flake.nix` or another of root's files is refused whole,
+naming the files, and nothing is changed; unpack that one in the terminal with `sudo`.
+
 ### macOS (nix-darwin)
 
 ```nix
