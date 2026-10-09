@@ -14,12 +14,16 @@
   height: 25vh;
   transition: height .18s ease;
   position: relative; /* anchor for .terminal-header-group, pinned to the bottom edge below */
+  /* How tall one row of buttons is (.terminal-header): 26px of button, 3px under it, and above
+     it the same 10px the top bar's buttons have to that bar's lower edge, with the 1px line
+     among them. Everything that has to make room for a row uses this. */
+  --term-bar: 39px;
 }
-.terminal-panel.collapsed { height: 33px !important; }
-/* The install-mode row is a second 33px .terminal-header — collapsed height needs to fit both
+.terminal-panel.collapsed { height: var(--term-bar) !important; }
+/* The install-mode row is a second .terminal-header — collapsed height needs to fit both
    when it's visible. More specific than the plain .collapsed rule above (same !important), so
    this wins whenever both classes are present. */
-.terminal-panel.collapsed.install-mode { height: 66px !important; }
+.terminal-panel.collapsed.install-mode { height: calc(2 * var(--term-bar)) !important; }
 /* The whole ordinary row disabled at once during install mode, rather than each button
    individually — a title attribute (set alongside this class, see the init IIFE) gives the
    native hover tooltip explaining why. pointer-events: none goes on the buttons, not the
@@ -45,12 +49,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 0 12px;
-  height: 33px;
+  /* 6px + the 1px line + 3px of the centering below = 10px above a button; see --term-bar. */
+  padding: 6px 12px 0;
+  height: var(--term-bar);
   flex-shrink: 0;
   border-top: 1px solid var(--border);
 }
-.terminal-panel.collapsed .terminal-header { border-top: none; }
+/* Without its line the row keeps its height, so the padding takes the line's pixel over. */
+.terminal-panel.collapsed .terminal-header { border-top: none; padding-top: 7px; }
 
 .terminal-cmd-btns {
   display: flex;
@@ -83,9 +89,9 @@
   position: relative;
   /* Room for .terminal-header-group, which no longer takes up flex space of its own now that
      it's position: absolute — without this, its bottom row would sit on top of #term-output. */
-  padding-bottom: 33px;
+  padding-bottom: var(--term-bar);
 }
-.terminal-panel.install-mode .terminal-body { padding-bottom: 66px; }
+.terminal-panel.install-mode .terminal-body { padding-bottom: calc(2 * var(--term-bar)); }
 .terminal-panel.collapsed .terminal-body { display: none; }
 
 #term-output {
