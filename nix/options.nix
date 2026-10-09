@@ -32,7 +32,10 @@ let
     state_dir        = stateDir;
     listen           = cfg.listen;
     port             = cfg.port;
-    hosts            = cfg.hosts ++ cfg.certNames;
+    # The address itself, when it is one in particular: the certificate is made for it (see
+    # generateCa), so it is a name the browser will use. Without it a save is refused (403).
+    hosts            = cfg.hosts ++ cfg.certNames
+                       ++ lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen;
     users            = cfg.users;
     theme            = cfg.theme;
     themes_dir       = if cfg.themes != { } then "${themesDir}" else null;
