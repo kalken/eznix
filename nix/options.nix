@@ -150,9 +150,11 @@ in
     {
       # Refused here, at the rebuild, and not found out in the browser: a certificate for the
       # wrong name and saves that fail. (hosts counts too: behind a proxy the names go there.)
-      assertion = !(builtins.elem cfg.listen [ "0.0.0.0" "::" ] || cfg.interface != null)
+      # (listen is "0.0.0.0" by default once interface is set; with an address of its own
+      # there is a name to go by, interface or not.)
+      assertion = !(builtins.elem cfg.listen [ "0.0.0.0" "::" ])
                   || cfg.certNames != [ ] || cfg.hosts != [ ];
-      message   = "services.eznix.certNames is empty. With listen = \"0.0.0.0\" or interface set, eznix cannot know what you will type in the browser: list the host name or address you open it by, for example certNames = [ \"192.168.1.2\" ].";
+      message   = "services.eznix.certNames is empty. Listening on every address (listen = \"0.0.0.0\", also what interface alone gives), eznix cannot know what you will type in the browser: list the host name or address you open it by, for example certNames = [ \"192.168.1.2\" ], or set listen to that address.";
     }
     {
       assertion = !(cfg.session.cookies.renew && cfg.session.cookies.days == null);
@@ -215,7 +217,7 @@ in
       type        = types.nullOr types.str;
       default     = null;
       example     = "wg0";
-      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Put the host name or address you open it by in certNames: without it the certificate does not match and saving is refused.";
+      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Set listen to this machine's address on that interface as well, or put the host name or address you open it by in certNames: without either the certificate does not match and saving is refused.";
     };
     port = mkOption {
       type        = types.port;
@@ -348,7 +350,7 @@ in
     certNames = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "The host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. Needed when listen is \"0.0.0.0\" or interface is set: eznix then has no way to know them, the certificate names only localhost, the browser complains about it on every other name, and saving is refused. A specific listen address is included by itself.";
+      description = "The host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. Needed when listen is \"0.0.0.0\", which it also is with interface set and no listen: eznix then has no way to know them, the certificate names only localhost, the browser complains about it on every other name, and saving is refused. A specific listen address is included by itself.";
     };
     cert = mkOption {
       type        = types.nullOr types.str;

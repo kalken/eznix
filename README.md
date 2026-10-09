@@ -30,24 +30,33 @@ modules = [
 ];
 ```
 
-In `configuration.nix`:
+In `configuration.nix`, one of these two.
+
+Used from other computers:
+
+```nix
+services.eznix = {
+  enable       = true;
+  users        = [ "alice" ];       # NixOS: who may log in, with their system password
+  listen       = "192.168.1.2";     # this machine's address; HTTPS is then on by itself
+  openFirewall = true;              # NixOS
+  # interface  = "wg0";             # optional: answer through this network interface only
+};
+```
+
+Used on the machine itself:
 
 ```nix
 services.eznix = {
   enable = true;
-  users  = [ "alice" ];               # NixOS: who may log in, with their system password
-
-  # To reach it from other computers, at this machine's address (HTTPS is then on by itself):
-  # listen       = "192.168.1.2";
-  # openFirewall = true;               # NixOS
-
-  # HTTPS on this machine too, without a warning in its browsers:
+  users  = [ "alice" ];             # NixOS: who may log in, with their system password
+  # Optional: HTTPS on localhost too, and its browsers trusting the certificate.
   # generateCert = true;
   # trustCert    = true;
 };
 ```
 
-Rebuild, and open http://localhost:9090.
+Rebuild, and open eznix on port 9090: `https://192.168.1.2:9090`, or http://localhost:9090.
 
 **No flake yet?** With Nix installed, one of these writes a `flake.nix` and a first settings
 file with eznix switched on. Put your user name in that file before the last command.
@@ -362,9 +371,10 @@ Chromium, Brave and Firefox for the people eznix runs for. On macOS it goes into
 keychain, which asks for your password once: run that rebuild in a terminal of your own, not
 in eznix's panel. A browser that is open may need a restart to notice.
 
-**`certNames`** is required with `listen = "0.0.0.0"` or `interface`: eznix can't know what
-you will type in the browser, and without the name the certificate doesn't match and saving
-is refused. The rebuild stops and says so. A specific `listen` address is included by itself.
+**`certNames`** is required when eznix listens on every address: `listen = "0.0.0.0"`, which
+is also what `interface` alone gives. It can't know then what you will type in the browser,
+and without the name the certificate doesn't match and saving is refused. The rebuild stops
+and says so. A specific `listen` address is included by itself, with or without `interface`.
 
 With HTTPS on, an `http://` address on the same port is answered with a redirect to
 `https://`.
