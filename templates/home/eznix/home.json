@@ -15,21 +15,21 @@
       "passwordFile": "/home/YOUR-USER-NAME/.config/eznix-password",
       "buttons": [
         {
-          "label": "Rebuild Switch",
-          "command": "home-manager switch --flake \"$HOME/.config/home-manager#default\"",
-          "save_first": true
-        },
-        {
-          "label": "Update Flake",
-          "command": "nix flake update --flake ~/.config/home-manager"
-        },
-        {
           "label": "List Generations",
           "command": "home-manager generations"
         },
         {
+          "label": "Create Generation",
+          "command": "home-manager switch --flake \"$HOME/.config/home-manager#default\"",
+          "save_first": true
+        },
+        {
           "label": "Clear Generations",
           "command": "nix-collect-garbage -d"
+        },
+        {
+          "label": "Update Flake",
+          "command": "nix flake update --flake ~/.config/home-manager"
         },
         {
           "label": "Generate Autocomplete",

@@ -15,21 +15,21 @@
       ],
       "buttons": [
         {
-          "label": "Rebuild Switch",
-          "command": "sudo nixos-rebuild switch --flake \"/etc/nixos#default\"",
-          "save_first": true
-        },
-        {
-          "label": "Update Flake",
-          "command": "sudo nix flake update --flake /etc/nixos"
-        },
-        {
           "label": "List Generations",
           "command": "nixos-rebuild list-generations"
         },
         {
+          "label": "Create Generation",
+          "command": "sudo nixos-rebuild switch --flake \"/etc/nixos#default\"",
+          "save_first": true
+        },
+        {
           "label": "Clear Generations",
           "command": "sudo nix-collect-garbage -d"
+        },
+        {
+          "label": "Update Flake",
+          "command": "sudo nix flake update --flake /etc/nixos"
         },
         {
           "label": "Generate Autocomplete",

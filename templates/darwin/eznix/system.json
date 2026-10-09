@@ -15,21 +15,21 @@
       "flake": "~/.config/nix-darwin",
       "buttons": [
         {
-          "label": "Rebuild Switch",
-          "command": "sudo darwin-rebuild switch --flake \"$HOME/.config/nix-darwin#default\"",
-          "save_first": true
-        },
-        {
-          "label": "Update Flake",
-          "command": "nix flake update --flake ~/.config/nix-darwin"
-        },
-        {
           "label": "List Generations",
           "command": "sudo darwin-rebuild --list-generations"
         },
         {
+          "label": "Create Generation",
+          "command": "sudo darwin-rebuild switch --flake \"$HOME/.config/nix-darwin#default\"",
+          "save_first": true
+        },
+        {
           "label": "Clear Generations",
           "command": "sudo nix-collect-garbage -d"
+        },
+        {
+          "label": "Update Flake",
+          "command": "nix flake update --flake ~/.config/nix-darwin"
         },
         {
           "label": "Generate Autocomplete",
