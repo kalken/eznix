@@ -294,7 +294,8 @@ in
     };
 
     theme = mkOption {
-      type        = types.str;
+      # The ones that ship, as choices in the editor, or any other name: one of your own.
+      type        = types.either (types.enum [ "nixos" "dark" "gruvbox" "osx" "osx-dark" "osx-light" ]) types.str;
       default     = defaults.theme;
       description = "The theme a browser starts with: nixos, dark, gruvbox, osx-dark, osx-light, osx (light or dark, following the system the browser runs on), or one of your own from themes.";
     };

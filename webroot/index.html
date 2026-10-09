@@ -2937,7 +2937,9 @@ function parseEnumOptions(nixType) {
   // Must actually be an enum: "one of ..." (2+ values) or "value "x" (singular enum)" (1 value)
   if (!nixType.includes('one of') && !nixType.includes('singular enum')) return null;
   const hasNull = nixType.startsWith('null or') || nixType.includes('null or');
-  return { values: matches, nullable: hasNull };
+  // 'one of "a", "b" or string': the named ones are suggestions, anything else may be typed
+  // (services.eznix.theme: the themes that ship, or the name of one of your own).
+  return { values: matches, nullable: hasNull, freeText: /\bor string\b/.test(nixType.replace(/"[^"]*"/g, '')) };
 }
 
 // Dropdowns and suggestion lists inside the editor are children of its scroll container, which
@@ -3174,11 +3176,38 @@ function renderField(container, key, val, path) {
   } else if (type === 'string') {
     const enumOpts = opt ? parseEnumOptions(opt.type) : null;
     if (enumOpts) {
-      const items = [];
-      if (enumOpts.nullable) items.push({ value: '__null__', label: 'null' });
-      enumOpts.values.forEach(v => items.push({ value: v, label: v }));
-      const curV = val === null ? '__null__' : val;
-      valEl.appendChild(makeCustomSelect(items, curV, v => setAtPath(config, path, v === '__null__' ? null : v)));
+      // Choices that are only suggestions (enumOpts.freeText): the dropdown also shows a value
+      // that is none of them, and ends in "Other…", which turns it into a text field. Leaving
+      // the field (or Enter, Escape) turns it back into the dropdown, with what was typed in
+      // it -- always, typed in or not, or there was no way back to the choices. Only this
+      // one widget is swapped: a whole re-render on blur would take the click that caused
+      // the blur away from whatever it was meant for.
+      const makeChoice = () => {
+        const cur = getAtPath(config, path);
+        const items = [];
+        if (enumOpts.nullable) items.push({ value: '__null__', label: 'null' });
+        enumOpts.values.forEach(v => items.push({ value: v, label: v }));
+        if (enumOpts.freeText) {
+          if (typeof cur === 'string' && !enumOpts.values.includes(cur)) items.push({ value: cur, label: cur });
+          items.push({ value: '__other__', label: 'Other…' });
+        }
+        const select = makeCustomSelect(items, cur === null ? '__null__' : cur, v => {
+          if (v !== '__other__') { setAtPath(config, path, v === '__null__' ? null : v); return; }
+          const inp = document.createElement('input');
+          inp.type = 'text'; inp.value = typeof cur === 'string' ? cur : '';
+          inp.addEventListener('input', () => setAtPath(config, path, inp.value));
+          inp.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === 'Escape') inp.blur(); });
+          inp.addEventListener('blur', () => {
+            if (inp.value === '') setAtPath(config, path, cur);      // nothing typed: as it was
+            if (inp.isConnected) inp.replaceWith(makeChoice());
+            _updateDirty();
+          });
+          select.replaceWith(inp);
+          inp.focus(); inp.select();
+        });
+        return select;
+      };
+      valEl.appendChild(makeChoice());
     } else {
       if (val.includes('\n') || (opt && opt.type && opt.type.includes('concatenated with'))) {
         const ta = document.createElement('textarea');
