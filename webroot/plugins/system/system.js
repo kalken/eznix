@@ -66,7 +66,7 @@ async function backupSystem() {
   }
 }
 
-// Removes one backup from the list, for good: asked for from an entry's right-click menu in
+// Removes one backup from the list, for good: the ✕ at the end of its line in
 // showBackupsMenu(). Only the backup goes; the flake isn't touched.
 async function deleteSystemBackup(backup) {
   const when = new Date(backup.mtime * 1000).toLocaleString();
@@ -165,9 +165,9 @@ async function showBackupsMenu(event) {
     ? systemBackups.map(b => ({
         label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
         danger: true,
-        title: 'Click to restore it, right-click to delete it',
+        title: 'Restore this backup',
         onclick: () => restoreSystemBackup(b.name),
-        contextItems: [{ label: 'Delete this backup', danger: true, onclick: () => deleteSystemBackup(b) }],
+        aside: { label: '✕', title: 'Delete this backup', onclick: () => deleteSystemBackup(b) },
       }))
     : [{ label: 'No system backups yet — Backup makes one, and so does any system import or restore, automatically.', disabled: true }];
   showContextMenu(anchor, items, { triggerEl: btn });
