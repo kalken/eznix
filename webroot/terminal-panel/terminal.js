@@ -82,34 +82,13 @@ let _termReadyWaiters = [];
 // of every connectTerminalWs() call.
 let _termExited = false;
 
-// The content hash of whatever eznix-terminal.service process is actually answering right now
-// (bin/eznix-terminal.py's SELF_HASH). Two independent sources keep this fresh: the WS 'ready'
-// message on every terminal connect/reconnect (instant, but only happens while the panel is
-// open), and /api/v1/ping's terminal_running_hash field (eznix.py's own loopback GET to
-// eznix-terminal.py's /terminal/hash, polled every tick regardless of panel state — see
-// initRestartWatcher()). The ping path exists specifically because this variable resets to null
-// on every page load, and used to only be repopulated by the WS message — silently hiding a
-// still-true popup after a GUI reload if the panel happened to be closed at the time.
-// Compared against _terminalCurrentHash (also from /api/v1/ping) to tell whether the running
-// terminal service is stale relative to what's on disk — drives #term-restart-popup, see
-// _updateTermRestartPopup(). This is a pure, non-sticky comparison re-evaluated on every call, not
-// "shown once, stays shown" — it clears itself the moment the two hashes agree again, regardless
-// of *how* that happened (this button, typed manually into the terminal, or a restart triggered
-// entirely outside eznix, e.g. `systemctl restart` over SSH — this can't tell the difference and
-// doesn't need to).
-let _terminalRunningHash = null;
-let _terminalCurrentHash = null;
-// Same idea, but for *config* drift rather than code drift (bin/eznix-terminal.py's CONFIG_HASH):
-// SELF_HASH alone doesn't catch e.g. changing `shell` in the NixOS module, since that only
-// changes the generated eznix.toml, never eznix-terminal.py's own file content -- kept as a
-// separate pair (not folded into the hash pair above) so the two kinds of drift stay
-// independently correct even though _terminalNeedsRestart() itself doesn't distinguish why.
-let _terminalRunningConfigHash = null;
-let _terminalCurrentConfigHash = null;
-function _terminalNeedsRestart() {
-  return !!(_terminalRunningHash && _terminalCurrentHash && _terminalRunningHash !== _terminalCurrentHash)
-      || !!(_terminalRunningConfigHash && _terminalCurrentConfigHash && _terminalRunningConfigHash !== _terminalCurrentConfigHash);
-}
+// Is the terminal that is running another one than is installed and configured now? The server
+// works that out (_terminal_stale() in eznix.py) and says so in every /api/v1/ping, so this is
+// right whether or not the panel is open, and after a reload. It drives #term-restart-popup, see
+// _updateTermRestartPopup(), and is not sticky: it clears itself with the first ping after the
+// two agree again, however that came about (this button, a restart from a shell over SSH).
+let _terminalStale = false;
+function _terminalNeedsRestart() { return _terminalStale; }
 // Positioned fresh every time it's shown -- see the markup comment above #term-restart-popup for
 // why this is anchored to the terminal bar's own top edge rather than any specific button.
 function _updateTermRestartPopup() {
@@ -145,6 +124,10 @@ async function restartTerminal() {
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setStatus('Terminal service restarted', 3000, 'ok');
+      // Take the notice down now and not with the next ping, up to five seconds on; that ping
+      // puts it back if the restart didn't bring up the right terminal after all.
+      _terminalStale = false;
+      _updateTermRestartPopup();
     } else {
       setStatus('Restart failed: ' + (data.error || res.status), 5000, 'err');
     }
@@ -330,9 +313,6 @@ function connectTerminalWs() {
       const msg = JSON.parse(e.data);
       if (msg.type === 'ready') {
         _termReady = true;
-        if (typeof msg.hash === 'string') _terminalRunningHash = msg.hash;
-        if (typeof msg.config_hash === 'string') _terminalRunningConfigHash = msg.config_hash;
-        _updateTermRestartPopup();
         const waiters = _termReadyWaiters;
         _termReadyWaiters = [];
         waiters.forEach(fn => fn());
@@ -652,8 +632,6 @@ function showButtonMenu(event, idxs) {
   showContextMenu(anchor, _buildButtonMenuItems(entries, dirty), { anchorRect: rect, triggerEl: btn });
 }
 
-_terminalCurrentHash = _TERM_CONFIG.script_hash || null; // see _terminalNeedsRestart()
-
 function runButton(idx) {
   const btn = getAllButtons()[idx];
   if (!btn) return;
@@ -720,9 +698,6 @@ eznix.on('theme', () => {
 // The terminal is a separate process that isn't restarted along with the server, so its
 // hashes are tracked on every ping, whatever else that ping says.
 eznix.on('ping', data => {
-  if (typeof data.terminal_current_hash === 'string') _terminalCurrentHash = data.terminal_current_hash;
-  if (typeof data.terminal_running_hash === 'string') _terminalRunningHash = data.terminal_running_hash;
-  if (typeof data.terminal_config_hash === 'string') _terminalCurrentConfigHash = data.terminal_config_hash;
-  if (typeof data.terminal_running_config_hash === 'string') _terminalRunningConfigHash = data.terminal_running_config_hash;
+  _terminalStale = data.terminal_stale === true;
   _updateTermRestartPopup();
 });

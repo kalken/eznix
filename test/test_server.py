@@ -220,13 +220,35 @@ def main():
             ping = b.json('/api/v1/ping')[1]
             check('the terminal panel is loaded when there is a terminal', 'terminal-panel/terminal.js' in page
                   and b.request('/terminal-panel/terminal.js')[0] == 200)
-            check('the terminal runs, and is the one the editor expects',
-                  ping['terminal_running_hash'] == ping['terminal_current_hash'] is not None
-                  and ping['terminal_running_config_hash'] == ping['terminal_config_hash'], ping)
+            check('the terminal runs, and is the one the editor expects', ping['terminal_stale'] is False, ping)
+
             check('the terminal opens for the page itself, and for a script', [b.terminal(BASE), b.terminal()] == [101, 101])
             check('not for another page: another port of this host, another site, none',
                   [b.terminal(o) for o in (f'http://127.0.0.1:{PORT + 2}', 'https://evil.example', 'null')] == [403] * 3)
             check('nor without a login', Browser().terminal(BASE) == 401)
+
+            # In place of the one eznix started: the same program on the same port and key,
+            # started by hand. "Not stale" is also the answer when eznix can't tell, so the
+            # check above proves little alone; these two tell the cases apart.
+            def terminal_by_hand(folder):
+                subprocess.run(['pkill', '-f', f'eznix-terminal.py --port {PORT + 1} '])
+                time.sleep(0.5)
+                t = subprocess.Popen([sys.executable, os.path.join(ROOT, 'bin', 'eznix-terminal.py'), '--port', str(PORT + 1),
+                                      '--key-file', f'{tmp}/state/terminal.key', '--dir', folder],
+                                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                time.sleep(1)
+                return t
+            other = terminal_by_hand(tmp)
+            try:
+                check('a terminal started another way than configured is reported as out of date',
+                      b.json('/api/v1/ping')[1]['terminal_stale'] is True)
+            finally:
+                other.terminate(); other.wait()
+            same = terminal_by_hand(f'{tmp}/flake')
+            try:
+                check('and one started the configured way is not', b.json('/api/v1/ping')[1]['terminal_stale'] is False)
+            finally:
+                same.terminate(); same.wait()
         finally:
             proc.terminate(); proc.wait()
 

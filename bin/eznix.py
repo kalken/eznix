@@ -140,7 +140,7 @@ TERMINALS        = {}
 TERMINAL_RESTART = None          # argv restarting a user's terminal, {user}/{uid} filled in
 TERMINAL_END_ON_LOGOUT = True    # the shell belongs to a login: it ends when its user logs out
 TERMINAL_SCRIPT  = None          # the eznix-terminal program on disk
-TERMINAL_CURRENT_HASH = ''       # its hash, to tell when a running terminal is out of date
+TERMINAL_PROGRAM = ''            # sha256 of that file, half of what a terminal's stamp is made of (_terminal_for())
 TERMINAL_AUTO_HIDE = True        # hide the open terminal panel on a click outside it
 
 DEFAULT_THEME    = 'osx' if sys.platform == 'darwin' else 'nixos'
@@ -500,12 +500,14 @@ def check_auth(headers):
     return _session(headers) is not None
 
 def _terminal_for(user):
-    """The terminal that serves this login: {'port', 'key', 'config_hash'}, or None when they
-    have none. Every terminal is its own eznix-terminal process, running as its user, with a
-    secret of its own in key_file -- so the people allowed in can't reach each other's shells.
+    """The terminal that serves this login: {'port', 'key', 'stamp'}, or None when they have
+    none. Every terminal is its own eznix-terminal process, running as its user, with a secret
+    of its own in key_file -- so the people allowed in can't reach each other's shells.
 
-    'config_hash' is what that process's own CONFIG_HASH should be if it was started the way
-    the config says: the same formula as eznix-terminal.py's, over the same four values."""
+    'stamp' is what that process's own STAMP is if it runs the program that is installed now,
+    started the way the config says now: the same formula as in eznix-terminal.py, over the
+    same file and the same four values. So those must be exactly the arguments the module (or
+    _start_terminal_for_self()) passes."""
     # '*': the one eznix started itself, run by hand -- whoever logs in there is acting as
     # the person running it.
     t = TERMINALS.get(user) or TERMINALS.get('*')
@@ -517,8 +519,8 @@ def _terminal_for(user):
     except OSError:
         return None
     raw = {'port': t['port'], 'key_file': t['key_file'], 'dir': t.get('dir'), 'shell': t.get('shell')}
-    chash = hashlib.sha256(json.dumps(raw, sort_keys=True).encode()).hexdigest()[:16]
-    return {'port': t['port'], 'key': key, 'config_hash': chash}
+    stamp = hashlib.sha256((TERMINAL_PROGRAM + json.dumps(raw, sort_keys=True)).encode()).hexdigest()[:16]
+    return {'port': t['port'], 'key': key, 'stamp': stamp}
 
 
 # Run by hand there is no module to run a terminal alongside: eznix starts one itself, as a
@@ -946,8 +948,7 @@ def _render_index():
     # block this is embedded into.
     config = {name: p['config'] for name, p in PLUGINS.items()}
     if TERMINALS:
-        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS,
-                              'script_hash': TERMINAL_CURRENT_HASH}
+        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS}
     plugin_config = json.dumps(config).replace('</', '<\\/')
     return (open(os.path.join(WEBROOT, 'index.html')).read()
         .replace('%%EZNIX_PLUGIN_STYLES%%', plugin['styles'])
@@ -1001,30 +1002,28 @@ def _read_version():
 
 
 def _compute_file_hash(path):
-    """Truncated sha256 of a single file — used for
-    TERMINAL_CURRENT_HASH (see there). Returns '' if path is unset or unreadable, same as an
-    ordinary "nothing to compare against" case rather than an error."""
+    """sha256 of a single file -- used for TERMINAL_PROGRAM (see there). Returns '' if path is
+    unset or unreadable, which is also what eznix-terminal.py uses when it can't read itself."""
     if not path:
         return ''
     try:
         with open(path, 'rb') as f:
-            return hashlib.sha256(f.read()).hexdigest()[:16]
+            return hashlib.sha256(f.read()).hexdigest()
     except OSError:
         return ''
 
 
-def _terminal_running_status(term):
-    """Best-effort fetch of the *actually running* eznix-terminal.py's own SELF_HASH/CONFIG_HASH, via
-    its /terminal/hash status endpoint (loopback only, see eznix-terminal.py) -- not the WS 'ready'
-    message, which only ever arrives once a client has the terminal panel open. Included in
-    _ping_payload() so initRestartWatcher() can keep the restart notification accurate even
-    when the panel is closed (previously: reloading the GUI reset the frontend's in-memory
-    _terminalRunningHash to null, and nothing repopulated it unless the panel happened to be
-    open, silently hiding a notification that was still genuinely true). Returns {} on any
-    failure -- the terminal not up yet, a slow response, no terminal at all -- so a transient
-    miss just leaves this one ping tick's fields absent rather than reporting a wrong hash."""
+def _terminal_stale(term):
+    """Is the terminal that is running for this login another one than is installed and
+    configured now: does the STAMP it reports (/terminal/hash, loopback only) differ from the
+    one worked out here (_terminal_for())? Asked on every ping, so the page's restart notice is
+    right whether or not the terminal panel is open.
+
+    False whenever that can't be told -- no terminal, not up yet, a slow answer -- so a
+    passing miss never raises the notice. A terminal from before there was one stamp answers
+    with its old program hash, which differs, and so is offered the restart it needs."""
     if not term:
-        return {}
+        return False
     try:
         conn = http.client.HTTPConnection('127.0.0.1', term['port'], timeout=2)
         try:
@@ -1032,12 +1031,13 @@ def _terminal_running_status(term):
             resp = conn.getresponse()
             data = resp.read()
             if resp.status != 200:
-                return {}
-            return json.loads(data)
+                return False
+            running = json.loads(data).get('hash')
+            return isinstance(running, str) and running != term['stamp']
         finally:
             conn.close()
     except Exception:
-        return {}
+        return False
 
 
 def _autocomplete_stamp():
@@ -1058,16 +1058,11 @@ def _ping_payload(user=None):
     """GET /api/v1/ping's whole response, polled by initRestartWatcher() (index.html): the
     page checksum (see _compute_page_hash()), the autocomplete stamp, and what the terminal
     restart notice compares."""
-    _term = _terminal_for(user)
-    _running = _terminal_running_status(_term)
     return {
         'page': PAGE_HASH,
         'theme': THEME,
         'autocomplete_stamp': _autocomplete_stamp(),
-        'terminal_current_hash': TERMINAL_CURRENT_HASH,
-        'terminal_running_hash': _running.get('hash'),
-        'terminal_config_hash': _term['config_hash'] if _term else '',
-        'terminal_running_config_hash': _running.get('config_hash'),
+        'terminal_stale': _terminal_stale(_terminal_for(user)),
     }
 
 
@@ -1958,7 +1953,7 @@ def main():
     global BACKUP_DIR, BACKUP_COUNT
     global BIND_ADDR, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
-    global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_CURRENT_HASH
+    global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
     global STATIC_BUTTONS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE
 
@@ -2049,7 +2044,7 @@ def main():
     TERMINAL_SCRIPT = cfg.get('terminal_script') or next(
         (p for p in (os.path.join(HERE, 'eznix-terminal.py'), os.path.join(HERE, 'eznix-terminal'))
          if os.path.exists(p)), None)
-    TERMINAL_CURRENT_HASH = _compute_file_hash(TERMINAL_SCRIPT)
+    TERMINAL_PROGRAM = _compute_file_hash(TERMINAL_SCRIPT)
     TERMINAL_END_ON_LOGOUT = bool(cfg.get('terminal_end_on_logout', True))
     _tr = cfg.get('terminal_restart')
     TERMINAL_RESTART = [str(a) for a in _tr] if isinstance(_tr, list) and _tr else None

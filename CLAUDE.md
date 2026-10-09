@@ -101,9 +101,14 @@ false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch
 job whenever its definition changes, so the terminal's job contains no store path at all and
 runs `/run/current-system/sw/bin/eznix-terminal`. Don't put anything that varies per build into
 that job. The page instead offers a restart when the running terminal differs from the
-current one: two hashes, of the program (`SELF_HASH`) and of how it was started
-(`CONFIG_HASH`, over port/key file/dir/shell; `_terminal_for()` in the server computes the
-same thing from `[terminals.NAME]`, so those must be exactly the arguments the module passes).
+current one. A terminal has one checksum (`STAMP`) over its program file and how it was
+started (port/key file/dir/shell); `_terminal_for()` in the server computes the same thing
+from the installed program and `[terminals.NAME]`, so those must be exactly the arguments
+the module passes. The server compares the two (`_terminal_stale()`) and the ping carries
+only the answer, `terminal_stale`; the page compares nothing. It was four values in the ping
+and two ways of learning them until 2026-10; don't grow it back. The terminal's package has
+no version in its name (`packages.nix`), or its store path, and with it the unit NixOS
+watches, would change with every commit.
 
 **Run by hand, eznix starts its own terminal** as a child (`_start_terminal_for_self()`),
 writing the key first, registered for whoever logs in (`TERMINALS['*']`).

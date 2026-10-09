@@ -101,26 +101,15 @@ BIND_ADDR    = '127.0.0.1'
 
 READY_DELAY  = 0.3  # see the 'ready' comment in _terminal_ws() below
 
-# A content hash of this running process's own source file, computed once at import time --
-# included in every 'ready' message so the frontend can tell whether the eznix-terminal.service
-# it's actually connected to is stale relative to what's currently on disk (eznix.py computes the
-# same hash fresh at its own startup, since eznix.service restarts on every rebuild and
-# eznix-terminal.service deliberately doesn't -- see restartIfChanged in the NixOS module). Same
-# truncated-sha256 convention as WEBROOT_HASH in eznix.py.
-try:
-    with open(__file__, 'rb') as _f:
-        SELF_HASH = hashlib.sha256(_f.read()).hexdigest()[:16]
-except OSError:
-    SELF_HASH = ''
-
-# Same idea as SELF_HASH, but for *config* drift rather than code drift: a hash of the raw TOML
-# values (not their resolved/fallback-applied form -- see __main__) for every key this process
-# actually reads (see the module docstring's "Config keys read from TOML" line, the single source
-# of truth for exactly which keys belong here). SELF_HASH alone doesn't catch e.g. changing
-# `shell` in the NixOS module: that only changes the generated eznix.toml, never this file's own
-# bytes, so the running process's SELF_HASH stays identical either way -- computed once at
-# startup below, in __main__.
-CONFIG_HASH = ''
+# What this process is: one checksum over its own program file and the arguments it was started
+# with, worked out in __main__. eznix.py asks for it (/terminal/hash) and works out the same
+# thing for the terminal that is installed and configured now (_terminal_for() there, the same
+# formula): when the two differ, this one is out of date and the page offers a restart. A
+# rebuild never restarts a terminal by itself -- see restartIfChanged in the NixOS module.
+#
+# One value, not one for the program and one for the arguments as it used to be: nothing ever
+# needed to know which of the two had changed.
+STAMP = ''
 
 # _SESSION holds the one shell that's still running, or None -- independent of any particular
 # WebSocket connection, which is the whole point: it outlives a client detaching (browser closed,
@@ -785,7 +774,7 @@ def _terminal_ws(handler):
     if is_new:
         time.sleep(READY_DELAY)
     try:
-        _ws_send(wfile, json.dumps({'type': 'ready', 'hash': SELF_HASH, 'config_hash': CONFIG_HASH}).encode(), opcode=0x01)
+        _ws_send(wfile, json.dumps({'type': 'ready'}).encode(), opcode=0x01)
     except Exception:
         pass
 
@@ -872,14 +861,11 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
         elif parsed.path == '/terminal/hash':
             # A plain status check -- no PTY session, no WebSocket upgrade -- so eznix.py's
-            # /api/v1/ping can learn what this *actually running* process's SELF_HASH/CONFIG_HASH
-            # are without needing a shell to exist for it. Exists specifically because the WS
-            # 'ready' message (the only other place these are ever sent) only arrives once a
-            # client has the terminal panel open and connected -- see _terminalNeedsRestart() in
-            # index.html and its own comment on why that alone left the restart notification
-            # unable to recover after a page reload if the panel happened to be closed at the time.
+            # /api/v1/ping can learn this running process's STAMP whether or not anyone has the
+            # terminal panel open. (It used to travel in the WebSocket's 'ready' message as
+            # well; a page with the panel closed then never learned it.)
             if _session_from_cookie(self.headers) == SESSION_KEY:
-                data = json.dumps({'hash': SELF_HASH, 'config_hash': CONFIG_HASH}).encode()
+                data = json.dumps({'hash': STAMP}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(data)))
@@ -928,12 +914,16 @@ if __name__ == '__main__':
                     help="the shell to run (default: this user's own)")
     args = ap.parse_args()
 
-    # What eznix compares against its own idea of how this terminal should have been started,
-    # to tell when a restart is due (terminal_config_hash in its ping). The arguments exactly as
-    # given -- not what they resolve to below, which eznix has no way to reproduce.
-    CONFIG_HASH = hashlib.sha256(json.dumps(
+    # See STAMP. The arguments exactly as given -- not what they resolve to below, which eznix
+    # has no way to reproduce.
+    try:
+        with open(__file__, 'rb') as _f:
+            _program = hashlib.sha256(_f.read()).hexdigest()
+    except OSError:
+        _program = ''
+    STAMP = hashlib.sha256((_program + json.dumps(
         {'port': args.port, 'key_file': args.key_file, 'dir': args.dir, 'shell': args.shell},
-        sort_keys=True).encode()).hexdigest()[:16]
+        sort_keys=True)).encode()).hexdigest()[:16]
 
     PORT = args.port
 
