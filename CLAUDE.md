@@ -42,6 +42,11 @@ restarting the server restarts the shell too.
 To fill in suggestions, run in its terminal (there is a "Suggestions" button for it):
 `python3 PATH-TO-THIS-CHECKOUT/bin/eznix-autocomplete.py --flake . --output ../state/autocomplete`
 
+Nothing tests the page's own scripts. Without `node`, a Mac can still parse them, and run a
+function lifted out of them: `osascript -l JavaScript file.js` (wrap a script in
+`new Function(source)` to check its syntax without running it; don't name a function `run`,
+which that runner calls by itself). Do at least the syntax check after editing page code.
+
 `python3 test/test_server.py` checks the server and the plugins' server halves against a
 throwaway flake. Run it after touching `bin/eznix.py` or a plugin's `.py`. It does not cover
 anything that happens in the page.
@@ -245,8 +250,7 @@ the terminal's code (it appeared, and stayed away after the restart).
 - The templates: each makes a flake that evaluates to a whole system (with a stub
   `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
 - The Documents button and the Import/Export/Restore buttons since their code moved out of
-  `index.html`: never opened in a browser by a session, and there is no `node` here to even
-  syntax-check the page's scripts.
+  `index.html`: never opened in a browser by a session.
 - The home-manager module is evaluated only. System-password login on a non-NixOS Linux
   through nixpkgs' PAM library.
 - HTTPS with the generated certificate on macOS.

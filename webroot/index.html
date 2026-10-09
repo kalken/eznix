@@ -286,6 +286,52 @@ let folders = []; // CONFIG_DIR-relative folder paths, including ones with no fi
 let folderExists = new Set(); // folder names confirmed to exist on disk (or optimistically about
   // to, once a still-queued pendingFsOps entry for them replays) — lets delete/disable/enable
   // tell a real on-disk folder apart from one that's purely implied by an unsaved file's path
+// Queue a rename (a move, or a file's disable/enable, which are renames too) or a folder's
+// disable/enable -- unless it takes back one that is already queued, in which case both go:
+// disabling a file and enabling it again leaves nothing to do, and with the two still queued
+// Save stayed lit over no change at all. A rename following a rename of the same file becomes
+// one, for the same reason (A to B to A is nothing; A to B to C is A to C).
+//
+// The earlier one need not be the last in the queue (disable a, disable b, enable a, enable b
+// is nothing either), but everything queued after it has to be plainly about something else:
+// other files by name, other folders. Anything less clear -- a folder operation after a file
+// rename, a file under the folder in question -- and the new one is simply queued, which is
+// always correct and at worst leaves Save lit.
+function _queueFsOp(op) {
+  const under = (path, folder) => path === folder || path.startsWith(folder + '/');
+  if (op.type === 'rename-file') {
+    const passed = new Set();   // names the operations queued since then have to do with
+    for (let i = pendingFsOps.length - 1; i >= 0; i--) {
+      const o = pendingFsOps[i];
+      if (o.type === 'rename-file' && o.to === op.from) {
+        if (passed.has(o.from) || passed.has(op.to)) break;
+        if (o.from === op.to) pendingFsOps.splice(i, 1);
+        else pendingFsOps[i] = { type: 'rename-file', from: o.from, to: op.to };
+        return;
+      }
+      if (o.type === 'rename-file') { passed.add(o.from); passed.add(o.to); }
+      else if (o.type === 'delete-file') passed.add(o.path);
+      else break;
+      if (passed.has(op.from)) break;
+    }
+  } else if (op.type === 'disable-folder' || op.type === 'enable-folder') {
+    const disabledName = name => `.${name}.disabled`;
+    // The folder under both of its names: the one it has now, and the one this gives it.
+    const names = op.type === 'disable-folder' ? [op.folder, disabledName(op.folder)]
+                                                : [op.folder, op.folder.slice(1, -'.disabled'.length)];
+    for (let i = pendingFsOps.length - 1; i >= 0; i--) {
+      const o = pendingFsOps[i];
+      const paths = o.type === 'rename-file' ? [o.from, o.to] : [o.path || o.folder];
+      const about = paths.some(p => names.some(n => under(p, n) || under(n, p)));
+      if (about) {
+        const inverse = o.type !== op.type && (o.type === 'disable-folder' || o.type === 'enable-folder') && o.folder === names[1];
+        if (inverse) { pendingFsOps.splice(i, 1); return; }
+        break;
+      }
+    }
+  }
+  pendingFsOps.push(op);
+}
 let pendingFsOps = []; // ordered queue of {type,...} filesystem operations (create/delete/rename
   // a file or folder, disable/enable a folder) deferred until Save — see saveToServer(). Recorded
   // in the exact order the user performed them and replayed in that same order, which is what
@@ -4893,7 +4939,7 @@ async function _relocateFile(oldName, newName) {
   if (files.includes(newName)) { setStatus('That file already exists', 4000, 'err'); renderFileSelector(); return false; }
 
   const existsOnDisk = Object.prototype.hasOwnProperty.call(fileSaved, oldName);
-  if (existsOnDisk) pendingFsOps.push({ type: 'rename-file', from: oldName, to: newName });
+  if (existsOnDisk) _queueFsOp({ type: 'rename-file', from: oldName, to: newName });
 
   fileConfigs[newName] = fileConfigs[oldName];
   delete fileConfigs[oldName];
@@ -4931,7 +4977,7 @@ async function _toggleFileDisabled(name, disable) {
   if (files.includes(newName)) { setStatus('That file already exists', 4000, 'err'); return; }
 
   const existsOnDisk = Object.prototype.hasOwnProperty.call(fileSaved, name);
-  if (existsOnDisk) pendingFsOps.push({ type: 'rename-file', from: name, to: newName });
+  if (existsOnDisk) _queueFsOp({ type: 'rename-file', from: name, to: newName });
 
   fileConfigs[newName] = fileConfigs[name];
   delete fileConfigs[name];
@@ -4974,7 +5020,7 @@ async function _toggleFolderDisabled(name, disable) {
     return;
   }
   const onDisk = folderExists.has(name);
-  if (onDisk) pendingFsOps.push({ type: disable ? 'disable-folder' : 'enable-folder', folder: name });
+  if (onDisk) _queueFsOp({ type: disable ? 'disable-folder' : 'enable-folder', folder: name });
 
   const prefix = name + '/';
   const remap = n => (n === name ? target : (n.startsWith(prefix) ? target + n.slice(name.length) : n));
