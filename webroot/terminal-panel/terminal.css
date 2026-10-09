@@ -14,10 +14,10 @@
   height: 25vh;
   transition: height .18s ease;
   position: relative; /* anchor for .terminal-header-group, pinned to the bottom edge below */
-  /* How tall one row of buttons is (.terminal-header): 26px of button, 3px under it, and above
-     it the same 10px the top bar's buttons have to that bar's lower edge, with the 1px line
-     among them. Everything that has to make room for a row uses this. */
-  --term-bar: 39px;
+  /* How tall one row of buttons is (.terminal-header): 26px of button, 3px under it and 8px
+     above it, the 1px line among those. (10px, what the top bar's buttons have to that bar's
+     lower edge, was tried and was too much.) Everything that makes room for a row uses this. */
+  --term-bar: 37px;
 }
 .terminal-panel.collapsed { height: var(--term-bar) !important; }
 /* The install-mode row is a second .terminal-header — collapsed height needs to fit both
@@ -49,14 +49,14 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  /* 6px + the 1px line + 3px of the centering below = 10px above a button; see --term-bar. */
-  padding: 6px 12px 0;
+  /* 4px + the 1px line + 3px of the centering below = 8px above a button; see --term-bar. */
+  padding: 4px 12px 0;
   height: var(--term-bar);
   flex-shrink: 0;
   border-top: 1px solid var(--border);
 }
 /* Without its line the row keeps its height, so the padding takes the line's pixel over. */
-.terminal-panel.collapsed .terminal-header { border-top: none; padding-top: 7px; }
+.terminal-panel.collapsed .terminal-header { border-top: none; padding-top: 5px; }
 
 .terminal-cmd-btns {
   display: flex;
