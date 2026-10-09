@@ -32,7 +32,7 @@
           "command": "nix-collect-garbage -d"
         },
         {
-          "label": "Suggestions",
+          "label": "Generate Autocomplete",
           "command": "eznix-autocomplete"
         }
       ]

@@ -125,7 +125,7 @@ every save keeps the previous version of the file (right-click a tab, Restore).
   manage Nix and its settings.
 - **Each template comes with** buttons for Rebuild, Update, Generations (lists the earlier
   versions of the system you can go back to), Clean up (deletes those and frees the disk
-  space; there is no going back to them afterwards) and Suggestions.
+  space; there is no going back to them afterwards) and Generate Autocomplete.
 
 ## Adding it to a flake you already have
 
@@ -239,7 +239,7 @@ The open page picks the new data up by itself. Run it again after updating the f
 worth a button:
 
 ```json
-{ "label": "Suggestions", "command": "eznix-autocomplete" }
+{ "label": "Generate Autocomplete", "command": "eznix-autocomplete" }
 ```
 
 The command the modules install already knows your flake. It is also a package of its own,
