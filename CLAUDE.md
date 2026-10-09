@@ -148,8 +148,15 @@ shell (`terminal_end_on_logout`). Any other GET that changes something would nee
 (`_bind_to_interface()`: `SO_BINDTODEVICE` on Linux, `IP_BOUND_IF` on macOS), because the
 user wanted that as a setting of eznix and not a firewall rule beside it. It shuts out the
 machine itself too (local traffic arrives through loopback). On NixOS `openFirewall` then
-opens the port on that interface only. Tried on macOS with the loopback interface; the Linux
-call, and a connection from another machine through a named interface, never ran.
+opens the port on that interface only.
+
+**With `interface` or `listen = "0.0.0.0"` the names go in `certNames`, by hand.** eznix
+doesn't know what will be typed in the browser, so the certificate names only localhost and
+a save to any other name is refused until it is listed. Looking the machine's addresses up
+(an ioctl per request, and again for the certificate at start) was built and taken out
+again on 2026-10-09: the user found it hacky and prefers a certificate that is plainly wrong
+until `certNames` is set, with the options' descriptions saying so. Those descriptions are
+what the editor shows as a setting's help, so they are the documentation that matters here.
 
 **Login**: system passwords are built in (`users`; PAM in-process, or `auth_helper`). Any other
 way is a plugin calling `api.login(check, user)`; the shipped `password` plugin is the one

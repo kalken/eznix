@@ -16,7 +16,10 @@ default_file = "configuration.json"   # the file to open first
 
 listen = "127.0.0.1"
 # interface = "wg0"                   # be reached through this network interface and no
-#                                     # other; listen then defaults to every address
+#                                     # other; listen then defaults to every address.
+#                                     # With it, or with listen = "0.0.0.0", list the name
+#                                     # or address you open eznix by in hosts (and have the
+#                                     # certificate made for it), or saving is refused.
 port   = 9090
 # hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
 #                                     # behind a proxy that changes the Host header, add the

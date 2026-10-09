@@ -297,6 +297,11 @@ to download it, and you add it to the browser or system once. On macOS:
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eznix-HOSTNAME-ca.pem
 ```
 
+The certificate is made for a specific `listen` address by itself. With `listen = "0.0.0.0"`
+or with `interface`, eznix can't know what you will type in the browser: put that host name
+or address in `certNames`, or the browser complains that the certificate is for another name
+and saving is refused.
+
 Use `cert` and `key` instead for a certificate of your own, or put eznix behind a reverse
 proxy and add the proxy's host name to `hosts`.
 
