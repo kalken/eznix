@@ -4,9 +4,8 @@ Guidance for Claude Code sessions working in this repository.
 
 ## Git
 
-Work is committed to the `testing` branch, the only branch so far (`origin` is
-`github.com/kalken/eznix`, public). There is no `develop` or `master` yet, so the rule about
-them below waits until those exist.
+Work is committed to `develop`, made from `testing` on 2026-10-09 when the user judged it
+stable enough (`origin` is `github.com/kalken/eznix`, public). There is no `master` yet.
 
 Nothing about one person's machine belongs in this file (their paths, their flake, what
 their computer runs): it is checked in and public.
