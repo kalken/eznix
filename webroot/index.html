@@ -2626,6 +2626,9 @@ function _wireHoverTooltip(el, text) {
   // afterward without moving; mouseenter can't refire without the pointer actually leaving and
   // re-entering, so this alone is enough — it'll show again normally on a genuine future hover.
   el.addEventListener('click', _hideHoverTooltip);
+  // A right-click the same: the description otherwise came up a second later on top of the
+  // menu the right-click had just opened at the pointer.
+  el.addEventListener('contextmenu', _hideHoverTooltip);
 }
 // Wires every element under root that already has a data-tooltip set in markup — called once at
 // init against document.body, rather than converting each static button by hand. Elements
