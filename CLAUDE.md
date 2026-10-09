@@ -122,6 +122,15 @@ origin.
 every page load), stored hashed in `<state>/sessions.json`, so neither a restart nor quitting
 the browser logs anyone out.
 
+**Requests must come from the page** (`_valid_origin()`): every POST but the login itself and the
+`/terminal` handshake are refused when the `Origin` header names another address than the `Host` the
+request was sent to, port included. The cookie's `SameSite=Strict` does not cover this, since
+a page on another port of the same host counts as the same site. `hosts` is deliberately not
+used for it, except for an entry that is a whole origin (`"https://name"`, for a proxy that
+changes `Host`): the modules put the certificate's names in `hosts`, so matching host names
+would let any port of the protected host through. A GET that changes something would need
+the same check; there is none today.
+
 **Login**: system passwords are built in (`users`; PAM in-process, or `auth_helper`). Any other
 way is a plugin calling `api.login(check, user)`; the shipped `password` plugin is the one
 configured password. System login is on when `users` is set or no plugin brought a login, and

@@ -30,7 +30,8 @@ Configuration (eznix.toml; every key optional unless noted):
   autocomplete_dir  where the generated suggestions are read from (default <state_dir>/autocomplete)
   webroot         the page's files (default: next to this file)
   listen, port    address and port (default 127.0.0.1:9090)
-  hosts           extra host names to accept in requests; ["*"] accepts any
+  hosts           extra host names to accept in requests; ["*"] accepts any. Behind a proxy
+                  that changes the Host header, also the page's address ("https://name")
   cert, key       serve HTTPS with these (ca: the CA to offer for download on the login page)
 
   users           who may log in with their system password (default: whoever runs eznix,
@@ -119,7 +120,7 @@ BACKUP_COUNT     = 5
 
 BIND_ADDR        = '127.0.0.1'
 WEB_PORT         = 9090
-TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(); "*" accepts any
+TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(), and origins by _valid_origin(); "*" accepts any
 CERT_FILE        = None          # HTTPS when both are set
 KEY_FILE         = None
 CA_FILE          = None          # offered for download on the login page
@@ -1241,7 +1242,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 print(f'[auth] login failed for {username!r} from {ip} ({count}/{LOGIN_MAX_ATTEMPTS} attempts)')
                 self._deny('Invalid username or password.')
             return
-        if not _valid_host(self.headers):
+        if not _valid_host(self.headers) or not _valid_origin(self.headers):
             self.send_error(403); return
         if not check_auth(self.headers):
             self.send_response(401)
@@ -1561,6 +1562,9 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self._deny(); return
         if (parsed.path == '/terminal' and TERMINALS and
                 self.headers.get('Upgrade', '').lower() == 'websocket'):
+            # A shell, and a GET like any other to the browser: see _valid_origin().
+            if not _valid_origin(self.headers):
+                self.send_error(403); return
             self._proxy_terminal(); return
         if parsed.path.rstrip('/') in ('', '/index.html'):
             self._serve_index(); return
@@ -1888,6 +1892,33 @@ def _valid_host(headers):
         return True
     host = headers.get('Host', '').split(':')[0].lower()
     return host in {'localhost', '127.0.0.1', ''} | TRUSTED_HOSTS
+
+
+def _valid_origin(headers):
+    """Did this request come from the page this server served? Asked before anything that
+    changes something or opens the terminal.
+
+    The session cookie is SameSite=Strict, which keeps other *sites* from sending it -- but a
+    site is a host name without its port, so a page from another port of this host (some other
+    program's web interface on 127.0.0.1, say) is the same site, gets the cookie sent along,
+    and could open /terminal or save a file with it. Its Origin gives it away: a browser always
+    sends one with a WebSocket handshake and with a POST, and a page cannot set it.
+
+    The Origin has to name the address the request itself was sent to (Host), port included.
+    Not the scheme: behind a proxy that ends TLS the page is https and this server is not.
+    Comparing against the host names in `hosts` instead would not do: the modules put every
+    name the certificate is for in there, so any port of the very host this protects would
+    pass. A proxy that hands on another Host than the browser's is the one case where the two
+    differ, and for it `hosts` may hold the page's whole origin ("https://nix.example.org").
+
+    No Origin at all is let through: that is curl or a script, which need no page to trick."""
+    origin = headers.get('Origin')
+    if origin is None or '*' in TRUSTED_HOSTS:
+        return True
+    origin = origin.strip().lower().rstrip('/')
+    if origin.partition('://')[2] == headers.get('Host', '').strip().lower() != '':
+        return True
+    return origin in {h.lower().rstrip('/') for h in TRUSTED_HOSTS if '://' in h}
 
 
 def _start_terminal_for_self(cfg):

@@ -141,7 +141,7 @@ in
     hosts = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "Extra host names requests may be addressed to, such as the server_name of a reverse proxy in front of eznix. [ \"*\" ] accepts any.";
+      description = "Extra host names requests may be addressed to, such as the server_name of a reverse proxy in front of eznix. If that proxy does not pass the browser's Host header on, add the page's address as well (\"https://nix.example.org\"). [ \"*\" ] accepts any.";
     };
 
     users = mkOption {

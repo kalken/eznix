@@ -234,6 +234,11 @@ sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keyc
 Use `cert` and `key` instead for a certificate of your own, or put eznix behind a reverse
 proxy and add the proxy's host name to `hosts`.
 
+Saving and the terminal are refused unless the request comes from eznix's own page, at the
+address the browser sent it to. A proxy has to pass the browser's `Host` header on for that
+(nginx: `proxy_set_header Host $http_host;`). If it can't, add the page's address to `hosts`
+as well, in full: `hosts = ["nix.example.org", "https://nix.example.org"]`.
+
 ## Development
 
 ```sh

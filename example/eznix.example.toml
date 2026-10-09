@@ -14,6 +14,8 @@ default_file = "configuration.json"   # the file to open first
 listen = "127.0.0.1"
 port   = 9090
 # hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
+#                                     # behind a proxy that changes the Host header, add the
+#                                     # page's address too: "https://nix.example.org"
 
 # HTTPS: a certificate and its key. (`eznix --generate-ca DIR` makes a pair, and the local
 # authority that signs it; `ca` offers that authority for download on the login page.)
