@@ -24,7 +24,7 @@
           "command": "sudo nix flake update --flake /etc/nixos"
         },
         {
-          "label": "Generations",
+          "label": "List Generations",
           "command": "nixos-rebuild list-generations"
         },
         {

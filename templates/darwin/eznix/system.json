@@ -24,7 +24,7 @@
           "command": "nix flake update --flake ~/.config/nix-darwin"
         },
         {
-          "label": "Generations",
+          "label": "List Generations",
           "command": "sudo darwin-rebuild --list-generations"
         },
         {

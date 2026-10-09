@@ -24,7 +24,7 @@
           "command": "nix flake update --flake ~/.config/home-manager"
         },
         {
-          "label": "Generations",
+          "label": "List Generations",
           "command": "home-manager generations"
         },
         {
