@@ -1,0 +1,30 @@
+{
+  "nixpkgs": {
+    "hostPlatform": "aarch64-darwin"
+  },
+  "system": {
+    "primaryUser": "YOUR-USER-NAME",
+    "stateVersion": 7
+  },
+  "services": {
+    "eznix": {
+      "enable": true,
+      "flake": "~/.config/nix-darwin",
+      "buttons": [
+        {
+          "label": "Rebuild",
+          "command": "sudo darwin-rebuild switch --flake ~/.config/nix-darwin#default",
+          "save_first": true
+        },
+        {
+          "label": "Update",
+          "command": "nix flake update --flake ~/.config/nix-darwin"
+        },
+        {
+          "label": "Suggestions",
+          "command": "eznix-autocomplete"
+        }
+      ]
+    }
+  }
+}

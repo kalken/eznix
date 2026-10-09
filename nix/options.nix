@@ -89,6 +89,13 @@ in
 
   assertions = [
     {
+      # What the templates (flake.nix, `templates`) put where the user's name goes. Left in, the
+      # system builds and then nobody can log in, so say it here. On macOS `users` defaults to
+      # the primary user, which covers the placeholder there too.
+      assertion = !builtins.elem "YOUR-USER-NAME" cfg.users;
+      message   = "services.eznix: YOUR-USER-NAME is still in the JSON file the template made. Replace it with your user name.";
+    }
+    {
       assertion = (cfg.cert == null) == (cfg.key == null);
       message   = "services.eznix: cert and key go together.";
     }

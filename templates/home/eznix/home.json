@@ -1,0 +1,33 @@
+{
+  "home": {
+    "username": "YOUR-USER-NAME",
+    "homeDirectory": "/home/YOUR-USER-NAME",
+    "stateVersion": "26.05"
+  },
+  "programs": {
+    "home-manager": {
+      "enable": true
+    }
+  },
+  "services": {
+    "eznix": {
+      "enable": true,
+      "passwordFile": "/home/YOUR-USER-NAME/.config/eznix-password",
+      "buttons": [
+        {
+          "label": "Rebuild",
+          "command": "home-manager switch --flake ~/.config/home-manager#default",
+          "save_first": true
+        },
+        {
+          "label": "Update",
+          "command": "nix flake update --flake ~/.config/home-manager"
+        },
+        {
+          "label": "Suggestions",
+          "command": "eznix-autocomplete"
+        }
+      ]
+    }
+  }
+}

@@ -77,6 +77,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
 | `webroot/plugins/NAME/` | the shipped plugins: `documents`, `system`, `password` |
 | `nix/` | packages, the options shared by the modules, one module per system |
+| `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
 | `test/json/` | a folder for `checks.json-dir` (`nix flake check --no-build`) |
 
@@ -146,6 +147,15 @@ expressions (`_expr`) go through `builtins.toFile`, which fails under `nix flake
 read-only evaluation ("path ... expr.nix is not valid"); a rebuild is unaffected. That is as
 old as the feature. `checks.json-dir` covers the function, without `_expr` for that reason.
 
+**Templates** (`templates/darwin`, `nixos`, `home`): a `flake.nix` and one JSON file with
+eznix on. The configuration is named `default` in each, on the user's wish to keep the host
+name out of the flake, so every rebuild command in them carries `#default`. The NixOS one
+imports the installer's `configuration.nix` and adds eznix beside it: starting from an empty
+JSON file would drop the boot loader and the user's account. The one thing to fill in is
+`YOUR-USER-NAME`; an assertion in `options.nix` catches it left in. They name
+`github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
+checkout, `--override-input eznix path:.`.
+
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 
@@ -199,6 +209,8 @@ Suggestions are never generated automatically and no button for it is added: it 
 
 ## Not verified
 
+- The templates: each makes a flake that evaluates to a whole system (with a stub
+  `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
 - The terminal panel, the Documents button and the Import/Export/Restore buttons have not been
   opened in a browser since their code moved out of `index.html`.
 - The NixOS and home-manager modules are evaluated only (NixOS to a full system derivation);

@@ -72,6 +72,41 @@
       #   eznix.lib.jsonDir { dir = ./eznix; exclude = [ "notes.json" "vendor" ]; }
       lib.jsonDir = arg: import ./nix/json2nix.nix (if builtins.isAttrs arg then arg else { dir = arg; });
 
+      # A flake to start from, for a machine that has none: `nix flake init -t github:kalken/eznix#darwin`.
+      # Each is a flake.nix and one JSON file in ./eznix with eznix switched on. The
+      # configuration is called "default" in all of them, so no host name has to be filled in.
+      templates = {
+        darwin = {
+          path        = ./templates/darwin;
+          description = "A nix-darwin flake edited in eznix, for ~/.config/nix-darwin";
+          welcomeText = ''
+            1. In eznix/system.json, replace YOUR-USER-NAME with your macOS user name.
+            2. If Nix came from the Determinate installer, also add  "nix": { "enable": false }  there.
+            3. sudo nix run nix-darwin -- switch --flake ~/.config/nix-darwin#default
+            4. Open http://localhost:9090 and log in with your macOS name and password.
+          '';
+        };
+        nixos = {
+          path        = ./templates/nixos;
+          description = "eznix added to an installed NixOS, for /etc/nixos (keeps configuration.nix)";
+          welcomeText = ''
+            1. In eznix/system.json, replace YOUR-USER-NAME with your user name.
+            2. sudo nixos-rebuild switch --flake /etc/nixos#default
+            3. Open http://localhost:9090 and log in with your name and password.
+          '';
+        };
+        home = {
+          path        = ./templates/home;
+          description = "A standalone home-manager flake edited in eznix, for ~/.config/home-manager";
+          welcomeText = ''
+            1. In eznix/home.json, replace YOUR-USER-NAME (three times) with your user name.
+            2. Put a password for the editor in ~/.config/eznix-password (chmod 600).
+            3. nix run home-manager/master -- switch --flake ~/.config/home-manager#default
+            4. Open http://localhost:9090 and log in with your name and that password.
+          '';
+        };
+      };
+
       nixosModules.default = import ./nix/nixos.nix self;
       darwinModules.default = import ./nix/darwin.nix self;
       # Standalone home-manager, for a Linux distribution that isn't NixOS.

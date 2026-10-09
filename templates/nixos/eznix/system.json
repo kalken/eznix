@@ -1,0 +1,33 @@
+{
+  "nix": {
+    "settings": {
+      "experimental-features": [
+        "nix-command",
+        "flakes"
+      ]
+    }
+  },
+  "services": {
+    "eznix": {
+      "enable": true,
+      "users": [
+        "YOUR-USER-NAME"
+      ],
+      "buttons": [
+        {
+          "label": "Rebuild",
+          "command": "sudo nixos-rebuild switch --flake /etc/nixos#default",
+          "save_first": true
+        },
+        {
+          "label": "Update",
+          "command": "sudo nix flake update --flake /etc/nixos"
+        },
+        {
+          "label": "Suggestions",
+          "command": "eznix-autocomplete"
+        }
+      ]
+    }
+  }
+}

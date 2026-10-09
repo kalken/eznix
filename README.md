@@ -51,9 +51,48 @@ A value can also be a raw Nix expression (right-click a value), and anything can
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
 every save keeps the previous version of the file (right-click a tab, Restore).
 
+## Starting from nothing
+
+For a machine with no flake yet, eznix has one to start from: a `flake.nix` and a first JSON
+file with eznix switched on. The configuration in it is called `default`, so there is no host
+name to fill in; that is why the rebuild commands end in `#default`.
+
+**macOS**, with Nix installed:
+
+```sh
+mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
+nix flake init -t github:kalken/eznix#darwin
+# put your user name in eznix/system.json, then:
+sudo nix run nix-darwin -- switch --flake ~/.config/nix-darwin#default
+```
+
+If Nix came from the Determinate installer, also add `"nix": { "enable": false }` to
+`eznix/system.json`.
+
+**NixOS**, as installed (it keeps your `configuration.nix` and adds eznix beside it):
+
+```sh
+cd /etc/nixos
+sudo nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#nixos
+# put your user name in eznix/system.json, then:
+sudo nixos-rebuild switch --flake /etc/nixos#default
+```
+
+**Another Linux**, with Nix installed (standalone home-manager):
+
+```sh
+mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
+nix flake init -t github:kalken/eznix#home
+# put your user name in eznix/home.json, and a password in ~/.config/eznix-password, then:
+nix run home-manager/master -- switch --flake ~/.config/home-manager#default
+```
+
+Then open http://localhost:9090. Each one comes with Rebuild, Update and Suggestions buttons.
+
 ## Installing it
 
-Add eznix to your flake's inputs, then use the module for your system.
+To add eznix to a flake you already have, add it to the inputs, then use the module for your
+system.
 
 ```nix
 inputs.eznix.url = "github:kalken/eznix";
