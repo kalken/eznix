@@ -7,21 +7,71 @@ rebuild.
 
 No build step and no dependencies beyond Python: one server file, one page, and a few plugins.
 
-## Try it
+## Quick start
+
+**Try it**, nothing installed:
 
 ```sh
 nix run github:kalken/eznix -- --flake /path/to/your/flake --password something
 ```
 
-Then open http://localhost:9090 and log in as yourself with that password. Without Nix,
-`python3 bin/eznix.py --flake DIR --password PW` from a checkout does the same.
+Open http://localhost:9090 and log in as yourself with that password.
 
-Run this way, eznix and its terminal both run as you. It keeps its own data in
-`~/.local/state/eznix`.
+**Install it** in a flake you have. In `flake.nix`:
 
-Plain HTTP is fine here: nothing leaves the machine. Add `--https` to have HTTPS all the
-same, with a certificate eznix makes itself; see [HTTPS](#https) for making the browser
-trust it.
+```nix
+inputs.eznix.url = "github:kalken/eznix";
+
+# in the modules of your system:
+modules = [
+  ./configuration.nix
+  eznix.nixosModules.default        # darwinModules.default on macOS, homeModules.default for home-manager
+  (eznix.lib.jsonDir ./eznix)       # the settings eznix saves, as part of your configuration
+];
+```
+
+In `configuration.nix`:
+
+```nix
+services.eznix = {
+  enable = true;
+  users  = [ "alice" ];               # NixOS: who may log in, with their system password
+
+  # To reach it from other computers (HTTPS is then on by itself):
+  # listen       = "0.0.0.0";
+  # certNames    = [ "192.168.1.2" ];  # the name or address you open it by
+  # openFirewall = true;               # NixOS
+
+  # HTTPS on this machine too, without a warning in its browsers:
+  # generateCert = true;
+  # trustCert    = true;
+};
+```
+
+Rebuild, and open http://localhost:9090.
+
+**No flake yet?** With Nix installed, one of these writes a `flake.nix` and a first settings
+file with eznix switched on. Put your user name in that file before the last command.
+
+```sh
+# macOS
+mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
+nix flake init -t github:kalken/eznix#darwin
+sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
+
+# NixOS (keeps your configuration.nix)
+cd /etc/nixos
+sudo nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#nixos
+sudo nixos-rebuild switch --flake "/etc/nixos#default"
+
+# Another Linux (home-manager; also put a password in ~/.config/eznix-password)
+mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
+nix flake init -t github:kalken/eznix#home
+nix run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
+```
+
+Everything else is further down: [each system in detail](#adding-it-to-a-flake-you-already-have),
+[all options](#options), [HTTPS](#https), [buttons](#buttons), [plugins](#plugins).
 
 ## How the configuration is stored
 
@@ -55,49 +105,21 @@ A value can also be a raw Nix expression (right-click a value), and anything can
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
 every save keeps the previous version of the file (right-click a tab, Restore).
 
-## Starting from nothing
+## Notes on the quick start
 
-For a machine with no flake yet, eznix has one to start from: a `flake.nix` and a first JSON
-file with eznix switched on. The configuration in it is called `default`, so there is no host
-name to fill in; that is why the rebuild commands end in `#default`. The quotes around the flake
-path matter in some shells (zsh with `extendedglob`), where a bare `#` is part of a pattern.
+- **Without Nix**, `python3 bin/eznix.py --flake DIR --password PW` from a checkout does what
+  `nix run` does. Run by hand, eznix and its terminal run as you and keep their data in
+  `~/.local/state/eznix`; add `--https` for HTTPS with a certificate eznix makes itself.
+- **The configuration is called `default`** in the templates, so there is no host name to
+  fill in; that is why the rebuild commands end in `#default`. The quotes around the flake
+  path matter in some shells (zsh with `extendedglob`), where a bare `#` is part of a pattern.
+- **macOS with Nix from the Determinate installer**: also add `"nix": { "enable": false }` to
+  `eznix/system.json`.
+- **Each template comes with** Rebuild, Update and Suggestions buttons.
 
-**macOS**, with Nix installed:
+## Adding it to a flake you already have
 
-```sh
-mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
-nix flake init -t github:kalken/eznix#darwin
-# put your user name in eznix/system.json, then:
-sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
-```
-
-If Nix came from the Determinate installer, also add `"nix": { "enable": false }` to
-`eznix/system.json`.
-
-**NixOS**, as installed (it keeps your `configuration.nix` and adds eznix beside it):
-
-```sh
-cd /etc/nixos
-sudo nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#nixos
-# put your user name in eznix/system.json, then:
-sudo nixos-rebuild switch --flake "/etc/nixos#default"
-```
-
-**Another Linux**, with Nix installed (standalone home-manager):
-
-```sh
-mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
-nix flake init -t github:kalken/eznix#home
-# put your user name in eznix/home.json, and a password in ~/.config/eznix-password, then:
-nix run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
-```
-
-Then open http://localhost:9090. Each one comes with Rebuild, Update and Suggestions buttons.
-
-## Installing it
-
-To add eznix to a flake you already have, add it to the inputs, then use the module for your
-system.
+Add it to the inputs, then use the module for your system.
 
 ```nix
 inputs.eznix.url = "github:kalken/eznix";
