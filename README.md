@@ -37,9 +37,8 @@ services.eznix = {
   enable = true;
   users  = [ "alice" ];               # NixOS: who may log in, with their system password
 
-  # To reach it from other computers (HTTPS is then on by itself):
-  # listen       = "0.0.0.0";
-  # certNames    = [ "192.168.1.2" ];  # the name or address you open it by
+  # To reach it from other computers, at this machine's address (HTTPS is then on by itself):
+  # listen       = "192.168.1.2";
   # openFirewall = true;               # NixOS
 
   # HTTPS on this machine too, without a warning in its browsers:
