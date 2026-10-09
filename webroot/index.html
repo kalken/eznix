@@ -281,7 +281,6 @@ let kernels = [];
 let brews = [];     // Homebrew formula / cask names (nix-darwin only) — see nameListFor()
 let casks = [];
 let options = [];
-let customOptions = [];
 let files = [];
 let folders = []; // CONFIG_DIR-relative folder paths, including ones with no files in them yet
 let folderExists = new Set(); // folder names confirmed to exist on disk (or optimistically about
@@ -1226,7 +1225,7 @@ function optionSearch(query) {
 
   for (const o of options) {
     const op = o.path.split('.');
-    if (!o.custom && op.some(isInternalSegment)) continue;
+    if (op.some(isInternalSegment)) continue;
     if (op.length < confirmed.length + 1) continue;
 
     // Confirmed segments must match exactly (wildcards in option path match anything)
@@ -4760,14 +4759,13 @@ async function switchFile(name) {
 
 // Used by doImport()'s "Import into" field, the one place a filename is still typed as free
 // text rather than edited in place on a tab — normalizes slashes, appends .json, and rejects
-// names that would resolve outside CONFIG_DIR or collide with the custom-options.json sidecar.
+// names that would resolve outside CONFIG_DIR.
 // Returns null (after reporting a status message) if the name is unusable.
 function _normalizeFileName(raw) {
   let name = raw.trim().replace(/\\/g, '/');
   if (!name.endsWith('.json')) name += '.json';
   const parts = name.split('/');
-  const invalid = parts[parts.length - 1] === 'custom-options.json'
-    || parts.some(p => p === '' || p === '.' || p === '..');
+  const invalid = parts.some(p => p === '' || p === '.' || p === '..');
   if (invalid) { setStatus('Invalid file name', 4000, 'err'); return null; }
   return name;
 }
@@ -5015,7 +5013,7 @@ async function _reloadAutocompleteData() {
     fetch('autocomplete/casks.json?' + Date.now()).then(r => r.json()).catch(() => null),
   ]);
   packages = pkgRes;
-  options = [...optRes, ...customOptions.map(o => ({ ...o, custom: true }))];
+  options = optRes;
   if (kernelRes) kernels = kernelRes;
   if (brewRes) brews = brewRes;
   if (caskRes) casks = caskRes;
@@ -5180,13 +5178,12 @@ async function loadSiblingFiles() {
     config = {};
   }
 
-  const [pkgResult, optResult, kernelResult, brewResult, caskResult, customOptResult] = await Promise.allSettled([
+  const [pkgResult, optResult, kernelResult, brewResult, caskResult] = await Promise.allSettled([
     fetch('autocomplete/packages.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
     fetch('autocomplete/options.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
     fetch('autocomplete/kernels.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
     fetch('autocomplete/brews.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
     fetch('autocomplete/casks.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-    fetch('custom-options.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
   ]);
 
   if (!cfgOk) {
@@ -5209,10 +5206,6 @@ async function loadSiblingFiles() {
   if (kernelResult.status === 'fulfilled') kernels = kernelResult.value;
   if (brewResult.status === 'fulfilled') brews = brewResult.value;
   if (caskResult.status === 'fulfilled') casks = caskResult.value;
-  if (customOptResult.status === 'fulfilled') {
-    customOptions = customOptResult.value;
-    options = [...options, ...customOptions.map(o => ({ ...o, custom: true }))];
-  }
   return true;
 }
 

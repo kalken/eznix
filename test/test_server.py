@@ -175,6 +175,10 @@ def main():
             check('a plugin switched off is gone', 'plugins/documents' not in page
                   and b.request('/api/v1/plugin/documents/files')[0] == 404)
             save = lambda origin: b.request('/api/v1/file/save?file=a.json', b'{"a": 2}', headers={'Origin': origin})[0]
+            check('no file name is special: custom-options.json is a tab like any other',
+                  b.request('/api/v1/file/save?file=custom-options.json', b'{"a": 3}')[0] == 200
+                  and 'custom-options.json' in b.json('/api/v1/files')[1]['files'])
+            os.remove(f'{tmp}/flake/eznix/custom-options.json')
             listed = b.json('/api/v1/files')[1]
             check('excluded paths are no tabs and no folders, and a name that only starts like one is kept',
                   listed['files'] == ['a.json', 'vendored.json'] and listed['folders'] == [], listed)

@@ -673,7 +673,7 @@ def resolve_config_path(name):
     renames the file; its content is still read/saved the same way.
     """
     name = name or DEFAULT_FILE
-    if not name or os.path.basename(name) == 'custom-options.json':
+    if not name:
         return None
     if not (name.endswith('.json') or name.endswith('.json.disabled')):
         return None
@@ -703,8 +703,6 @@ def list_config_files():
         rel_of = lambda n: os.path.relpath(os.path.join(root, n), base).replace(os.sep, '/')
         dirs[:] = [d for d in dirs if (not d.startswith('.') or _is_disabled_folder_name(d)) and not _excluded(rel_of(d))]
         for fn in filenames:
-            if fn == 'custom-options.json':
-                continue
             if not (fn.endswith('.json') or fn.endswith('.json.disabled')):
                 continue
             rel = rel_of(fn)
@@ -1635,15 +1633,13 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             if not target:
                 self.send_error(400); return
             self._serve_raw(target); return
-        # A resolved config file's content and custom-options.json live in CONFIG_DIR, not WEBROOT
+        # A resolved config file's content lives in CONFIG_DIR, not WEBROOT
         if parsed.path == '/api/v1/file':
             qs = parse_qs(parsed.query)
             target = resolve_config_path(qs.get('file', [None])[0])
             if not target:
                 self.send_error(400); return
             self._serve_raw(target); return
-        if parsed.path == '/custom-options.json':
-            self._serve_raw(os.path.join(CONFIG_DIR, 'custom-options.json')); return
         # autocomplete files: AUTOCOMPLETE_DIR when set, else WEBROOT/autocomplete/ (same default
         # as eznix-autocomplete' own default out_dir) — served via _serve_autocomplete() for conditional GET
         # + gzip, since options.json/packages.json can run into several MB on a large flake

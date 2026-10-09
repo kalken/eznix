@@ -23,9 +23,9 @@
   excluded = relPath: lib.any (e: relPath == e || lib.hasPrefix "${e}/" relPath) excludes;
 
   # Every *.json file under this directory (including subfolders, for organizing tabs) is an
-  # independent config "tab" (edited separately in the UI); custom-options.json is a
-  # schema-extension sidecar, not a tab, and dotdirs (e.g. .eznix-backups, when it lives here)
-  # are skipped so backup files never get picked up. They're combined below via lib.mkMerge, so
+  # independent config "tab" (edited separately in the UI). No file name is special: what is
+  # not configuration is kept out with `exclude`. Dotdirs (e.g. .eznix-backups, when it lives
+  # here) are skipped so backup files never get picked up. They're combined below via lib.mkMerge, so
   # the real NixOS module system performs the merge (list concat, attrset merge, scalar
   # conflict = eval error) — same as splitting configuration.nix across files. Mirrors
   # list_config_files() in bin/eznix.py, `exclude` (_excluded() there) included.
@@ -35,7 +35,7 @@
         if excluded relPath then []
         else if type == "directory"
         then (if lib.hasPrefix "." name then [] else walk (dir + "/${name}") "${relPath}/")
-        else if type == "regular" && lib.hasSuffix ".json" name && name != "custom-options.json"
+        else if type == "regular" && lib.hasSuffix ".json" name
         then [relPath]
         else []
     ) (builtins.readDir dir));
