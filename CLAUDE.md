@@ -272,16 +272,16 @@ set); home-manager on another Linux in a VM, where the terminal's missing enviro
 was seen on NixOS and macOS across an update that changed the terminal. The user tested
 "all I could" and it works on the three; the points below are what nobody went through.
 
-- `trustCert` on Linux: the NixOS units and the home-manager step have never run. (On macOS
-  it has, on a real install: the rebuild added the authority to the keychain, and HTTPS on
-  localhost then verified with no warning. The redirect from http works there too.)
+- `trustCert` on NixOS (the per-user units). The home-manager step was tried by the user on
+  Debian; on macOS it is confirmed.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
   `.gitignore` untouched), but the user has not tried writing the flake through the editor,
   and no system import has been done there.
-- The templates: each makes a flake that evaluates to a whole system (with a stub
-  `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
+- The `darwin` and `nixos` templates on a machine that had nothing. (`home` was: on a fresh
+  Debian 13 VM, `nix flake init -t`, the name filled in, the password file, the first
+  switch, and it worked first time.)
 - The Documents button and the Import/Export/Restore buttons since their code moved out of
   `index.html`: never opened in a browser by a session.
 - System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
