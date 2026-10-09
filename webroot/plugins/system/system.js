@@ -66,6 +66,21 @@ async function backupSystem() {
   }
 }
 
+// Removes one backup from the list, for good: asked for from an entry's right-click menu in
+// showBackupsMenu(). Only the backup goes; the flake isn't touched.
+async function deleteSystemBackup(backup) {
+  const when = new Date(backup.mtime * 1000).toLocaleString();
+  if (!confirm(`Delete the backup of ${when}?\n\nIt cannot be brought back.`)) return;
+  try {
+    const res = await apiFetch('/plugin/system/delete?name=' + encodeURIComponent(backup.name), { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setStatus('Delete failed: ' + (data.error || res.status), 5000, 'err'); return; }
+    setStatus(`Deleted the backup of ${when}`, 4000, 'ok');
+  } catch (e) {
+    setStatus('Delete failed: ' + e.message, 4000, 'err');
+  }
+}
+
 // The counterpart to exportSystem(): writes a zip straight into NIXOS_TARGET on disk,
 // immediately, via POST /api/v1/system-import — unlike every other import path in this app,
 // there's no in-memory model for arbitrary system files to stage as "unsaved," so this can't be
@@ -150,7 +165,9 @@ async function showBackupsMenu(event) {
     ? systemBackups.map(b => ({
         label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
         danger: true,
+        title: 'Click to restore it, right-click to delete it',
         onclick: () => restoreSystemBackup(b.name),
+        oncontextmenu: e => showContextMenu(e, [{ label: 'Delete this backup', danger: true, onclick: () => deleteSystemBackup(b) }]),
       }))
     : [{ label: 'No system backups yet — Backup makes one, and so does any system import or restore, automatically.', disabled: true }];
   showContextMenu(anchor, items, { triggerEl: btn });

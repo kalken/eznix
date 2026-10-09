@@ -172,6 +172,8 @@ networking.hostName = "myhost";</pre>
 //   eznix.addButton(where, { id, html, tooltip, onclick })  a button in the 'header' or
 //                       the 'tabs' bar; returns it
 //   eznix.addMenuItem(menu, item)  an entry in the header's 'import' or 'export' menu
+//   showContextMenu(event, items)  a menu at the pointer; an item is { label, onclick, danger,
+//                       disabled, title, items (a submenu), oncontextmenu (its own right-click) }
 //   apiFetch('/plugin/NAME/...')   what the plugin's own server code answers, if it has any
 //   eznix.on(event, fn) / eznix.emit(event, ...args)
 //     'init'   the page is starting up, nothing loaded yet: wire up controls
@@ -662,6 +664,13 @@ function _buildMenuLevel(items, depth) {
     } else {
       btn.onclick = () => { _closeContextMenu(); item.onclick(); };
       btn.addEventListener('mouseenter', closeDeeper);
+      // An entry can have a menu of its own, on a right-click: item.oncontextmenu(event), which
+      // usually calls showContextMenu() -- that closes this menu and opens the new one there.
+      // Without it a right-click on an entry gets nothing, not the browser's own menu.
+      btn.addEventListener('contextmenu', e => {
+        e.preventDefault();
+        if (item.oncontextmenu) item.oncontextmenu(e);
+      });
     }
     menu.appendChild(btn);
   });

@@ -4,6 +4,7 @@
   POST import           replace the flake's files with an uploaded zip's
   GET  backups          the backups, newest first
   POST backup           make one now
+  POST delete?name=N    remove one
   POST restore?name=N   replace the flake's files with a backup's
 
 Import and restore are the same operation on a zip from two places. Both write straight to
@@ -177,11 +178,24 @@ def setup(api):
             backup()
             return apply(zf, plan)
 
-    def restore(req):
+    def backup_path(req):
+        """The backup a request names, which has to be one of the list's own."""
         name = req.query.get('name', '')
         path = os.path.join(backup_dir, name)
-        if not name or '/' in name or '\\' in name or name in ('.', '..') or not os.path.isfile(path):
+        if (not name or '/' in name or '\\' in name or not name.startswith(PREFIX)
+                or not name.endswith('.zip') or not os.path.isfile(path)):
             raise api.Error(400, 'no such backup')
+        return path
+
+    def delete(req):
+        try:
+            os.remove(backup_path(req))
+        except OSError as e:
+            raise api.Error(500, f'could not remove it: {e.strerror}')
+        return {'ok': True}
+
+    def restore(req):
+        path = backup_path(req)
         try:
             zf = zipfile.ZipFile(path)
         except zipfile.BadZipFile:
@@ -202,5 +216,6 @@ def setup(api):
     api.get('export', export)
     api.get('backups', lambda req: {'backups': listing()})
     api.post('backup', backup_now)
+    api.post('delete', delete)
     api.post('import', import_)
     api.post('restore', restore)

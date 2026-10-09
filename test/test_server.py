@@ -182,6 +182,12 @@ def main():
             check('system: a backup can be made on request, and is the newest in the list',
                   status == 200 and made.get('files') == 4 and after[0]['name'] == made.get('name')
                   and made['name'] not in [x['name'] for x in before], made)
+            status, _ = b.json('/api/v1/plugin/system/delete?name=' + made['name'], b'', 'POST')
+            check('system: a backup can be deleted, and only a backup',
+                  status == 200 and made['name'] not in [x['name'] for x in b.json('/api/v1/plugin/system/backups')[1]['backups']]
+                  and b.request('/api/v1/plugin/system/delete?name=../sessions.json', b'', 'POST')[0] == 400
+                  and b.request('/api/v1/plugin/system/delete?name=sessions.json', b'', 'POST')[0] == 400
+                  and os.path.exists(f'{tmp}/state/sessions.json'))
             check('system: bad input is refused', b.request('/api/v1/plugin/system/import', b'not a zip', 'POST')[0] == 400
                   and b.request('/api/v1/plugin/system/restore?name=../x', b'', 'POST')[0] == 400)
 
