@@ -576,7 +576,26 @@ def _create_session(rows, cols):
         print(f'[terminal] pty.openpty() failed: {e}', file=sys.stderr)
         return None
     _set_winsize(slave_fd, rows, cols)
-    env = {'TERM': 'xterm-256color'}
+    # What a login gives a shell before any startup file runs: who it is, where its home is, and
+    # the few things of the session this process itself was started in. It used to be TERM alone,
+    # and the shell's own startup files were left to work the rest out -- which they don't: with
+    # no USER and HOME, NixOS's /etc/profile builds a PATH without the user's profiles, and
+    # home-manager could not find itself. Names from the password database when the environment
+    # has none (a service started without them).
+    #
+    # A list and not this process's whole environment: that also holds what its service manager
+    # put there for the service (INVOCATION_ID, JOURNAL_STREAM, ...) and a PATH meant for it,
+    # not for a person. PATH is left out on purpose, for the login shell to build.
+    import pwd as _pwd
+    try:
+        me = _pwd.getpwuid(os.getuid())
+        env = {'HOME': me.pw_dir, 'USER': me.pw_name, 'LOGNAME': me.pw_name}
+    except KeyError:
+        env = {}
+    env.update({k: os.environ[k] for k in ('HOME', 'USER', 'LOGNAME', 'LANG', 'LC_ALL', 'TZ', 'TMPDIR',
+                                           'XDG_RUNTIME_DIR', 'SSH_AUTH_SOCK') if os.environ.get(k)})
+    env['SHELL'] = SHELL
+    env['TERM'] = 'xterm-256color'
 
     def _init_child():
         os.setsid()
