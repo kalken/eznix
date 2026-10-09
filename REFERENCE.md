@@ -119,8 +119,10 @@ every save keeps the previous version of the file (right-click a tab, Restore).
 - **The configuration is called `default`** in the templates, so there is no host name to
   fill in; that is why the rebuild commands end in `#default`. The quotes around the flake
   path matter in some shells (zsh with `extendedglob`), where a bare `#` is part of a pattern.
-- **macOS with Nix from the Determinate installer**: also add `"nix": { "enable": false }` to
-  `eznix/system.json`.
+- **On macOS the template sets `nix.enable = false`**: Nix itself is left to whatever
+  installed it. Determinate Nix requires that (nix-darwin refuses to activate otherwise), and
+  it works with the official installer too. Set it to `true` there if you want nix-darwin to
+  manage Nix and its settings.
 - **Each template comes with** Rebuild, Update and Suggestions buttons.
 
 ## Adding it to a flake you already have

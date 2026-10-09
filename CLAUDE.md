@@ -183,7 +183,9 @@ old as the feature. `checks.json-dir` covers the function, without `_expr` for t
 eznix on. The configuration is named `default` in each, on the user's wish to keep the host
 name out of the flake, so every rebuild command in them carries `#default`. The NixOS one
 imports the installer's `configuration.nix` and adds eznix beside it: starting from an empty
-JSON file would drop the boot loader and the user's account. The one thing to fill in is
+JSON file would drop the boot loader and the user's account. The macOS one sets `nix.enable = false`: the user runs
+Determinate Nix, under which nix-darwin aborts activation unless that is set, and it is
+harmless with the official installer. The one thing to fill in is
 `YOUR-USER-NAME`; an assertion in `options.nix` catches it left in. They name
 `github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
 checkout, `--override-input eznix path:.`.

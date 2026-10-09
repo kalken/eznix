@@ -2,6 +2,9 @@
   "nixpkgs": {
     "hostPlatform": "aarch64-darwin"
   },
+  "nix": {
+    "enable": false
+  },
   "system": {
     "primaryUser": "YOUR-USER-NAME",
     "stateVersion": 7

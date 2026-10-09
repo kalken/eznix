@@ -81,9 +81,8 @@
           description = "A nix-darwin flake edited in eznix, for ~/.config/nix-darwin";
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your macOS user name.
-            2. If Nix came from the Determinate installer, also add  "nix": { "enable": false }  there.
-            3. sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
-            4. Open http://localhost:9090 and log in with your macOS name and password.
+            2. sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
+            3. Open http://localhost:9090 and log in with your macOS name and password.
           '';
         };
         nixos = {
