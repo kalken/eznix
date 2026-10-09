@@ -83,6 +83,53 @@ in
       (lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen ++ cfg.certNames)}
   '';
 
+  # trustCert: make this user's browsers trust the generated authority. Run as that user, never
+  # as root: it writes into their own certificate databases, which is all it needs.
+  #
+  # Browsers on Linux don't look at the system's certificates. Chrome, Chromium and Brave read
+  # ~/.pki/nssdb; Firefox reads neither and keeps a database of its own in every profile, on
+  # every system (so on macOS, where the others use the keychain, this is still what Firefox
+  # needs -- `nssdb = false` there). A Firefox profile that has never been started has no
+  # database yet and gets one here, as `mkcert -install` does it.
+  #
+  # Nothing is rewritten when the authority is already there: this runs at every start of a
+  # service, and compares first. certutil prints a certificate with CRLF line ends and the
+  # file has LF, hence the tr. Ported from ezconf, where each of these was found the hard way;
+  # there it ran as root for a list of users and was on by default.
+  trustCertScript = { nssdb ? true, firefoxProfiles }:
+    let
+      certutil = "${pkgs.coreutils}/bin/timeout 10 ${pkgs.nssTools}/bin/certutil";
+      name     = lib.escapeShellArg "eznix local authority";
+    in pkgs.writeShellScript "eznix-trust-cert" ''
+      ca=${lib.escapeShellArg "${certDir}/ca.pem"}
+      [ -f "$ca" ] || exit 0
+      trust() {
+        if ${certutil} -d "sql:$1" -L -a -n ${name} 2>/dev/null | ${pkgs.coreutils}/bin/tr -d '\r' | ${pkgs.diffutils}/bin/cmp -s - "$ca"; then
+          return 0
+        fi
+        ${certutil} -d "sql:$1" -D -n ${name} 2>/dev/null || true
+        ${certutil} -d "sql:$1" -A -t "C,," -n ${name} -i "$ca" \
+          || echo "eznix: could not add its certificate authority to $1" >&2
+      }
+      ${lib.optionalString nssdb ''
+        db="$HOME/.pki/nssdb"
+        if [ ! -d "$db" ]; then
+          ${pkgs.coreutils}/bin/mkdir -p "$db"
+          ${certutil} -d "sql:$db" -N --empty-password 2>/dev/null || true
+        fi
+        trust "$db"
+      ''}
+      for profile in ${firefoxProfiles}; do
+        [ -d "$profile" ] || continue      # a pattern that matched nothing stays as it is
+        profile="''${profile%/}"
+        if [ ! -f "$profile/cert9.db" ]; then
+          ${certutil} -d "sql:$profile" -N --empty-password 2>/dev/null || true
+        fi
+        trust "$profile"
+      done
+      exit 0
+    '';
+
   # The eznix-autocomplete command put on PATH: the generator, already told this install's flake
   # and where the editor reads suggestions from. `out` is a shell expression (it may use $HOME).
   autocompleteCommand = out: pkgs.writeShellScriptBin "eznix-autocomplete" ''
@@ -96,6 +143,10 @@ in
   '';
 
   assertions = [
+    {
+      assertion = !cfg.trustCert || cfg.generateCert;
+      message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs generateCert (on by default when listen isn't this machine; set it for HTTPS on localhost).";
+    }
     {
       # Refused here, at the rebuild, and not found out in the browser: a certificate for the
       # wrong name and saves that fail. (hosts counts too: behind a proxy the names go there.)
@@ -287,6 +338,11 @@ in
       default     = !isLocal && cfg.cert == null;
       defaultText = lib.literalExpression "listen isn't this machine itself, and no cert is set";
       description = "Serve HTTPS with a certificate eznix makes itself, signed by a local authority of its own. Browsers warn until that authority is trusted; the login page offers it for download.";
+    };
+    trustCert = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = "Make the browsers on this machine trust the generated certificate, so they don't warn: the authority is added to the certificate lists of Chrome, Chromium, Brave and Firefox for the people eznix runs for (on macOS to the keychain, which asks for your password once, at a rebuild typed in a terminal). Only for browsers on this machine; on another computer the authority is added there by hand. A browser that is open may need a restart to notice.";
     };
     certNames = mkOption {
       type        = types.listOf types.str;

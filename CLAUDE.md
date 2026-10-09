@@ -244,6 +244,14 @@ HTTPS: off on localhost; `generateCert` (on by default when `listen` isn't local
 CA and certificate in the state folder. Nothing installs the CA into browsers or the keychain
 automatically; the README gives the command.
 
+`trustCert` (off by default, as the user asked) adds that authority to the browsers of the
+machine eznix runs on: `trustCertScript` in `options.nix`, ported from ezconf's
+`installCerts`, which ran as root for a list of users and was on by default. Here it always
+runs as the person concerned: a oneshot unit per user on NixOS, the editor's `ExecStartPre`
+under home-manager, `sudo -u` in the activation on macOS, where the keychain part needs the
+password dialog a rebuild in a real terminal can show. Read the comments there before
+touching it; each oddity was found on a real machine.
+
 Suggestions are never generated automatically and no button for it is added: it is the
 `eznix-autocomplete` command, run by the user.
 
@@ -255,6 +263,10 @@ terminal survives rebuilds); the NixOS module on a NixOS machine ("works cleanly
 terminal restart notice with the one-stamp check, on both, across the update that changed
 the terminal's code (it appeared, and stayed away after the restart).
 
+- `trustCert`: the script was run on macOS against a throwaway home (a Chrome-style database
+  and two Firefox profiles, one without a database yet; a second run rewrites nothing), and
+  all three modules evaluate with it. No rebuild with it has been done on any system, so
+  the NixOS units, the home-manager step and the macOS keychain dialog are untried.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and

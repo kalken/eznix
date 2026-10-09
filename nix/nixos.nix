@@ -168,7 +168,22 @@ in
           Restart            = "on-failure";
         };
       };
-    } // lib.optionalAttrs cfg.terminal (lib.mapAttrs' (user: t: lib.nameValuePair (termUnit user) {
+    } // lib.optionalAttrs cfg.trustCert (lib.listToAttrs (map (user: lib.nameValuePair "eznix-trust-${user}" {
+      # trustCert: once at every boot and rebuild, as the person whose browsers it is for, after
+      # the editor has made the authority (its ExecStartPre). They read it through the eznix
+      # group, like everything else in the state folder.
+      description = "eznix: trust its certificate authority in ${user}'s browsers";
+      wantedBy    = [ "multi-user.target" ];
+      after       = [ "eznix.service" ];
+      wants       = [ "eznix.service" ];
+      serviceConfig = {
+        Type      = "oneshot";
+        User      = user;
+        ExecStart = common.trustCertScript {
+          firefoxProfiles = ''"$HOME"/.mozilla/firefox/*/ "$HOME"/.config/mozilla/firefox/*/'';
+        };
+      };
+    }) cfg.users)) // lib.optionalAttrs cfg.terminal (lib.mapAttrs' (user: t: lib.nameValuePair (termUnit user) {
       description      = "eznix terminal for ${user}";
       wantedBy         = [ "multi-user.target" ];
       # It forks the shell as its own child: restarting the unit kills whatever runs there,

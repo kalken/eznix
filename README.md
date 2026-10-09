@@ -192,7 +192,7 @@ The common ones, the same in all three modules:
 | `buttons` | `[ ]` | command buttons, see below |
 | `theme`, `themes` | | see [Themes](#themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#plugins) |
-| `generateCert`, `cert`, `key` | | see [HTTPS](#https) |
+| `generateCert`, `trustCert`, `cert`, `key` | | see [HTTPS](#https) |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
@@ -321,6 +321,13 @@ user as shown under [Try it](#try-it), or on macOS for everyone on that computer
 ```sh
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eznix-HOSTNAME-ca.pem
 ```
+
+`trustCert = true` does this for you, for the browsers on the machine eznix runs on: at each
+rebuild the authority is added to the certificate lists of Chrome, Chromium, Brave and
+Firefox, for the people eznix runs for. On macOS it goes into the keychain, which asks for
+your password once, so run that rebuild in a terminal of your own and not in eznix's panel.
+It is off unless you set it, a browser that is open may need a restart to notice, and it
+does nothing for a browser on another computer.
 
 The certificate is made for a specific `listen` address by itself. With `listen = "0.0.0.0"`
 or with `interface`, eznix can't know what you will type in the browser: put that host name

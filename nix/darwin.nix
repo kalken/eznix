@@ -58,6 +58,31 @@ in
     # nix-darwin only runs the activation scripts it knows by name; a custom name is never run.
     system.activationScripts.postActivation.text = common.configDirScript + ''
       chown -R ${lib.escapeShellArg user} ${lib.escapeShellArg cfg.configDir}
+    '' + lib.optionalString cfg.trustCert ''
+      # trustCert. The authority is made here as well as by the editor's job, as the user, so
+      # that there is one to trust at the very rebuild that switches this on. Firefox gets it
+      # in its profiles (it reads nothing else); everything else reads the keychain.
+      #
+      # macOS only lets a trusted root be added with a person's approval, a password dialog,
+      # root or not. Activation runs in the terminal of whoever typed darwin-rebuild, where
+      # the dialog can appear; from eznix's own terminal panel there is no session to show it
+      # in, and then this says what to run by hand. It never fails the activation, and
+      # verify-cert makes it happen once.
+      /usr/bin/sudo -H -u ${lib.escapeShellArg user} /bin/sh -c ${lib.escapeShellArg ''
+        umask 077; mkdir -p ${lib.escapeShellArg stateDir}
+        ${common.generateCa "${packages.eznix}/bin/eznix"}
+        ${common.trustCertScript {
+          nssdb           = false;
+          firefoxProfiles = ''"$HOME/Library/Application Support/Firefox/Profiles"/*/'';
+        }}
+      ''} || true
+      ca=${lib.escapeShellArg "${stateDir}/ca.pem"}
+      if [ -f "$ca" ] && ! /usr/bin/security verify-cert -c "$ca" >/dev/null 2>&1; then
+        echo "eznix: trusting its certificate authority (macOS may ask for your password)..." >&2
+        /usr/bin/security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain "$ca" \
+          || echo "eznix: could not do that from here. Run this once in Terminal:
+  sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain $ca" >&2
+      fi
     '';
 
     launchd.user.agents.eznix.serviceConfig = {

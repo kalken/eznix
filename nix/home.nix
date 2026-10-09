@@ -62,6 +62,9 @@ in
         ExecStartPre = pkgs.writeShellScript "eznix-setup" ''
           umask 077; mkdir -p ${lib.escapeShellArg stateDir}
           ${common.generateCa "${packages.eznix}/bin/eznix"}
+          ${lib.optionalString cfg.trustCert (common.trustCertScript {
+            firefoxProfiles = ''"$HOME"/.mozilla/firefox/*/ "$HOME"/.config/mozilla/firefox/*/'';
+          })}
         '';
         ExecStart    = "${packages.eznix}/bin/eznix --config ${common.toml}";
         Restart      = "on-failure";
