@@ -19,27 +19,9 @@ Then open http://localhost:9090 and log in as yourself with that password. Witho
 Run this way, eznix and its terminal both run as you. It keeps its own data in
 `~/.local/state/eznix`.
 
-Plain HTTP is fine here: nothing leaves the machine. To have HTTPS all the same, add
-`--https`:
-
-```sh
-nix run github:kalken/eznix -- --flake /path/to/your/flake --password something --https
-```
-
-eznix then makes a certificate authority of its own and a certificate for `localhost`, and
-serves https://localhost:9090. The browser warns until you trust that authority, once, for
-your own user (no `sudo`; nothing else on the machine is affected):
-
-```sh
-# macOS
-security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.local/state/eznix/ca.pem
-
-# Linux: Chrome, Chromium, Brave (certutil is in nixpkgs#nssTools)
-certutil -d sql:$HOME/.pki/nssdb -A -t C,, -n "eznix ($(hostname))" -i ~/.local/state/eznix/ca.pem
-```
-
-Firefox keeps its own list: Settings, Certificates, View Certificates, Import. Restart the
-browser afterwards. eznix never adds the authority anywhere by itself.
+Plain HTTP is fine here: nothing leaves the machine. Add `--https` to have HTTPS all the
+same, with a certificate eznix makes itself; see [HTTPS](#https) for making the browser
+trust it.
 
 ## How the configuration is stored
 
@@ -192,7 +174,7 @@ The common ones, the same in all three modules:
 | `buttons` | `[ ]` | command buttons, see below |
 | `theme`, `themes` | | see [Themes](#themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#plugins) |
-| `generateCert`, `trustCert`, `cert`, `key` | | see [HTTPS](#https) |
+| `generateCert`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#https) |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
@@ -335,31 +317,56 @@ explains the variables and what to keep to.
 
 ## HTTPS
 
-On `localhost` eznix serves plain HTTP, which browsers treat as secure. When `listen` is any
-other address, the modules turn on `generateCert`: eznix makes a certificate signed by a local
-authority of its own. Set `generateCert = true` to have that on `localhost` too.
-With HTTPS on, an `http://` address on the same port is answered with a redirect to
-`https://`, so old bookmarks keep working.
+On `localhost` eznix serves plain HTTP, which browsers treat as secure. For anything else it
+serves HTTPS with a certificate it makes itself, signed by an authority of its own that is
+kept in its state folder. Four options cover it:
 
-Browsers warn until that authority is trusted. The login page has a link to download it
-(`eznix-HOSTNAME-ca.pem`); you add it once on each computer you browse from, for your own
-user as shown under [Try it](#try-it), or on macOS for everyone on that computer:
+| Option | Default | |
+|---|---|---|
+| `generateCert` | on when `listen` isn't this machine | make and use that certificate; set it for HTTPS on `localhost` too |
+| `trustCert` | `false` | have the browsers on this machine trust it, so they don't warn |
+| `certNames` | `[ ]` | the host names and addresses you open eznix by |
+| `interface` | | be reached through one network interface only |
 
-```sh
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eznix-HOSTNAME-ca.pem
+```nix
+# HTTPS on this machine, no warning in its browsers:
+services.eznix = { generateCert = true; trustCert = true; };
+
+# Reached from other computers, by this address:
+services.eznix = { listen = "0.0.0.0"; certNames = [ "192.168.1.2" ]; };
 ```
 
-`trustCert = true` does this for you, for the browsers on the machine eznix runs on: at each
-rebuild the authority is added to the certificate lists of Chrome, Chromium, Brave and
-Firefox, for the people eznix runs for. On macOS it goes into the keychain, which asks for
-your password once, so run that rebuild in a terminal of your own and not in eznix's panel.
-It is off unless you set it, a browser that is open may need a restart to notice, and it
-does nothing for a browser on another computer.
+**`trustCert`** adds the authority, at each rebuild, to the certificate lists of Chrome,
+Chromium, Brave and Firefox for the people eznix runs for. On macOS it goes into the
+keychain, which asks for your password once: run that rebuild in a terminal of your own, not
+in eznix's panel. A browser that is open may need a restart to notice.
 
-The certificate is made for a specific `listen` address by itself. With `listen = "0.0.0.0"`
-or with `interface`, eznix can't know what you will type in the browser: put that host name
-or address in `certNames`, or the browser complains that the certificate is for another name
-and saving is refused.
+**`certNames`** is required with `listen = "0.0.0.0"` or `interface`: eznix can't know what
+you will type in the browser, and without the name the certificate doesn't match and saving
+is refused. The rebuild stops and says so. A specific `listen` address is included by itself.
+
+With HTTPS on, an `http://` address on the same port is answered with a redirect to
+`https://`.
+
+### A browser on another computer
+
+`trustCert` only reaches browsers on the machine eznix runs on. Anywhere else, the browser
+warns until you add the authority there yourself, once. The login page has a link to download
+it (`eznix-HOSTNAME-ca.pem`); then, for your own user:
+
+```sh
+# macOS
+security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db eznix-HOSTNAME-ca.pem
+
+# Linux: Chrome, Chromium, Brave (certutil is in nixpkgs#nssTools)
+certutil -d sql:$HOME/.pki/nssdb -A -t C,, -n "eznix (HOSTNAME)" -i eznix-HOSTNAME-ca.pem
+```
+
+Firefox keeps its own list: Settings, Certificates, View Certificates, Import. The same
+commands serve an eznix run by hand with `--https`, whose authority is
+`~/.local/state/eznix/ca.pem`.
+
+### Your own certificate, or a proxy
 
 Use `cert` and `key` instead for a certificate of your own, or put eznix behind a reverse
 proxy and add the proxy's host name to `hosts`.
