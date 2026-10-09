@@ -19,7 +19,7 @@
         in {
           packages = {
             default              = p.eznix;
-            inherit (p) eznix eznix-terminal eznix-autocomplete;
+            inherit (p) eznix eznix-terminal eznix-autocomplete eznix-backup;
           };
 
           apps = {
@@ -27,6 +27,7 @@
             eznix            = mkApp p.eznix           "eznix";
             eznix-terminal   = mkApp p.eznix-terminal  "eznix-terminal";
             eznix-autocomplete = mkApp p.eznix-autocomplete "eznix-autocomplete";
+            eznix-backup     = mkApp p.eznix-backup     "eznix-backup";
           };
 
           devShells.default = pkgs.mkShell { packages = [ p.python pkgs.nix pkgs.nodejs ]; };
@@ -41,7 +42,7 @@
       # them without the modules.
       overlays.default = final: prev:
         let p = import ./nix/packages.nix { pkgs = final; version = self.shortRev or "dev"; };
-        in { inherit (p) eznix eznix-terminal eznix-autocomplete; };
+        in { inherit (p) eznix eznix-terminal eznix-autocomplete eznix-backup; };
 
       nixosModules.default = import ./nix/nixos.nix self;
       darwinModules.default = import ./nix/darwin.nix self;

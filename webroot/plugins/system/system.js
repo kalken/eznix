@@ -128,7 +128,8 @@ async function showBackupsMenu(event) {
   } catch (e) { /* falls through to the empty-state item below */ }
   const items = systemBackups.length
     ? systemBackups.map(b => ({
-        label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
+        // reason: why it was made ("before import", "saved by hand" by eznix-backup), from the zip.
+        label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size) + (b.reason ? '  ·  ' + b.reason : ''),
         danger: true,
         onclick: () => restoreSystemBackup(b.name),
       }))

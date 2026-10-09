@@ -145,6 +145,35 @@ def main():
             check('system: bad input is refused', b.request('/api/v1/plugin/system/import', b'not a zip', 'POST')[0] == 400
                   and b.request('/api/v1/plugin/system/restore?name=../x', b'', 'POST')[0] == 400)
 
+            # eznix-backup: the same file the plugin uses, run as a command on the same folders.
+            def cli(*args):
+                r = subprocess.run([sys.executable, os.path.join(ROOT, 'webroot', 'plugins', 'system', 'backup.py'),
+                                    '--flake', f'{tmp}/flake', '--state-dir', f'{tmp}/state', *args],
+                                   stdin=subprocess.DEVNULL, capture_output=True, text=True)
+                return r.returncode, r.stdout + r.stderr
+            check('eznix-backup: lists what the page made, with why',
+                  all(w in cli('list')[1] for w in ('before import', 'before restore')))
+            code, out = cli('save')
+            newest = b.json('/api/v1/plugin/system/backups')[1]['backups'][0]
+            check('eznix-backup: save makes a backup the page lists too',
+                  code == 0 and newest['reason'] == 'saved by hand' and newest['name'] in out and newest['files'] == 4, out)
+            open(f'{tmp}/flake/flake.nix', 'w').write('broken')
+            open(f'{tmp}/flake/stray.nix', 'w').write('x')
+            check('eznix-backup: restore will not guess or go ahead unasked without a terminal',
+                  cli('restore')[0] == 1 and cli('restore', newest['name'])[0] == 1
+                  and open(f'{tmp}/flake/flake.nix').read() == 'broken')
+            code, out = cli('restore', newest['name'], '--yes')
+            check('eznix-backup: restore puts a named backup back, saving what was there first',
+                  code == 0 and 'removed: stray.nix' in out and open(f'{tmp}/flake/flake.nix').read() == 'changed'
+                  and not os.path.exists(f'{tmp}/flake/stray.nix') and os.path.exists(f'{tmp}/flake/.git/config')
+                  and b.json('/api/v1/plugin/system/backups')[1]['backups'][0]['reason'] == 'before restore', out)
+            code, out = cli('save', '--output', f'{tmp}/mine.zip')
+            check('eznix-backup: save --output writes a zip of your own, which restore takes',
+                  code == 0 and sorted(zipfile.ZipFile(f'{tmp}/mine.zip').namelist()) == ['README.md', 'extra.nix', 'eznix/a.json', 'flake.nix']
+                  and cli('restore', f'{tmp}/mine.zip', '--yes')[0] == 0, out)
+            check('eznix-backup: what is no backup is refused: an unknown name, a file that is no zip',
+                  cli('restore', 'nope', '--yes')[0] == 1 and cli('restore', f'{tmp}/conf.toml', '--yes')[0] == 1)
+
             check("a plugin's page files are served", b.request('/plugins/system/system.js')[0] == 200)
             check('its server code and files outside it are not', b.request('/plugins/system/system.py')[0] == 404
                   and b.request('/plugins/system/../../index.html')[0] == 404)

@@ -79,6 +79,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
 | `webroot/plugins/NAME/` | the shipped plugins: `documents`, `system`, `password` |
+| `webroot/plugins/system/backup.py` | the system plugin's logic, and the `eznix-backup` command (the same file) |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `test/test_server.py` | server tests |
 
@@ -170,6 +171,15 @@ change, so it can be reshaped freely.
   plugin whose server file fails to load is left out whole.
 - `.py` files and `plugin.json` are not served to the browser.
 
+**`eznix-backup` is the one command that lives in a plugin** (`webroot/plugins/system/backup.py`):
+the system plugin's zip, list and restore logic in one file that `system.py` loads and that
+also runs by itself, with a numbered menu for `restore`. The user asked for it this way so
+that the page and the command can't drift apart. Only `nix/packages.nix` names that file (the
+page still never names a plugin), and the command works with the plugin switched off, since
+it never goes through the server. Run as root it steps down to the owner of the state folder
+(`_become_owner()`), so that a `sudo eznix-backup restore` on NixOS doesn't leave root's files
+in the flake.
+
 Core, not plugins, by decision: the terminal, Save, ordinary import/export of files, file backups on save,
 themes (a theme stays a plain CSS file anyone can install without trusting code), and support
 for each system (that is the Nix modules' job, before the server ever runs).
@@ -190,6 +200,10 @@ Suggestions are never generated automatically and no button for it is added: it 
 
 ## Not verified
 
+- `eznix-backup` under `sudo` on NixOS (stepping down to the `eznix` account, group-writable
+  files): written from how the module sets the folders up, never run there. The wrapper the
+  NixOS module installs was evaluated; the nix-darwin and home-manager ones were not. The
+  page's restore menu now also shows why a backup was made; not looked at in a browser.
 - The terminal panel, the Documents button and the Import/Export/Restore buttons have not been
   opened in a browser since their code moved out of `index.html`.
 - The NixOS and home-manager modules are evaluated only (NixOS to a full system derivation);

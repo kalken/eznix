@@ -58,11 +58,11 @@ let
 
   # Where a generated certificate lives. Needs a state folder the module knows the path of.
   certDir = stateDir;
-in
-{
-  inherit isLocal certDir;
 
   toml = (pkgs.formats.toml { }).generate "eznix.toml" settings;
+in
+{
+  inherit isLocal certDir toml;
 
   # Arguments for a terminal the module runs, matching the [terminals.NAME] table above.
   terminalArgs = t: lib.escapeShellArgs ([ "--port" (toString t.port) "--key-file" t.key_file "--dir" cfg.flake ]
@@ -78,6 +78,12 @@ in
   # and where the editor reads suggestions from. `out` is a shell expression (it may use $HOME).
   autocompleteCommand = out: pkgs.writeShellScriptBin "eznix-autocomplete" ''
     exec ${packages.eznix-autocomplete}/bin/eznix-autocomplete --flake ${lib.escapeShellArg cfg.flake} --output "${out}" "$@"
+  '';
+
+  # The eznix-backup command put on PATH, already told this install's config file: the flake,
+  # the state folder and [plugin.system] are all in it.
+  backupCommand = pkgs.writeShellScriptBin "eznix-backup" ''
+    exec ${packages.eznix-backup}/bin/eznix-backup --config ${toml} "$@"
   '';
 
   # The folder of *.json files, and the default.nix in it that turns them into configuration.
