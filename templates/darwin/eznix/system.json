@@ -13,6 +13,14 @@
     "eznix": {
       "enable": true,
       "flake": "~/.config/nix-darwin",
+      "enableHttps": {
+        "_disabled": true,
+        "_value": true
+      },
+      "trustCert": {
+        "_disabled": true,
+        "_value": true
+      },
       "buttons": [
         {
           "label": "List Generations",

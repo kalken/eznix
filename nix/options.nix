@@ -51,9 +51,9 @@ let
     terminal         = cfg.terminal;
     terminal_script  = "${packages.eznix-terminal}/share/eznix-terminal/eznix-terminal.py";
     terminal_auto_hide = cfg.terminalAutoHide;
-    cert             = if cfg.generateCert then "${certDir}/localhost.pem" else cfg.cert;
-    key              = if cfg.generateCert then "${certDir}/localhost-key.pem" else cfg.key;
-    ca               = if cfg.generateCert then "${certDir}/ca.pem" else null;
+    cert             = if generateCert then "${certDir}/localhost.pem" else if cfg.enableHttps then cfg.cert else null;
+    key              = if generateCert then "${certDir}/localhost-key.pem" else if cfg.enableHttps then cfg.key else null;
+    ca               = if generateCert then "${certDir}/ca.pem" else null;
     buttons          = map noNulls cfg.buttons;
     plugin           = lib.recursiveUpdate { password = passwordPlugin; } cfg.plugins;
     # dir and shell go to the terminal process as arguments too, and the page compares the two
@@ -67,9 +67,15 @@ let
 
   # Where a generated certificate lives. Needs a state folder the module knows the path of.
   certDir = stateDir;
+
+  # HTTPS is one switch, enableHttps. With it on and no cert/key given, eznix makes the
+  # certificate itself: that used to be an option of its own (generateCert, which enableHttps
+  # is the new name of, see the modules' imports), and people had to know that "HTTPS" was
+  # spelled "generate a certificate".
+  generateCert = cfg.enableHttps && cfg.cert == null;
 in
 {
-  inherit isLocal certDir;
+  inherit isLocal certDir generateCert;
 
   toml = (pkgs.formats.toml { }).generate "eznix.toml" settings;
 
@@ -78,7 +84,7 @@ in
     ++ lib.optionals (cfg.shell != null) [ "--shell" cfg.shell ]);
 
   # `eznix --generate-ca`: a no-op when the certificate exists and still carries these names.
-  generateCa = eznix: lib.optionalString cfg.generateCert ''
+  generateCa = eznix: lib.optionalString generateCert ''
     ${eznix} --generate-ca ${lib.escapeShellArg certDir} ${lib.concatMapStringsSep " " (n: "--san ${lib.escapeShellArg n}")
       (lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen ++ cfg.certNames)}
   '';
@@ -144,8 +150,8 @@ in
 
   assertions = [
     {
-      assertion = !cfg.trustCert || cfg.generateCert;
-      message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs generateCert (on by default when listen isn't this machine; set it for HTTPS on localhost).";
+      assertion = !cfg.trustCert || generateCert;
+      message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs enableHttps, with no cert and key of your own (on by default when listen isn't this machine; set it for HTTPS on localhost).";
     }
     {
       # Refused here, at the rebuild, and not found out in the browser: a certificate for the
@@ -172,12 +178,12 @@ in
       message   = "services.eznix: cert and key go together.";
     }
     {
-      assertion = !(cfg.generateCert && cfg.cert != null);
-      message   = "services.eznix: set either generateCert or cert/key, not both.";
+      assertion = cfg.enableHttps || cfg.cert == null;
+      message   = "services.eznix: cert and key are set but enableHttps is false, so they would not be used. Remove one or the other.";
     }
     {
-      assertion = !(cfg.generateCert && stateDir == null);
-      message   = "services.eznix.generateCert needs a state folder with a known path.";
+      assertion = !(generateCert && stateDir == null);
+      message   = "services.eznix.enableHttps without cert and key needs a state folder with a known path, for the certificate eznix makes.";
     }
   ];
 
@@ -211,7 +217,7 @@ in
       type        = types.str;
       default     = if cfg.interface != null then "0.0.0.0" else "127.0.0.1";
       defaultText = lib.literalExpression ''if interface != null then "0.0.0.0" else "127.0.0.1"'';
-      description = "Address to listen on. Anything other than this machine itself turns generateCert on by default. With \"0.0.0.0\" (every address) eznix cannot know what you will type in the browser, so put that host name or address in certNames: without it the certificate does not match what the browser asked for, and saving is refused.";
+      description = "Address to listen on. Anything other than this machine itself turns enableHttps on by default. With \"0.0.0.0\" (every address) eznix cannot know what you will type in the browser, so put that host name or address in certNames: without it the certificate does not match what the browser asked for, and saving is refused.";
     };
     interface = mkOption {
       type        = types.nullOr types.str;
@@ -336,11 +342,11 @@ in
       description = "Your own plugins, name -> folder. A plugin runs with everything eznix itself can do; install only what you would run as a program.";
     };
 
-    generateCert = mkOption {
+    enableHttps = mkOption {
       type        = types.bool;
-      default     = !isLocal && cfg.cert == null;
-      defaultText = lib.literalExpression "listen isn't this machine itself, and no cert is set";
-      description = "Serve HTTPS with a certificate eznix makes itself, signed by a local authority of its own. Browsers warn until that authority is trusted; the login page offers it for download.";
+      default     = !isLocal || cfg.cert != null;
+      defaultText = lib.literalExpression "listen isn't this machine itself, or cert is set";
+      description = "Serve HTTPS. On by itself when listen is anything but this machine; set it to have HTTPS on localhost too. With no cert and key given, eznix makes a certificate itself, signed by a local authority of its own: browsers warn until that authority is trusted (trustCert does that for the browsers on this machine; the login page offers it for download for others).";
     };
     trustCert = mkOption {
       type        = types.bool;

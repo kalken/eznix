@@ -247,9 +247,12 @@ each module (`nixos.nix`, `darwin.nix`, `home.nix`) passes it its own paths and 
 services. NixOS is the service design (account `eznix`, a terminal unit per user in `users`).
 macOS and home-manager are for one person: two agents/user units running as them.
 
-HTTPS: off on localhost; `generateCert` (on by default when `listen` isn't local) makes a local
-CA and certificate in the state folder. Nothing installs the CA into browsers or the keychain
-automatically; the README gives the command.
+HTTPS is one switch, `enableHttps`: on by default when `listen` isn't local or a `cert` is
+given, and settable for localhost. With no `cert`/`key`, eznix makes a local CA and
+certificate in the state folder (`generateCert`, now internal to `options.nix`). It was an
+option called `generateCert` until 2026-10-09; the user found "enable HTTPS" the natural
+name, and the old one is kept as a renamed option in each module. Nothing installs the CA
+into browsers or the keychain unless `trustCert` is set; the reference gives the command.
 
 With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
 `_redirect_to_https()`): the first byte of a connection says which it is. The TLS handshake

@@ -41,6 +41,10 @@ let
   path    = "/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
 in
 {
+  # generateCert was the name of enableHttps until 2026-10; a configuration that still sets it
+  # keeps working, with a note to rename it.
+  imports = [ (lib.mkRenamedOptionModule [ "services" "eznix" "generateCert" ] [ "services" "eznix" "enableHttps" ]) ];
+
   options.services.eznix = common.options;
 
   config = lib.mkIf cfg.enable {

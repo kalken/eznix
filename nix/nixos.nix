@@ -58,6 +58,10 @@ let
   };
 in
 {
+  # generateCert was the name of enableHttps until 2026-10; a configuration that still sets it
+  # keeps working, with a note to rename it.
+  imports = [ (lib.mkRenamedOptionModule [ "services" "eznix" "generateCert" ] [ "services" "eznix" "enableHttps" ]) ];
+
   options.services.eznix = common.options // {
     openFirewall = lib.mkOption {
       type        = lib.types.bool;
@@ -162,7 +166,7 @@ in
           UMask              = "0002";      # its files stay writable by the group
           StateDirectory     = "eznix";
           StateDirectoryMode = "0750";
-          ExecStartPre       = lib.mkIf cfg.generateCert
+          ExecStartPre       = lib.mkIf common.generateCert
             (pkgs.writeShellScript "eznix-certificate" (common.generateCa "${packages.eznix}/bin/eznix"));
           ExecStart          = "${packages.eznix}/bin/eznix --config ${common.toml}";
           Restart            = "on-failure";

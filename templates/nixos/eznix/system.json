@@ -13,6 +13,14 @@
       "users": [
         "YOUR-USER-NAME"
       ],
+      "enableHttps": {
+        "_disabled": true,
+        "_value": true
+      },
+      "trustCert": {
+        "_disabled": true,
+        "_value": true
+      },
       "buttons": [
         {
           "label": "List Generations",

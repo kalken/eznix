@@ -49,7 +49,7 @@ services.eznix = {
   users  = [ "alice" ];             # put your user name here (NixOS: who may log in,
                                     # with their system password)
   # Optional: HTTPS on localhost too, and its browsers trusting the certificate.
-  # generateCert = true;
+  # enableHttps = true;
   # trustCert    = true;
 };
 ```
@@ -207,7 +207,7 @@ The common ones, the same in all three modules:
 | `buttons` | `[ ]` | command buttons, see below |
 | `theme`, `themes` | | see [Themes](#themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#plugins) |
-| `generateCert`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#https) |
+| `enableHttps`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#https) |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
@@ -356,14 +356,14 @@ kept in its state folder. Four options cover it:
 
 | Option | Default | |
 |---|---|---|
-| `generateCert` | on when `listen` isn't this machine | make and use that certificate; set it for HTTPS on `localhost` too |
+| `enableHttps` | on when `listen` isn't this machine | serve HTTPS; set it for HTTPS on `localhost` too. eznix makes the certificate unless you give `cert` and `key` |
 | `trustCert` | `false` | have the browsers on this machine trust it, so they don't warn |
 | `certNames` | `[ ]` | the host names and addresses you open eznix by |
 | `interface` | | be reached through one network interface only |
 
 ```nix
 # HTTPS on this machine, no warning in its browsers:
-services.eznix = { generateCert = true; trustCert = true; };
+services.eznix = { enableHttps = true; trustCert = true; };
 
 # Reached from other computers, by this address:
 services.eznix = { listen = "0.0.0.0"; certNames = [ "192.168.1.2" ]; };
