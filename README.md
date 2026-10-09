@@ -291,7 +291,7 @@ authority of its own. Browsers warn until that authority is trusted; the login p
 to download it, and you add it to the browser or system once. On macOS:
 
 ```sh
-sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain ca.pem
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eznix-HOSTNAME-ca.pem
 ```
 
 Use `cert` and `key` instead for a certificate of your own, or put eznix behind a reverse

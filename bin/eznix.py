@@ -273,7 +273,9 @@ def generate_local_ca(out_dir, extra_sans=None):
     ca_generated = False
     if not os.path.exists(ca_key_path) or not os.path.exists(ca_cert_path):
         ca_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
-        ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'eznix Local CA')])
+        # Named like the page's own title, "eznix (host)": it is what a keychain or a browser
+        # lists it as, and with a fixed name the authorities of two machines look the same there.
+        ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, f'eznix ({HOSTNAME})')])
         ca_cert = (x509.CertificateBuilder()
             .subject_name(ca_name)
             .issuer_name(ca_name)
@@ -1066,6 +1068,15 @@ def _ping_payload(user=None):
     }
 
 
+def _ca_download_name():
+    """What the downloaded authority's file is called: with this machine's name in it, since
+    every install makes its own and somebody with two of them ends up with both in one folder.
+    Dashes and no "eznix (host)" as everywhere else: the file is then named in a shell command
+    (see the README), where brackets and a space need quoting."""
+    host = re.sub(r'[^A-Za-z0-9._-]', '', HOSTNAME) or 'host'
+    return f'eznix-{host}-ca.pem'
+
+
 def _read_login_page(error=''):
     # Every name there is a login for, when that is known.
     names = sorted({u for _p, _c, u in LOGINS if u} | (ALLOWED_USERS if SYSTEM_LOGIN else set()))
@@ -1135,7 +1146,8 @@ def _read_login_page(error=''):
         username_field = f'<input id="u" name="username" type="text" autocomplete="username"{_known} autofocus>'
     ca_link = ''
     if CA_FILE and os.path.exists(CA_FILE):
-        ca_link = '<div class="login-ca-link"><a href="/download-ca" tabindex="-1">Download CA certificate</a></div>'
+        ca_link = (f'<div class="login-ca-link"><a href="/download-ca" tabindex="-1">'
+                   f'Download CA certificate for eznix ({html.escape(HOSTNAME)})</a></div>')
     path = os.path.join(WEBROOT, 'login.html')
     try:
         return (open(path).read()
@@ -1549,7 +1561,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     data = f.read()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/x-pem-file')
-                self.send_header('Content-Disposition', 'attachment; filename="eznix-ca.pem"')
+                self.send_header('Content-Disposition', f'attachment; filename="{_ca_download_name()}"')
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)
