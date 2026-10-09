@@ -3278,13 +3278,20 @@ function renderField(container, key, val, path) {
 }
 
 // ── Array rendering ───────────────────────────────────────────────────────────
+// Is this list one of packages, to be shown as chips with the package search under it?
+// Asked of the option's own type where the suggestions know the option: "list of package"
+// (also "list of (package or ...)"), whatever it is called -- home-manager's home.packages
+// was missing when this went by name alone. The names stay for when there are no suggestions
+// yet, and for options whose type says less than they hold.
 function isPkgArrayPath(path) {
   const last = path[path.length - 1];
   const PKG_PATHS = new Set(['systemPackages', 'extraPackages', 'extraPlugins']);
   if (PKG_PATHS.has(last)) return true;
-  // users.users.<name>.packages
+  // users.users.<name>.packages, home.packages
   if (last === 'packages' && path.length >= 4 && path[0] === 'users' && path[1] === 'users') return true;
-  return false;
+  if (path.length === 2 && path[0] === 'home' && last === 'packages') return true;
+  const opt = path.every(p => typeof p === 'string') ? findOption(path) : null;
+  return !!opt && /^list of \(?package\b/.test(opt.type || '');
 }
 
 function isKernelPath(path) {
