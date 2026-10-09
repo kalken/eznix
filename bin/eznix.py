@@ -1936,7 +1936,11 @@ def _valid_host(headers):
     if '*' in TRUSTED_HOSTS:
         return True
     host = headers.get('Host', '').split(':')[0].lower()
-    return host in {'localhost', '127.0.0.1', ''} | TRUSTED_HOSTS
+    if host in {'localhost', '127.0.0.1', ''} | TRUSTED_HOSTS:
+        return True
+    # With `interface`, the address that interface has: it is where the browser reaches this,
+    # and nobody can list it ahead when it comes from DHCP. Asked for now, since it can change.
+    return bool(INTERFACE) and host == _interface_address(INTERFACE)
 
 
 def _valid_origin(headers):
@@ -1986,6 +1990,20 @@ def _start_terminal_for_self(cfg):
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
 
+def _interface_address(name):
+    """The IPv4 address a network interface has at this moment, or None. By the SIOCGIFADDR
+    ioctl, whose number differs between Linux and macOS while its answer has the address in
+    the same place: there is nothing for this in Python's standard library."""
+    import fcntl
+    import struct
+    request = 0xc0206921 if sys.platform == 'darwin' else 0x8915
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            return socket.inet_ntoa(fcntl.ioctl(s.fileno(), request, struct.pack('256s', name.encode()[:15]))[20:24])
+    except OSError:
+        return None
+
+
 def _bind_to_interface(sock, name):
     """Tie a listening socket to one network interface, by name: connections that arrive
     through any other are not for it, whatever address they were sent to. The operating system
@@ -2026,13 +2044,19 @@ def main():
                     help='make a local CA and a server certificate in DIR, then exit')
     ap.add_argument('--san', action='append', metavar='NAME',
                     help='with --generate-ca: an extra host name or address for the certificate')
+    ap.add_argument('--san-interface', metavar='NAME',
+                    help="with --generate-ca: also the address this network interface has now")
     args = ap.parse_args()
 
     if args.generate_ca:
         if not _CRYPTO:
             sys.exit('eznix: --generate-ca needs the cryptography package')
         ca_dir = os.path.abspath(args.generate_ca)
-        ca_new, srv_new = generate_local_ca(ca_dir, extra_sans=list(args.san or []))
+        sans = list(args.san or [])
+        address = _interface_address(args.san_interface) if args.san_interface else None
+        if address and address not in sans:
+            sans.append(address)
+        ca_new, srv_new = generate_local_ca(ca_dir, extra_sans=sans)
         print(f'ca   → {os.path.join(ca_dir, "ca.pem")}' + (' (new)' if ca_new else ''))
         print(f'cert → {os.path.join(ca_dir, "localhost.pem")}'
               + (' (new)' if srv_new else ' (unchanged)'))
