@@ -227,15 +227,19 @@ Suggestions are never generated automatically and no button for it is added: it 
 
 ## Not verified
 
+What has run for real, by the user's report on 2026-10-09 and no closer than that: the
+nix-darwin module, activated on a Mac (the services start, system-password login works, the
+terminal survives rebuilds); the NixOS module on a NixOS machine ("works cleanly", after the
+update that brought `flakeWritable` and the one-stamp terminal check). Which of the points
+below that covered was not gone through one by one, so they stay listed until someone has.
+
 - `flakeWritable`'s activation script (chgrp/chmod/setfacl over the flake, dot-folders
-  pruned): its selection of files was tried on a throwaway folder, the rest never ran.
+  pruned): its selection of files was tried on a throwaway folder.
 - The templates: each makes a flake that evaluates to a whole system (with a stub
   `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
-- The terminal panel, the Documents button and the Import/Export/Restore buttons have not been
-  opened in a browser since their code moved out of `index.html`.
-- The NixOS and home-manager modules are evaluated only (NixOS to a full system derivation);
-  nothing has run on a real machine. The setuid helper and per-user terminal units in
-  particular are from how systemd and PAM behave, not from a run.
-- The nix-darwin module builds, and the built editor and terminal were run by hand with its
-  generated config (hashes match, proxy works), but it has not been activated.
-- System-password login on a non-NixOS Linux through nixpkgs' PAM library.
+- The page side of the terminal restart notice (`terminal_stale`), and the Documents button
+  and the Import/Export/Restore buttons since their code moved out of `index.html`: never
+  opened in a browser by a session; no `node` here to even syntax-check the page's scripts.
+- The home-manager module is evaluated only. System-password login on a non-NixOS Linux
+  through nixpkgs' PAM library.
+- HTTPS with the generated certificate on macOS.
