@@ -31,6 +31,7 @@ let
     default_file     = cfg.defaultFile;
     state_dir        = stateDir;
     listen           = cfg.listen;
+    interface        = cfg.interface;
     port             = cfg.port;
     # The address itself, when it is one in particular: the certificate is made for it (see
     # generateCa), so it is a name the browser will use. Without it a save is refused (403).
@@ -148,8 +149,15 @@ in
 
     listen = mkOption {
       type        = types.str;
-      default     = "127.0.0.1";
+      default     = if cfg.interface != null then "0.0.0.0" else "127.0.0.1";
+      defaultText = lib.literalExpression ''if interface != null then "0.0.0.0" else "127.0.0.1"'';
       description = "Address to listen on. Anything other than this machine itself turns generateCert on by default.";
+    };
+    interface = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      example     = "wg0";
+      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Give the name or address you open it by in certNames.";
     };
     port = mkOption {
       type        = types.port;

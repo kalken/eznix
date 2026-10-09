@@ -33,6 +33,8 @@ Configuration (eznix.toml; every key optional unless noted):
   autocomplete_dir  where the generated suggestions are read from (default <state_dir>/autocomplete)
   webroot         the page's files (default: next to this file)
   listen, port    address and port (default 127.0.0.1:9090)
+  interface       a network interface, by name, to be reached through and no other; `listen`
+                  then defaults to every address
   hosts           extra host names to accept in requests; ["*"] accepts any. Behind a proxy
                   that changes the Host header, also the page's address ("https://name")
   cert, key       serve HTTPS with these (ca: the CA to offer for download on the login page)
@@ -128,6 +130,7 @@ BACKUP_DIR       = None          # per-file backups, made on every save
 BACKUP_COUNT     = 5
 
 BIND_ADDR        = '127.0.0.1'
+INTERFACE        = None          # `interface`: the one network interface to be reached through
 WEB_PORT         = 9090
 TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(), and origins by _valid_origin(); "*" accepts any
 CERT_FILE        = None          # HTTPS when both are set
@@ -1983,10 +1986,25 @@ def _start_terminal_for_self(cfg):
     signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
 
+def _bind_to_interface(sock, name):
+    """Tie a listening socket to one network interface, by name: connections that arrive
+    through any other are not for it, whatever address they were sent to. The operating system
+    does this, so it holds when the interface's address changes (DHCP), which listening on an
+    address does not. It includes this machine itself: a browser here goes through the loopback
+    interface, and so reaches eznix only when that is the one named.
+
+    Linux has SO_BINDTODEVICE for it (any user may set it since kernel 5.7), macOS IP_BOUND_IF.
+    Python's socket module names neither everywhere, hence the numbers."""
+    if sys.platform == 'darwin':
+        sock.setsockopt(socket.IPPROTO_IP, getattr(socket, 'IP_BOUND_IF', 25), socket.if_nametoindex(name))
+    else:
+        sock.setsockopt(socket.SOL_SOCKET, getattr(socket, 'SO_BINDTODEVICE', 25), name.encode() + b'\0')
+
+
 def main():
     global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
-    global BIND_ADDR, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
+    global BIND_ADDR, INTERFACE, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
@@ -2045,7 +2063,9 @@ def main():
     BACKUP_COUNT = int(cfg.get('backups', 5))
 
     # Network.
-    BIND_ADDR = args.listen or cfg.get('listen') or BIND_ADDR
+    INTERFACE = str(cfg['interface']) if cfg.get('interface') else None
+    # An interface without an address means every address that interface has.
+    BIND_ADDR = args.listen or cfg.get('listen') or ('0.0.0.0' if INTERFACE else BIND_ADDR)
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
@@ -2122,9 +2142,14 @@ def main():
     PAGE_HASH = _compute_page_hash()
 
     try:
-        srv = http.server.ThreadingHTTPServer((BIND_ADDR, WEB_PORT), StaticHandler)
+        srv = http.server.ThreadingHTTPServer((BIND_ADDR, WEB_PORT), StaticHandler, bind_and_activate=False)
+        if INTERFACE:
+            _bind_to_interface(srv.socket, INTERFACE)
+        srv.server_bind()
+        srv.server_activate()
     except OSError as e:
-        sys.exit(f'eznix: cannot listen on {BIND_ADDR}:{WEB_PORT}: {e}')
+        sys.exit(f'eznix: cannot listen on {BIND_ADDR}:{WEB_PORT}'
+                 + (f' through {INTERFACE}' if INTERFACE else '') + f': {e}')
     if CERT_FILE:
         try:
             srv.socket = make_ssl_context().wrap_socket(srv.socket, server_side=True)

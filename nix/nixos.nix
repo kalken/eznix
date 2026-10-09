@@ -62,7 +62,7 @@ in
     openFirewall = lib.mkOption {
       type        = lib.types.bool;
       default     = false;
-      description = "Open the editor's port in the firewall. The terminals' ports are never opened.";
+      description = "Open the editor's port in the firewall, on the one interface when `interface` is set. The terminals' ports are never opened.";
     };
     flakeWritable = lib.mkOption {
       type        = lib.types.bool;
@@ -88,7 +88,10 @@ in
     ];
 
     environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
-    networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
+    # With an interface named, the port is opened on that one alone.
+    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interface == null) [ cfg.port ];
+    networking.firewall.interfaces = lib.mkIf cfg.openFirewall
+      (lib.optionalAttrs (cfg.interface != null) { ${cfg.interface}.allowedTCPPorts = [ cfg.port ]; });
 
     users.users.eznix = {
       isSystemUser = true;

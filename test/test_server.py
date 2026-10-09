@@ -106,7 +106,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'hosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session.cookies]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
+                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session.cookies]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -214,6 +214,7 @@ def main():
             conn.request('GET', '/', headers={'Cookie': '; '.join(f'{c.name}={c.value}' for c in b.cookies)})
             resp = conn.getresponse(); resp.read(); conn.close()
             check('and opening the page does not start the count again', resp.status == 200 and not resp.getheader('Set-Cookie'), resp.getheader('Set-Cookie'))
+            check('tied to the loopback interface, it still answers here', b.request('/api/v1/ping')[0] == 200)
             check('a changed configuration changes it', b.json('/api/v1/ping')[1]['page'] != first)
             check('your own plugin is loaded, with its settings', 'plugins/hello/hello.js' in page and '"hello": {"n": 3}' in page)
             check('and its server code answers', b.json('/api/v1/plugin/hello/hi')[1].get('n') == 3)

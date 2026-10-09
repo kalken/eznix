@@ -165,6 +165,7 @@ The common ones, the same in all three modules:
 | `session.cookies.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
 | `listen`, `port` | `127.0.0.1`, `9090` | where the editor listens |
+| `interface` | | a network interface to be reached through, and no other |
 | `terminal` | `true` | the terminal panel |
 | `buttons` | `[ ]` | command buttons, see below |
 | `theme`, `themes` | | see [Themes](#themes) |
