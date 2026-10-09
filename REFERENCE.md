@@ -124,7 +124,7 @@ every save keeps the previous version of the file (right-click a tab, Restore).
   it works with the official installer too. Set it to `true` there if you want nix-darwin to
   manage Nix and its settings.
 - **Each template comes with** buttons for Rebuild Switch, Update Flake, List Generations (lists the earlier
-  versions of the system you can go back to), Clean up (deletes those and frees the disk
+  versions of the system you can go back to), Clear Generations (deletes those and frees the disk
   space; there is no going back to them afterwards) and Generate Autocomplete.
 
 ## Adding it to a flake you already have

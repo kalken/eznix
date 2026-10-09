@@ -28,7 +28,7 @@
           "command": "home-manager generations"
         },
         {
-          "label": "Clean up",
+          "label": "Clear Generations",
           "command": "nix-collect-garbage -d"
         },
         {

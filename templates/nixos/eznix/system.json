@@ -28,7 +28,7 @@
           "command": "nixos-rebuild list-generations"
         },
         {
-          "label": "Clean up",
+          "label": "Clear Generations",
           "command": "sudo nix-collect-garbage -d"
         },
         {
