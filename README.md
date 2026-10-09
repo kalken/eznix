@@ -37,7 +37,8 @@ Used from other computers:
 ```nix
 services.eznix = {
   enable       = true;
-  users        = [ "alice" ];       # NixOS: who may log in, with their system password
+  users        = [ "alice" ];       # put your user name here (NixOS: who may log in,
+                                    # with their system password)
   listen       = "192.168.1.2";     # this machine's address; HTTPS is then on by itself
   openFirewall = true;              # NixOS
   # interface  = "wg0";             # optional: answer through this network interface only
@@ -49,7 +50,8 @@ Used on the machine itself:
 ```nix
 services.eznix = {
   enable = true;
-  users  = [ "alice" ];             # NixOS: who may log in, with their system password
+  users  = [ "alice" ];             # put your user name here (NixOS: who may log in,
+                                    # with their system password)
   # Optional: HTTPS on localhost too, and its browsers trusting the certificate.
   # generateCert = true;
   # trustCert    = true;
