@@ -19,6 +19,9 @@
      lower edge, was tried and was too much.) Everything that makes room for a row uses this. */
   --term-bar: 37px;
 }
+/* No line between the panel and the status bar under it: the two read as one strip at the
+   bottom of the page. Without a terminal the status bar keeps its line, against the editor. */
+.terminal-panel + .statusbar { border-top: none; }
 .terminal-panel.collapsed { height: var(--term-bar) !important; }
 /* The install-mode row is a second .terminal-header — collapsed height needs to fit both
    when it's visible. More specific than the plain .collapsed rule above (same !important), so
