@@ -15,7 +15,7 @@
 
   outputs = { nixpkgs, nix-darwin, eznix, ... }: {
     # "default" and not this Mac's name, so nothing here has to be changed. It is why a rebuild
-    # names it:  sudo darwin-rebuild switch --flake ~/.config/nix-darwin#default
+    # names it:  sudo darwin-rebuild switch --flake "$HOME/.config/nix-darwin#default"
     darwinConfigurations.default = nix-darwin.lib.darwinSystem {
       modules = [
         eznix.darwinModules.default      # the editor

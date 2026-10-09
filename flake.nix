@@ -82,7 +82,7 @@
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your macOS user name.
             2. If Nix came from the Determinate installer, also add  "nix": { "enable": false }  there.
-            3. sudo nix run nix-darwin -- switch --flake ~/.config/nix-darwin#default
+            3. sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
             4. Open http://localhost:9090 and log in with your macOS name and password.
           '';
         };
@@ -91,7 +91,7 @@
           description = "eznix added to an installed NixOS, for /etc/nixos (keeps configuration.nix)";
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your user name.
-            2. sudo nixos-rebuild switch --flake /etc/nixos#default
+            2. sudo nixos-rebuild switch --flake "/etc/nixos#default"
             3. Open http://localhost:9090 and log in with your name and password.
           '';
         };
@@ -101,7 +101,7 @@
           welcomeText = ''
             1. In eznix/home.json, replace YOUR-USER-NAME (three times) with your user name.
             2. Put a password for the editor in ~/.config/eznix-password (chmod 600).
-            3. nix run home-manager/master -- switch --flake ~/.config/home-manager#default
+            3. nix run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
             4. Open http://localhost:9090 and log in with your name and that password.
           '';
         };

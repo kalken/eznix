@@ -16,7 +16,7 @@
       "buttons": [
         {
           "label": "Rebuild",
-          "command": "home-manager switch --flake ~/.config/home-manager#default",
+          "command": "home-manager switch --flake \"$HOME/.config/home-manager#default\"",
           "save_first": true
         },
         {

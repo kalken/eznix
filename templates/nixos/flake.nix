@@ -11,7 +11,7 @@
 
   outputs = { nixpkgs, eznix, ... }: {
     # "default" and not this machine's name, so nothing here has to be changed. It is why a
-    # rebuild names it:  sudo nixos-rebuild switch --flake /etc/nixos#default
+    # rebuild names it:  sudo nixos-rebuild switch --flake "/etc/nixos#default"
     nixosConfigurations.default = nixpkgs.lib.nixosSystem {
       modules = [
         # What the installer wrote, kept as it is: the boot loader, the disks (it imports

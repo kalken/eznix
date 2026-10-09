@@ -16,7 +16,7 @@
       "buttons": [
         {
           "label": "Rebuild",
-          "command": "sudo nixos-rebuild switch --flake /etc/nixos#default",
+          "command": "sudo nixos-rebuild switch --flake \"/etc/nixos#default\"",
           "save_first": true
         },
         {

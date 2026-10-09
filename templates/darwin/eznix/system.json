@@ -13,7 +13,7 @@
       "buttons": [
         {
           "label": "Rebuild",
-          "command": "sudo darwin-rebuild switch --flake ~/.config/nix-darwin#default",
+          "command": "sudo darwin-rebuild switch --flake \"$HOME/.config/nix-darwin#default\"",
           "save_first": true
         },
         {
