@@ -144,31 +144,6 @@ The command the modules install already knows your flake. It is also a package o
 usable on any flake: `eznix-autocomplete --flake DIR --output DIR` (`--type nixos`, `darwin` or
 `home` when it can't tell).
 
-## Backing up the flake
-
-`eznix-backup` zips the whole flake, or puts such a zip back, from a shell:
-
-```sh
-eznix-backup save                  # back the flake up now
-eznix-backup save --output my.zip  # or into a file of your own
-eznix-backup list                  # the backups there are
-eznix-backup restore               # pick one from a list and put it back
-eznix-backup restore NAME          # a particular one, or a zip file; --yes doesn't ask
-```
-
-`restore` shows the backups, takes a number, says what it will replace and remove, and asks
-before doing it. What is there is saved first, so a restore can be undone with another one.
-Without a terminal to ask in (a script), name the backup and add `--yes`.
-
-These are the same backups as the page's Import/Export menu shows: one made by either turns
-up in the other. Dot-files (`.git` among them) are neither saved nor touched, and only the
-newest `backups` (5; `[plugin.system]`) are kept, whoever made them; a file written with
-`--output` is yours and stays.
-
-The command the modules install already knows your flake. On NixOS, where eznix keeps its
-backups under its own account, run it with `sudo`. It also runs straight from a checkout:
-`python3 webroot/plugins/system/backup.py --flake DIR --state-dir DIR save`.
-
 ## Running commands as root
 
 Nothing in eznix is root, so a command that needs it asks through `sudo`. How much it asks is
@@ -197,7 +172,7 @@ so it works the same everywhere and can be left out. Three ship with it:
 
 | Plugin | |
 |---|---|
-| `system` | export the whole flake as a zip, import one over it, restore a backup; also the `eznix-backup` command |
+| `system` | export the whole flake as a zip, import one over it, restore an automatic backup |
 | `documents` | read the flake's Markdown files beside the editor |
 | `password` | log in with one configured password |
 

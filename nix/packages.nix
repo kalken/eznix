@@ -74,15 +74,4 @@ rec {
     runtimeInputs = [ pkgs.nix pkgs.python3 ];
     text          = ''exec python3 "${../bin/eznix-autocomplete.py}" "$@"'';
   };
-
-  # Back the flake up, or put a backup back, from a shell: the system plugin's own file, which
-  # is a command as well (see its top). The one place outside the page's plugins that names a
-  # plugin's file; it goes if that plugin ever does.
-  #   eznix-backup --flake DIR --state-dir DIR save | list | restore
-  # (The modules put a command of the same name on PATH that already knows this install's config.)
-  eznix-backup = pkgs.writeShellApplication {
-    name          = "eznix-backup";
-    runtimeInputs = [ pkgs.python3 ];
-    text          = ''exec python3 "${../webroot/plugins/system/backup.py}" "$@"'';
-  };
 }

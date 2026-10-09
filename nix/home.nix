@@ -45,7 +45,7 @@ in
       }
     ];
 
-    home.packages = [ (common.autocompleteCommand "${stateDir}/autocomplete") common.backupCommand ];
+    home.packages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
 
     home.activation.eznix = lib.hm.dag.entryAfter [ "writeBoundary" ] common.configDirScript;
 

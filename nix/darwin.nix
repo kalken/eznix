@@ -47,7 +47,7 @@ in
     services.eznix.users = lib.mkIf (cfg.password == null && cfg.passwordFile == null) (lib.mkDefault [ user ]);
 
     # eznix-terminal has to be on the system path for the terminal's job (see above).
-    environment.systemPackages = [ packages.eznix-terminal (common.autocompleteCommand "$HOME/.local/state/eznix/autocomplete") common.backupCommand ];
+    environment.systemPackages = [ packages.eznix-terminal (common.autocompleteCommand "$HOME/.local/state/eznix/autocomplete") ];
 
     # nix-darwin only runs the activation scripts it knows by name; a custom name is never run.
     system.activationScripts.postActivation.text = common.configDirScript + ''

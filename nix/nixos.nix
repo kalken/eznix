@@ -78,7 +78,7 @@ in
       }
     ];
 
-    environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") common.backupCommand ];
+    environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
     networking.firewall.allowedTCPPorts = lib.mkIf cfg.openFirewall [ cfg.port ];
 
     users.users.eznix = {
