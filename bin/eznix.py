@@ -20,6 +20,7 @@ button, with sudo in the user's own terminal.
   eznix                                   reads ./eznix.toml
   eznix --config FILE
   eznix --flake DIR --password PW         no config file at all
+  eznix --flake DIR --password PW --https   the same over HTTPS, with a certificate of its own
   eznix --generate-ca DIR [--san NAME]    make a local CA and server certificate, then exit
 
 Configuration (eznix.toml; every key optional unless noted):
@@ -2022,10 +2023,12 @@ def main():
     ap.add_argument('--port', type=int, help='port to listen on (default 9090)')
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
+    ap.add_argument('--https', action='store_true',
+                    help='serve HTTPS with a certificate eznix makes itself, kept in the state folder')
     ap.add_argument('--generate-ca', metavar='DIR',
                     help='make a local CA and a server certificate in DIR, then exit')
     ap.add_argument('--san', action='append', metavar='NAME',
-                    help='with --generate-ca: an extra host name or address for the certificate')
+                    help='with --generate-ca or --https: an extra host name or address for the certificate')
     args = ap.parse_args()
 
     if args.generate_ca:
@@ -2069,6 +2072,13 @@ def main():
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
+    if args.https and not CERT_FILE:
+        # Run by hand there is no module to make the certificate first (see generateCert in
+        # nix/options.nix); this is the same thing, into the state folder, at every start.
+        if not _CRYPTO:
+            sys.exit('eznix: --https needs the cryptography package (the Nix package has it)')
+        generate_local_ca(STATE_DIR, extra_sans=list(args.san or []))
+        CERT_FILE, KEY_FILE, CA_FILE = (os.path.join(STATE_DIR, n) for n in ('localhost.pem', 'localhost-key.pem', 'ca.pem'))
     if bool(CERT_FILE) != bool(KEY_FILE):
         sys.exit('eznix: "cert" and "key" go together')
 

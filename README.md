@@ -19,6 +19,28 @@ Then open http://localhost:9090 and log in as yourself with that password. Witho
 Run this way, eznix and its terminal both run as you. It keeps its own data in
 `~/.local/state/eznix`.
 
+Plain HTTP is fine here: nothing leaves the machine. To have HTTPS all the same, add
+`--https`:
+
+```sh
+nix run github:kalken/eznix -- --flake /path/to/your/flake --password something --https
+```
+
+eznix then makes a certificate authority of its own and a certificate for `localhost`, and
+serves https://localhost:9090. The browser warns until you trust that authority, once, for
+your own user (no `sudo`; nothing else on the machine is affected):
+
+```sh
+# macOS
+security add-trusted-cert -r trustRoot -k ~/Library/Keychains/login.keychain-db ~/.local/state/eznix/ca.pem
+
+# Linux: Chrome, Chromium, Brave (certutil is in nixpkgs#nssTools)
+certutil -d sql:$HOME/.pki/nssdb -A -t C,, -n "eznix ($(hostname))" -i ~/.local/state/eznix/ca.pem
+```
+
+Firefox keeps its own list: Settings, Certificates, View Certificates, Import. Restart the
+browser afterwards. eznix never adds the authority anywhere by itself.
+
 ## How the configuration is stored
 
 eznix edits `*.json` files in one folder inside your flake (`<flake>/eznix` by default). Each
@@ -290,8 +312,11 @@ explains the variables and what to keep to.
 
 On `localhost` eznix serves plain HTTP, which browsers treat as secure. When `listen` is any
 other address, the modules turn on `generateCert`: eznix makes a certificate signed by a local
-authority of its own. Browsers warn until that authority is trusted; the login page has a link
-to download it, and you add it to the browser or system once. On macOS:
+authority of its own. Set `generateCert = true` to have that on `localhost` too.
+
+Browsers warn until that authority is trusted. The login page has a link to download it
+(`eznix-HOSTNAME-ca.pem`); you add it once on each computer you browse from, for your own
+user as shown under [Try it](#try-it), or on macOS for everyone on that computer:
 
 ```sh
 sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain eznix-HOSTNAME-ca.pem
