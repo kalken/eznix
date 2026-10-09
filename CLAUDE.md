@@ -159,8 +159,15 @@ checkout, `--override-input eznix path:.`.
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
 change any one of the rest, it refuses before the snapshot and before the first write. On
-NixOS the service can write only its JSON folder, and an import used to write what it could
-there and then fail on `flake.nix`.
+NixOS with `flakeWritable = false` the service can write only its JSON folder, and an import
+used to write what it could there and then fail on `flake.nix`.
+
+**On NixOS the whole flake is group-writable for `eznix` by default** (`flakeWritable`, in
+`nixos.nix`), because the user needs the system import to work there. Group and mode only:
+the owner of each file is left alone, since git and Nix refuse a repository owned by someone
+else, and dot-folders are skipped for the same reason. It gives the service nothing it
+didn't have: a JSON file it could already write can hold any Nix expression, built as root
+at the next rebuild.
 
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
@@ -215,6 +222,8 @@ Suggestions are never generated automatically and no button for it is added: it 
 
 ## Not verified
 
+- `flakeWritable`'s activation script (chgrp/chmod/setfacl over the flake, dot-folders
+  pruned): its selection of files was tried on a throwaway folder, the rest never ran.
 - The templates: each makes a flake that evaluates to a whole system (with a stub
   `configuration.nix` for NixOS), but none has been used on a machine that had nothing.
 - The terminal panel, the Documents button and the Import/Export/Restore buttons have not been

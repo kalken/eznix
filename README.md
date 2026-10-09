@@ -113,16 +113,17 @@ services.eznix = {
 The `eznix` folder doesn't have to exist yet; the first rebuild creates it.
 
 The editor runs as its own account (`eznix`), never as root. Everyone in `users` logs in with
-their own system password and gets a terminal of their own, running as them. The JSON folder
-is shared between the service and those users through the `eznix` group.
+their own system password and gets a terminal of their own, running as them.
+
+The flake is shared between the service and those users through the `eznix` group: its files
+and folders become writable by that group, while their owner stays who it was (usually root)
+and dot-folders such as `.git` are left alone. That is what lets the editor import or restore
+a whole flake, and lets the people in `users` edit `flake.nix` without `sudo`. With
+`flakeWritable = false` only the JSON folder is shared, and an import that would change
+anything outside it is refused whole, naming the files.
 
 Rebuilding from the terminal needs root, so it goes through `sudo` like it would in any
 terminal. See [Running commands as root](#running-commands-as-root).
-
-The service owns only the JSON folder; the rest of the flake stays root's. So importing a
-whole-flake zip (Import, System) works when it differs from what is there only inside that
-folder. One that would also change `flake.nix` or another of root's files is refused whole,
-naming the files, and nothing is changed; unpack that one in the terminal with `sudo`.
 
 ### macOS (nix-darwin)
 

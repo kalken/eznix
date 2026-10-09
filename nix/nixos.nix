@@ -64,6 +64,11 @@ in
       default     = false;
       description = "Open the editor's port in the firewall. The terminals' ports are never opened.";
     };
+    flakeWritable = lib.mkOption {
+      type        = lib.types.bool;
+      default     = true;
+      description = "Let the editor, and the people in `users`, write the whole flake and not only configDir: its files and folders are given to the `eznix` group (their owner is left as it is, and dot-folders such as .git are not touched). This is what lets the system plugin import or restore a whole flake. Off, the editor can change nothing outside configDir.";
+    };
   };
 
   config = lib.mkIf cfg.enable {
@@ -110,8 +115,15 @@ in
     } ];
 
     # The one place eznix takes ownership of: its own folder of *.json files, group-shared
-    # (setgid, and a default ACL so a file is writable by the group whoever made it). Nothing
-    # else in the flake is touched.
+    # (setgid, and a default ACL so a file is writable by the group whoever made it).
+    #
+    # The rest of the flake, with flakeWritable: the same sharing through the group, but the
+    # owner of each file stays who it was. That is on purpose -- git, and Nix reading a git
+    # flake, refuse a repository that belongs to somebody else, and /etc/nixos is usually
+    # root's. Dot-folders are skipped (.git, .direnv): the editor never writes into one, and
+    # they are what those ownership checks look at. Symlinks (`result`) are not followed.
+    # It is no wider a door than configDir already was: a *.json file there can hold any Nix
+    # expression, and what it says is built as root at the next rebuild either way.
     system.activationScripts.eznix = {
       deps = [ "users" "groups" ];
       text = common.configDirScript + ''
@@ -119,6 +131,18 @@ in
         chmod -R g+rwX ${lib.escapeShellArg cfg.configDir}
         chmod g+s ${lib.escapeShellArg cfg.configDir}
         ${pkgs.acl}/bin/setfacl -R -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.configDir} 2>/dev/null || true
+      '' + lib.optionalString cfg.flakeWritable ''
+        if [ -d ${lib.escapeShellArg cfg.flake} ]; then
+          shared() { ${pkgs.findutils}/bin/find ${lib.escapeShellArg cfg.flake} -mindepth 1 -name '.*' -prune -o -type "$1" -print0; }
+          chgrp eznix ${lib.escapeShellArg cfg.flake}
+          chmod g+rwxs ${lib.escapeShellArg cfg.flake}
+          ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.flake} 2>/dev/null || true
+          shared d | ${pkgs.findutils}/bin/xargs -0 -r chgrp eznix
+          shared d | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rwxs
+          shared d | ${pkgs.findutils}/bin/xargs -0 -r ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX 2>/dev/null || true
+          shared f | ${pkgs.findutils}/bin/xargs -0 -r chgrp eznix
+          shared f | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rw
+        fi
       '';
     };
 
