@@ -7,7 +7,8 @@
 
   outputs = { self, nixpkgs }:
     let
-      systems      = [ "x86_64-linux" "aarch64-linux" "x86_64-darwin" "aarch64-darwin" ];
+      # No x86_64-darwin: nixpkgs dropped it in 26.11, and listing it fails `nix flake check`.
+      systems      = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
       mkApp        = drv: bin: { type = "app"; program = "${drv}/bin/${bin}"; };
 
