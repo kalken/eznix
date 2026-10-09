@@ -1,0 +1,5 @@
+{
+  "name": "password",
+  "description": "Log in with one password set in the configuration, instead of a system password.",
+  "server": "password.py"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "documents",
+  "description": "Read the Markdown files in the flake, in panels beside the editor.",
+  "server": "documents.py",
+  "styles": [
+    "documents.css"
+  ],
+  "scripts": [
+    "documents.js"
+  ]
+}

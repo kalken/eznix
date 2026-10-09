@@ -1,0 +1,156 @@
+/* The terminal panel's own rules. Colours and sizes are theme variables like everywhere else
+   (--term-* in each theme file). */
+
+/* ── Terminal Panel ── */
+.terminal-panel {
+  background: var(--bg2);
+  /* Same panel edge as the top bar (see .tab-bar-row), along its top; z-index so it's drawn
+     over the editor and the tree sidebar above it rather than under them. */
+  box-shadow: 0 -1px 0 var(--panel-hairline), 0 -1px var(--panel-shadow-size) var(--panel-shadow);
+  z-index: 30;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  height: 25vh;
+  transition: height .18s ease;
+  position: relative; /* anchor for .terminal-header-group, pinned to the bottom edge below */
+}
+.terminal-panel.collapsed { height: 33px !important; }
+/* The install-mode row is a second 33px .terminal-header — collapsed height needs to fit both
+   when it's visible. More specific than the plain .collapsed rule above (same !important), so
+   this wins whenever both classes are present. */
+.terminal-panel.collapsed.install-mode { height: 66px !important; }
+/* The whole ordinary row disabled at once during install mode, rather than each button
+   individually — a title attribute (set alongside this class, see the init IIFE) gives the
+   native hover tooltip explaining why. pointer-events: none goes on the buttons, not the
+   container itself — putting it on the container would block the hover that triggers its own
+   title tooltip too, not just clicks. */
+#terminal-cmd-btns.install-mode-disabled { opacity: .45; }
+#terminal-cmd-btns.install-mode-disabled .term-run-btn { pointer-events: none; }
+
+/* position: absolute rather than a plain flex child — pinning it to the panel's bottom edge
+   directly means it stays there through the collapse/expand height transition and the moment
+   .terminal-body gets display:none'd, instead of snapping up to fill the vacated space the way a
+   normal flex child sharing the row with a flex:1 sibling would the instant that sibling
+   disappears from the layout. */
+.terminal-header-group {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+.terminal-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 33px;
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+}
+.terminal-panel.collapsed .terminal-header { border-top: none; }
+
+.terminal-cmd-btns {
+  display: flex;
+  gap: 5px;
+  flex: 1;
+  overflow: hidden;
+  align-items: center;
+  justify-content: flex-start;
+}
+/* Explicit height for the same reason .header .btn has one above: a text-only button's
+   intrinsic line-height at a fixed font-size isn't guaranteed to compute identically across
+   browsers, so relying on padding alone to match another element's height (here,
+   .context-menu-item, so a button's own dropdown lines up with the button that opened it) can
+   drift by a few pixels depending on the browser's font metrics. */
+.term-run-btn { white-space: nowrap; height: 26px; }
+/* The size/hide icons (quarter/half/full/toggle) used to be a smaller .btn-sm variant, which
+   visibly mismatched .term-run-btn (the command buttons sharing the same .terminal-header bar)
+   in both height and padding/font-size. Switched to plain .btn instead of trying to keep a
+   second, smaller variant in sync with the first -- .btn-sm is now unused and removed. */
+.terminal-header-actions { display: flex; gap: 6px; margin-left: auto; }
+/* #term-toggle's chevron points up by default ("Show"); toggleTerminal()/setTerminalSize() add
+   .expanded once the panel is open ("Hide") rather than swapping in a second, mirrored SVG. */
+#term-toggle.expanded svg { transform: rotate(180deg); }
+
+.terminal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  /* Room for .terminal-header-group, which no longer takes up flex space of its own now that
+     it's position: absolute — without this, its bottom row would sit on top of #term-output. */
+  padding-bottom: 33px;
+}
+.terminal-panel.install-mode .terminal-body { padding-bottom: 66px; }
+.terminal-panel.collapsed .terminal-body { display: none; }
+
+#term-output {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  background: var(--term-bg);
+  padding: var(--term-padding);
+}
+#term-output .terminal.xterm {
+  padding: 0;
+}
+
+/* Shown/hidden by connectTerminalWs() while the WebSocket itself has no connection -- a fixed
+   overlay rather than writing into the terminal's own scrolling buffer, since repeatedly writing
+   there on every failed reconnect attempt pushed each prior message out of view almost
+   immediately on a short panel, reading as constant flicker rather than one steady status. A
+   sibling of #term-output (anchored to .terminal-body instead), not a child of it -- xterm.js's
+   own Terminal.open() may clear that container's contents when it initializes. */
+.term-status-banner {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  color: var(--term-fg);
+  font-family: var(--font);
+  font-size: 12px;
+  z-index: 5;
+  background: var(--term-bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 14px 20px;
+}
+
+/* Right corner of the screen -- same top-right convention the old notification banner used --
+   right above wherever the terminal bar currently starts, rather than anchored to any specific
+   button. `right` is the only fixed coordinate here; `bottom` is set fresh via JS
+   (_updateTermRestartPopup()) from #terminal-header-group's own top edge, whenever the running
+   eznix-terminal.service is stale relative to what's on disk. That edge is a constant screen
+   position regardless of the panel's quarter/half/full/collapsed size (only the panel's own top
+   edge moves with it), so the popup itself never jumps around when the panel resizes. */
+.term-restart-popup {
+  position: fixed;
+  right: 12px;
+  /* Deliberately higher than every other z-index in the app (context menus, modals, the drag
+     ghost, ...) -- a restart-needed indicator is more important than whatever's on screen, so
+     this should never end up hidden behind something else open at the time. The one deliberate
+     exception is .hover-tooltip (see there): #term-restart-btn sits right below this popup, so
+     hovering it to read what the button actually does would otherwise show the tooltip right
+     where the popup already is, with the popup (being on top) making it unreadable -- exactly
+     the case a tooltip exists to prevent. */
+  z-index: 99999;
+  background: var(--bg2);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px var(--shadow);
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s;
+}
+.term-restart-popup:hover { background: var(--bg3); }
+.term-restart-popup.hidden { display: none; }

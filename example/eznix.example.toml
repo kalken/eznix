@@ -1,0 +1,74 @@
+# eznix.toml: every setting eznix reads. All are optional; the values shown are the defaults
+# unless the comment says otherwise. Run with:  eznix --config eznix.toml
+# (The Nix modules write this file for you from services.eznix.*.)
+
+# The flake being edited, and the folder of *.json files inside it.
+flake        = "/etc/nixos"            # /etc/nix-darwin on macOS
+# config_dir   = "/etc/nixos/eznix"    # default: <flake>/eznix
+default_file = "configuration.json"   # the file to open first
+
+# Where eznix keeps its own data: sessions, backups, suggestions, keys.
+# state_dir        = "~/.local/state/eznix"
+# autocomplete_dir = "<state_dir>/autocomplete"
+
+listen = "127.0.0.1"
+port   = 9090
+# hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
+
+# HTTPS: a certificate and its key. (`eznix --generate-ca DIR` makes a pair, and the local
+# authority that signs it; `ca` offers that authority for download on the login page.)
+# cert = "/path/localhost.pem"
+# key  = "/path/localhost-key.pem"
+# ca   = "/path/ca.pem"
+
+# Who may log in with their system password. With no users and no password (below), it is
+# whoever runs eznix.
+# users = ["alice"]
+# auth_helper = "/run/wrappers/bin/eznix-auth"   # checks passwords for an unprivileged eznix
+
+# The terminal. Run by hand, eznix starts one itself, as whoever runs it, on terminal_port.
+terminal               = true
+# terminal_port        = 9091         # default: port + 1
+terminal_auto_hide     = true         # hide the open panel on a click outside it
+terminal_end_on_logout = true
+# terminal_restart = ["systemctl", "--user", "restart", "eznix-terminal.service"]   # {user}, {uid} are filled in
+
+# A terminal run by something else (a service manager), for one user. dir and shell must be
+# what that terminal was started with.
+# [terminals.alice]
+# port     = 9091
+# key_file = "/run/eznix-terminal/alice/key"
+# dir      = "/etc/nixos"
+
+theme    = "nixos"                    # nixos, dark, gruvbox, osx-dark, osx-light, osx; "osx" on macOS
+# themes_dir = "/path/to/themes"      # your own, <name>.css each
+sections = "collapsed"                # or "expanded"
+# mode   = "install"                  # a second row of buttons, for an installer image
+backups  = 5                          # earlier versions kept of each file; 0: none
+
+# Plugins. The shipped ones are on; `enabled = false` leaves one out.
+# plugins_dir = "/path/to/plugins"    # your own, one folder each
+
+# Log in with one password instead of a system password (same as: eznix --password PW).
+# [plugin.password]
+# password      = "change-me"
+# password_file = "/path/to/file"
+# username      = "alice"             # default: whoever runs eznix
+
+# Export, import and restore of the whole flake.
+# [plugin.system]
+# backups  = 5                        # automatic backups kept; 0: none
+# dotfiles = false                    # include dot-files in an export
+# exclude  = ["hardware-configuration.nix"]
+
+# [plugin.documents]
+# enabled = false
+
+# Command buttons in the terminal bar.
+# [[buttons]]
+# label       = "Rebuild"
+# command     = "sudo nixos-rebuild switch"
+# save_first  = true                  # unavailable while there are unsaved changes
+# clear_first = true
+# menu        = "System"              # buttons sharing a menu name become one dropdown; "A/B" nests
+# static      = true

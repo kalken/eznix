@@ -1,0 +1,847 @@
+
+/* Reset: strip the browser's default box-model sizing and spacing from every element. */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+/* The header and the tab bar below it read as one panel: no line between them, and the pair is
+   edged along its bottom by a hairline and a small soft shadow falling onto the editor (see
+   .tab-bar-row) -- the same panel edge ezqbit's toolbar has. */
+.header {
+  background: var(--bg2);
+  /* Above .tab-bar-row: a blurred shadow spreads in every direction, so the tab bar's own would
+     otherwise also show as a faint dark line along its top edge, over the bottom of this row. */
+  position: relative;
+  z-index: 31;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+.header-actions { display: flex; gap: 8px; margin-left: auto; }
+
+.btn {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  padding: 5px 12px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  transition: background .15s, border-color .15s;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.btn:hover { background: var(--bg4); border-color: var(--border2); }
+.btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+.btn.primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-border); color: var(--btn-primary-text); }
+.btn.primary:hover { background: var(--btn-primary-hover); }
+.btn.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+
+/* Both header groups (.btn-group's undo/redo/etc on the left, .header-actions' Import/Export/
+   etc on the right) share this .btn class with no explicit height, so their rendered height
+   depended on each button's own content — a lone glyph (↩ ↪ ↺ ✕) versus glyph+text ("⬇ Import")
+   can have a different intrinsic line-height even at the same font-size, making the two groups
+   look mismatched. An explicit height removes that dependency so every header button matches. */
+.header .btn { height: 28px; }
+
+.btn-group { display: flex; gap: 0; }
+.btn-group .btn { border-radius: 0; }
+.btn-group .btn:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.btn-group .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+.btn-group .btn + .btn { border-left: none; }
+
+/* ── Tab bar (multi-file mode) ── */
+/* .tab-bar-row carries the bar's own background/border — split out from #tab-bar so the
+   search/Tree buttons (.tab-bar-actions) can sit in the same visual bar, at its right edge,
+   instead of getting a whole separate (near-empty, once the add-input is hidden) bar of their
+   own below it — see .topbar below. */
+.tab-bar-row {
+  background: var(--bg2);
+  /* A box-shadow rather than a border for both the hairline and the shade; position/z-index
+     because .main below is positioned and would otherwise paint over the shadow. */
+  box-shadow: 0 1px 0 var(--panel-hairline), 0 1px var(--panel-shadow-size) var(--panel-shadow);
+  position: relative;
+  z-index: 30; /* above the tree sidebar (20) too, so the shade falls across its top as well */
+  display: flex;
+  align-items: flex-start;
+  flex-shrink: 0;
+}
+.tab-bar {
+  flex: 1;
+  min-width: 0;
+  padding: 8px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tab-bar-actions { display: flex; align-items: center; gap: 8px; padding: 8px 18px 8px 0; flex-shrink: 0; }
+.tab-row { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
+.tab-folder-group { display: flex; flex-direction: column; gap: 3px; border-radius: var(--radius-sm); }
+.tab-folder-label {
+  color: var(--text3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
+  white-space: nowrap;
+}
+.tab { white-space: nowrap; }
+.btn.tab.active { background: var(--tab-active-bg); border-color: var(--tab-active-border); color: var(--tab-active-text); }
+/* Dropping a dragged file tab here moves it into this folder (or to the root) */
+.tab-move-target { outline: 2px dashed var(--accent2); background: var(--selected-bg); }
+.tab-rename-input, .tab-folder-label-input {
+  background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
+  border-radius: var(--radius-sm); font-family: var(--font); outline: none;
+}
+.tab-rename-input { font-size: 12px; padding: 1px 4px; }
+.tab-folder-label-input {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 4px;
+}
+.key-rename-input {
+  background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
+  border-radius: var(--radius-sm); font: inherit; outline: none; padding: 0 3px;
+}
+
+/* ── Layout ── */
+.layout { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ── */
+/* Floats over .editor-area (position: absolute, anchored to .main below) instead of occupying
+   its own column at the screen's right edge — .main stays the visible width either way, this
+   panel just overlaps its right side rather than shrinking it. */
+.sidebar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: max-content;
+  min-width: 140px;
+  max-width: 70%;
+  background: var(--bg2);
+  /* Same panel edge as the top bar (see .tab-bar-row), along its left side */
+  box-shadow: -1px 0 0 var(--panel-hairline), -1px 0 var(--panel-shadow-size) var(--panel-shadow);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 20;
+}
+.sidebar-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+}
+.tree { overflow-y: auto; flex: 1; padding: 4px 0; }
+.tree-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 6px 3px calc(6px + var(--depth, 0) * 8px);
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  user-select: none;
+  transition: background .1s;
+}
+.tree-row:hover { background: var(--bg3); }
+.tree-row.selected { background: var(--selected-bg); }
+.tree-toggle {
+  width: 16px;
+  text-align: center;
+  color: var(--text3);
+  font-size: 9px;
+  flex-shrink: 0;
+  transition: transform .15s;
+}
+.tree-toggle.open { transform: rotate(90deg); }
+.tree-label { white-space: nowrap; color: var(--accent); font-size: 12px; padding-right: 12px; }
+.tree-leaf .tree-label { font-size: 11px; font-weight: 400; }
+.tree-leaf { opacity: 0.8; }
+.tree-leaf:hover { opacity: 1; }
+.tree-children { margin-left: 8px; }
+
+/* ── Main ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
+
+/* Only ever houses the always-hidden add-input/button below — a home for showAddOptionMenu() to
+   detach them from and restore them to (right-click "Add option..."/"Add sub option..." is the
+   only way to open them now, via the floating panel). display:contents so it generates no box
+   of its own — it used to render as a full visual bar with nothing in it but the Tree
+   button over on the right (everything else inside it hidden by the rule below), which is why
+   it now lives in .tab-bar-actions instead, alongside the tab bar. */
+.topbar { display: contents; }
+.topbar .autocomplete-wrap, .topbar #add-commit-btn { display: none; }
+
+/* ── Autocomplete ── */
+.autocomplete-wrap { position: relative; }
+.autocomplete-wrap input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  padding: 5px 9px;
+  border-radius: var(--input-radius);
+  font-family: var(--font);
+  font-size: 12px;
+  outline: none;
+}
+.autocomplete-list {
+  position: absolute;
+  top: calc(100% + 3px);
+  left: 0;
+  min-width: 100%;
+  width: max-content;
+  max-width: 520px;
+  background: var(--bg2);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  z-index: 200;
+  max-height: 240px;
+  overflow-y: auto;
+  box-shadow: 0 8px 24px var(--shadow);
+}
+.autocomplete-item {
+  padding: 6px 10px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.autocomplete-item:hover, .autocomplete-item.active { background: var(--bg4); }
+.autocomplete-item .ac-name { color: var(--accent); font-size: 12px; }
+.autocomplete-item .ac-desc { color: var(--text2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
+.autocomplete-item .ac-type { color: var(--purple); font-size: 10px; }
+.autocomplete-item .ac-required { background: var(--required-bg); color: var(--required-text); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; align-self: flex-start; }
+
+/* ── Editor area ── */
+/* The editor's two surfaces are named by the themes: --editor-bg is the page, --card-bg the
+   filled block each top-level section gets. */
+.editor-area { background: var(--editor-bg); flex: 1; overflow-y: auto; padding: 10px 12px; scroll-padding-top: 8px; scroll-padding-bottom: 8px; }
+
+/* ── Sections ── */
+/* Nesting is shown by indentation and colour only, no rules or bars: a top-level section is a
+   bare heading on the page, each section directly beneath it is a card (see "Option rows"
+   below), and anything deeper is just indented one character per level via --depth, which
+   _setNestDepths() sets on every .section/.field-row after a render. */
+.section { margin-bottom: var(--section-gap); }
+.section .section { margin-bottom: 0; }
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  background: transparent;
+  position: relative;
+}
+/* Depth is carried by how bright a section's name is, in three steps (the two brighter ones
+   are set in "Option rows" below): this dimmed tone is what anything below a sub-section gets. */
+.section-key { color: var(--section-key-deep-color); font-size: 12px; font-weight: 600; flex: 1; display: flex; flex-direction: row; align-items: center; gap: 4px; padding-left: calc(var(--depth, 0) * var(--indent-step)); }
+.section-key-inner { display: flex; flex-direction: column; align-items: flex-start; }
+.section-key-text { position: relative; }
+.section-key-sub { display: flex; align-items: center; gap: 4px; }
+.section-type { display: none; }
+
+
+.section-body {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+}
+
+/* ── Tooltip ── */
+.tooltip {
+  display: none;
+  position: absolute;
+  left: 0; top: calc(100% + 4px);
+  background: var(--popup-bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 7px 10px;
+  font-size: 11px;
+  color: var(--text2);
+  line-height: 1.6;
+  width: max-content;
+  min-width: 260px;
+  max-width: 520px;
+  /* Must be above sections, autocomplete lists, etc. */
+  z-index: 1000;
+  pointer-events: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  box-shadow: 0 4px 16px var(--shadow);
+  max-height: 260px;
+  overflow-y: auto;
+}
+/* Add-option autocomplete's info popup: position:fixed (set inline, computed from
+   #add-ac-list's bounding rect — see _showAcTooltip) rather than the anchor-relative absolute
+   positioning above, and above .floating-add-container (z-index 2000) since that's usually
+   where #add-ac-list lives while this is shown. */
+.ac-tooltip { z-index: 2100; }
+/* Button tooltips (_showHoverTooltip) are one plain-text line, not the rich description/default/
+   example HTML .tooltip's default sizing was built for — the 260px min-width above would pad
+   most of them with a lot of empty space. Wrapping (white-space/word-break/max-width) stays
+   inherited from .tooltip, for the rare long command that needs it. */
+/* z-index above .term-restart-popup's 99999, not just the ordinary tooltip base's 1000 -- a
+   tooltip only ever shows because the user is actively hovering to read it, which should never
+   be obscured by a passive notification, #term-restart-btn's own most of all (see there). */
+.hover-tooltip { min-width: 0; padding: 5px 8px; z-index: 100000; }
+/* Tooltip visibility: .tt-anchor wraps just the rendered title text so the hover target is the
+   text itself, not the whole reserved-width key column (which is wider than short titles). It's
+   JS-driven (_wireTooltipAnchor toggles .tt-visible) rather than plain :hover because .tt-anchor
+   sits inside .key-label's overflow:hidden (needed for ellipsis truncation of long names), which
+   would otherwise clip a :hover-shown absolutely-positioned child too. */
+.tooltip.tt-visible { display: block; }
+.tt-anchor { position: relative; }
+.field-key-text { position: relative; cursor: default; display: block; width: 100%; }
+.key-label { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+
+/* Tooltip content structure */
+.tt-required { display: inline-block; background: var(--required-bg); color: var(--required-text); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 5px; border-radius: 3px; margin-bottom: 5px; }
+.tt-desc { color: var(--text2); margin-bottom: 4px; }
+.tt-desc p { margin: 0 0 4px; }
+.tt-desc p:last-child { margin-bottom: 0; }
+.tt-desc ul.tt-list { margin: 2px 0 4px 14px; padding: 0; }
+.tt-desc ul.tt-list li { margin-bottom: 1px; }
+.tt-inline { background: var(--bg4); border-radius: 3px; padding: 0 3px; font-family: var(--font); font-size: 10px; color: var(--accent); }
+.tt-block { background: var(--bg4); border-radius: var(--radius-sm); padding: 5px 8px; margin: 4px 0; font-size: 10px; white-space: pre; overflow-x: auto; color: var(--green); }
+.tt-meta {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 4px; padding-top: 4px;
+  border-top: 1px solid var(--border2);
+}
+/* One label+value pair (default/example/type) — its own row, so a long or multi-line value
+   (e.g. a multi-line Nix example string) never runs into the next label on the same line. */
+.tt-meta-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; }
+.tt-label {
+  color: var(--text3); font-size: 10px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+  margin-right: 3px;
+}
+.tt-val { color: var(--green); font-size: 11px; }
+.tt-type { border-top: none; padding-top: 0; margin-top: 2px; }
+
+/* ── Field rows ── */
+.field-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  padding: 8px 10px 8px 8px;
+  border-radius: var(--radius);
+  background: var(--field-bg);
+  position: relative;
+}
+/* field-key is the positioning context for its tooltip */
+.field-key {
+  color: var(--text2); min-width: 140px;
+  font-size: 12px; word-break: break-all; flex-shrink: 0;
+  position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 4px; padding-top: 2px;
+}
+.field-key-inner { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; }
+.field-value { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; align-self: stretch; }
+
+/* ── Option rows ── */
+/* Every rule here hangs off classes _setNestDepths() puts on the rows themselves (.nest, plus
+   .nest-top/.nest-card/.nest-loose), not off an .editor-area ancestor: a drag ghost is a clone
+   appended straight to <body>, and it only looks identical to the row it was lifted from if
+   nothing about that row's look depends on where it sits in the document.
+   The indent lives inside the key column (padding on the label, 1ch per level -- exactly one
+   letter, the font being monospace) rather than on the nested containers, and the key column
+   itself is a fixed --key-width: that's what makes every value start at the same position
+   however deep its option is nested. */
+/* Only the value half of an option row is filled; the key half shows whatever the row sits on. The row itself has no vertical padding
+   (the value cell carries it), so the value cells of consecutive rows touch and form one strip
+   that's only rounded at its two ends. */
+.field-row.nest { background: transparent; padding: 0; border-radius: 0; min-height: var(--row-height); }
+/* Barely different from the card it sits on (see --value-bg in the themes). */
+.field-row.nest > .field-value { background: var(--value-bg); border-radius: var(--radius); padding: 2px 0; }
+.field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; }
+.field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
+.field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 6px; }
+/* A text value's own text sits 1px border + 3px/6px padding inside its box, itself 2px down
+   inside the value cell. The key (6px from the top, above) and a toggle (7px from the left, here) are offset by the same amounts, so a
+   key shares a text line with its value and every kind of value starts on one vertical line. */
+.field-row.nest .toggle-wrap { padding-left: 7px; }
+/* Object items inside an array sit in the value column already, so they restart at depth 0
+   (see _setNestDepths()) with a narrower key column of their own. */
+.array-obj-fields { --key-width: var(--list-key-width); }
+/* The heading of a top-level section lines up with the content of the cards beneath it. */
+.section.nest-top > .section-header { padding: 0 var(--block-pad) var(--card-gap); }
+/* Section names by depth: a top-level one reads as a title, a sub-section gets the full accent,
+   and anything deeper keeps .section-key's own dimmed tone. */
+.section.nest-top > .section-header .section-key { color: var(--section-title-color); font-size: var(--section-title-size); }
+.section.nest-card > .section-header .section-key { color: var(--section-key-color); }
+/* .file-card is the wrapper renderEditor() puts around everything in the file. It used to be a
+   filled, outlined block of its own with the sections framed inside it; now it's only spacing
+   (--page-margin, the same on every side), and each top-level section is its own card straight
+   on the page (see below). */
+.file-card { padding: calc(var(--page-margin) - 10px) calc(var(--page-margin) - 12px); } /* less .editor-area's own padding */
+.file-card:empty { display: none; }
+.file-card > .section:last-child { margin-bottom: 0; }
+/* Everything at the top level of the file is a card -- a section, or an option set at the root
+   (.nest-root) on its own: --card-bg on the --editor-bg page, edged with the same hairline and
+   soft shadow the panels have. */
+.section.nest-top, .field-row.nest-root {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 1px var(--panel-hairline), 0 0 var(--panel-shadow-size) var(--panel-shadow);
+}
+.section.nest-top { padding: 8px 0; }
+.field-row.nest-root { padding-top: 8px; padding-bottom: 8px; margin-bottom: var(--section-gap); }
+.field-row.nest-root:last-child { margin-bottom: 0; }
+/* Not part of a strip of rows any more, so its value cell keeps all four corners. */
+.field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
+/* A second-level section is only set off by a plain line above it, across the frame it sits
+   in: the frame's hairline colour, without the shadow. */
+.section.nest-card { padding: 10px var(--block-pad) 8px; border-top: 1px solid var(--panel-hairline); }
+* + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
+/* Every section from the third level down (.nest-arrow) can be folded away, and starts out
+   folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
+   pointing right while the section is hidden and down while it's shown. It hangs in the indent
+   to the left of the name (out of flow), so the name itself stays exactly where it was. */
+.section-toggle { display: none; }
+.section.nest-arrow > .section-header .section-toggle {
+  display: block; position: absolute; right: 100%; padding: 0 0.5ch; cursor: pointer; user-select: none;
+}
+.section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
+.section.nest-arrow.collapsed > .section-header .section-toggle::before { content: '▸'; }
+.section.collapsed > .section-body { display: none; }
+/* A section nested deeper than that has no edge or fill, only a little space below it. */
+.section.nest:not(.nest-top):not(.nest-card) { margin-bottom: var(--nested-section-gap); }
+/* An option with no such section around it (set straight on a top-level section, or at the root
+   of the file) stays on the page background, with only the card's side padding so its value
+   still starts in the same column as the ones inside cards. */
+.field-row.nest-loose { padding-left: var(--block-pad); padding-right: var(--block-pad); }
+/* Text values have no outline or fill, at rest or on hover, so a set value reads as plain text;
+   an empty one says so with a placeholder instead (_setValuePlaceholders()). */
+.field-row.nest :is(input[type=text], input[type=number], input[type=password], textarea, .custom-select-btn):not(.key-rename-input) {
+  border-color: transparent;
+}
+.field-row.nest :is(input, textarea)::placeholder { color: var(--text3); opacity: 1; }
+/* No gaps between the plain items of a list, or between the options inside one object item --
+   but object items themselves keep a gap, so each one still reads as a separate entry. */
+.field-row.nest > .field-value { gap: 0; }
+/* ...except between a package or value list and the box for adding to it. */
+.field-row.nest > .field-value:has(> .pkg-items) { gap: 2px; }
+/* Chips start on the same vertical line as every other kind of value (see .toggle-wrap). */
+.field-row.nest .pkg-items { padding: 4px 7px; }
+/* An object item is filled like a section, so its keys sit on the section colour while its own
+   value cells stay the page colour -- the same split an ordinary option row has. */
+.field-row.nest .array-obj-item { background: var(--card-bg); }
+.field-row.nest .array-obj-item + .array-obj-item { margin-top: var(--list-item-gap); }
+/* ...and the same space between the items and the edges of the value cell holding them, so every
+   object item has it on all four sides. */
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
+/* A section's whole heading line and an option's whole key column start a drag (see
+   makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
+   is a switch on top of that, and does show it. */
+.section.nest-arrow > .section-header .section-key-text { cursor: pointer; }
+/* A dragged row keeps exactly the look it had in place: no translucency, and the fill of the
+   top-level block it was lifted from behind it instead of .drag-ghost's own. */
+.nest.drag-ghost, .array-obj-item.drag-ghost { opacity: 1; background-color: var(--card-bg); }
+
+.icon-btn {
+  background: none; border: none; cursor: pointer; color: var(--text3);
+  padding: 3px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1;
+  transition: color .15s;
+}
+.icon-btn.del:hover { color: var(--red); }
+
+.is-disabled { opacity: 0.45; }
+.is-disabled input, .is-disabled textarea, .is-disabled .toggle,
+.is-disabled .custom-select-wrap, .is-disabled .pkg-items,
+.is-disabled .autocomplete-wrap { pointer-events: none; }
+.is-disabled .icon-btn { opacity: 0 !important; pointer-events: none; }
+.is-disabled.section > .section-header { cursor: default; }
+.is-disabled > .field-key .key-label,
+.is-disabled > .section-header .section-key-text { text-decoration: line-through; }
+/* Disabled files/folders (tab bar) — see _isFileDisabled()/_isDisabledFolderSegment() */
+.tab.is-disabled span, .tab-folder-label.is-disabled { text-decoration: line-through; }
+/* The active file itself being disabled (not just its tab) — purely visual, unlike .is-disabled
+   above: a disabled file stays fully editable/saveable, so no pointer-events/strikethrough here. */
+.editor-area.file-disabled { opacity: 0.45; }
+
+/* ── Inputs ── */
+input[type=text], input[type=number], input[type=password], textarea {
+  background: transparent;
+  border: 1px solid var(--input-border);
+  color: var(--text);
+  padding: 3px 6px;
+  border-radius: var(--input-radius);
+  font-family: var(--font);
+  font-size: 12px;
+  outline: none;
+  width: 100%;
+}
+/* No focus outline on any input: the text cursor already shows which one is active. */
+textarea { resize: vertical; min-height: unset; line-height: 1.5; }
+
+/* ── Toggle ── */
+.toggle-wrap { display: flex; align-items: center; gap: 8px; }
+.toggle {
+  width: 32px; height: 17px;
+  background: var(--bg4); border: 1px solid var(--input-border);
+  border-radius: var(--input-radius); cursor: pointer; position: relative; transition: background .2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--toggle-on-bg); border-color: var(--toggle-on-border); }
+.toggle::after {
+  content: ''; position: absolute;
+  width: 11px; height: 11px; background: var(--text3);
+  border-radius: 50%; top: 2px; left: 2px;
+  transition: transform .2s, background .2s;
+}
+.toggle.on::after { transform: translateX(15px); background: var(--toggle-on-knob); }
+.toggle-label { color: var(--text2); font-size: 12px; }
+
+/* ── Array ── */
+.array-item { display: flex; align-items: center; gap: 4px; }
+.array-item input, .array-item textarea { flex: 1; min-width: 0; }
+
+/* Object items inside arrays */
+.array-obj-item {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 4px 12px;
+}
+/* No gap between an object item's own options -- set here rather than under .field-row.nest so
+   a dragged item (a clone outside any row, see makeDraggable()) keeps the same height. */
+.array-obj-fields { flex: 1; display: flex; flex-direction: column; }
+
+/* Package items: side-by-side chips */
+.pkg-items { display: flex; flex-wrap: wrap; gap: 4px; }
+.pkg-items .array-item {
+  background: transparent; border: 1px solid var(--border2);
+  border-radius: var(--radius); padding: 2px 4px 2px 8px;
+  gap: 4px;
+}
+/* Same colour as the name in the "Add package…" suggestion list (.ac-name), so a package
+   looks the same before and after it's picked. */
+.pkg-items .array-item .pkg-label {
+  color: var(--accent); font-size: 12px; white-space: nowrap;
+}
+
+/* ── Status bar ── */
+.statusbar {
+  /* Above .terminal-panel, for the same reason .header is above .tab-bar-row: the panel's
+     upward shadow also spreads a few pixels below it, onto the top of this bar. */
+  position: relative; z-index: 31;
+  background: var(--statusbar-bg); border-top: 1px solid var(--border);
+  padding: 3px 14px; font-size: 11px; color: var(--text3);
+  display: flex; gap: 16px; align-items: center; flex-shrink: 0;
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green2); display: inline-block; margin-right: 4px; transition: background .2s; }
+.status-dot.dirty { background: var(--dirty-color); }
+.statusbar-right { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+.status-version { color: var(--text3); white-space: nowrap; cursor: default; }
+.theme-switcher { display: flex; gap: 5px; align-items: center; }
+.theme-swatch { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; padding: 0; flex-shrink: 0; transition: outline .15s; }
+.theme-swatch.active { outline: 2px solid var(--accent); outline-offset: 1px; }
+.theme-swatch-nixos { background: #060e1a; border-color: #2a3a54; }
+.theme-swatch-dark  { background: #0a0a0a; border-color: #444444; }
+.theme-swatch-osx-light { background: #ececec; border-color: #8e8e93; }
+.theme-swatch-gruvbox { background: #282828; border-color: #d79921; }
+/* Half dark, half light: the automatic one. The plain colour underneath is what it's sorted by
+   (see _applyInitialTheme()), which puts it between the dark themes and the light one. */
+.theme-swatch-osx { background: #858585 linear-gradient(90deg, #1e1e1e 50%, #ececec 50%); border-color: #8e8e93; }
+.theme-swatch-osx-dark { background: #1e1e1e; border-color: #8e8e93; }
+.theme-swatch-custom { background: #808080; border-color: #b0b0b0; } /* a user theme: overridden inline from its own colours */
+
+/* ── Modal ── */
+.modal-overlay {
+  position: fixed; inset: 0; background: var(--overlay);
+  display: flex; align-items: center; justify-content: center; z-index: 300;
+}
+.modal {
+  background: var(--popup-bg); border: 1px solid var(--border2); border-radius: var(--radius);
+  padding: 20px; width: 820px; max-width: 95vw; display: flex; flex-direction: column; gap: 12px;
+}
+.modal h2 { color: var(--text); font-size: 14px; font-weight: 600; }
+.modal-title-row { display: flex; align-items: center; justify-content: space-between; }
+.modal-title-row h2 { margin: 0; }
+.modal textarea { height: 300px; }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.import-target-row { display: flex; align-items: center; gap: 8px; }
+.import-target-row label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
+.import-target-row input {
+  flex: 1; background: var(--bg); border: 1px solid var(--input-border); color: var(--text);
+  padding: 5px 9px; border-radius: var(--input-radius); font-family: var(--font); font-size: 12px; outline: none;
+}
+.import-hint { margin: 0 0 10px; font-size: 12px; color: var(--text3); line-height: 1.5; }
+.import-hint code { font-family: var(--font); color: var(--text2); }
+.import-error { background: var(--error-bg); border: 1px solid var(--required-bg); color: var(--required-text); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
+.import-error.import-valid { background: var(--success-bg); border-color: var(--success-border); color: var(--green); }
+.import-examples { display: flex; gap: 8px; align-items: flex-start; }
+.import-example-label { color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; flex-shrink: 0; }
+.import-example-code { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 9px; font-family: var(--font); font-size: 10px; color: var(--text2); line-height: 1.5; white-space: pre; overflow-x: auto; margin: 0; cursor: pointer; transition: border-color .15s, background .15s; }
+.import-example-code:hover { border-color: var(--accent); background: var(--bg2); }
+
+.hidden { display: none !important; }
+/* Native file pickers, triggered programmatically via .click() -- never shown to the user. */
+#import-file-input, #system-import-input { display: none; }
+
+/* ── Drag and drop ── */
+/* Drop target highlight */
+.drag-over { outline: 1px solid var(--accent2); background: var(--selected-bg) !important; }
+/* Dragging a section/field over a file tab to move it there */
+.tab-drop-target { outline: 2px solid var(--accent2); background: var(--selected-bg) !important; }
+
+/* Shown over the whole window while dragging OS files/folders/a zip in, to import — see
+   initImportDrop(). pointer-events: none so it never blocks hit-testing for the drag events
+   themselves (bubbling to window is unaffected either way). */
+.file-drop-overlay {
+  position: fixed; inset: 0; background: var(--overlay); z-index: 5000;
+  display: flex; align-items: center; justify-content: center; pointer-events: none;
+}
+.file-drop-overlay-box {
+  border: 2px dashed var(--accent2); border-radius: var(--radius);
+  background: var(--bg2); color: var(--text);
+  padding: 32px 48px; font-size: 14px; font-weight: 600; text-align: center;
+}
+
+/* ── Force-type bar ── */
+.force-type-bar {
+  background: var(--bg3); border-bottom: 1px solid var(--border);
+  padding: 6px 14px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+}
+
+/* ── Floating "Add option" panel (the topbar add-input/Add-button/force-type-bar,
+   temporarily relocated to the target object's top-left by showAddOptionMenu()) ── */
+.floating-add-container { position: fixed; z-index: 2000; display: flex; flex-direction: column; gap: 6px; }
+/* Row width matches .autocomplete-list's own max-width below, so the input+button row and the
+   suggestion dropdown line up as one unified block instead of the row looking narrower than the
+   list underneath it. The input takes whatever's left after the Add button's own natural width
+   (flex: 1) -- both share an explicit height instead, so they read as one seamless unit rather
+   than two controls of slightly different sizes sitting side by side. */
+.floating-add-row { display: flex; align-items: center; width: 520px; }
+.autocomplete-wrap.floating-add { flex: 1; min-width: 0; }
+.floating-add-row #add-commit-btn { height: 30px; box-sizing: border-box; }
+/* The input/button row: rounded on every outer corner (top-left/bottom-left of the input,
+   top-right/bottom-right of the button) -- only the corner where they touch each other stays
+   square, so they read as one control instead of two separately-rounded ones sitting side by
+   side. The dropdown below sits in its own gap (see .autocomplete-list below) and gets all four
+   corners rounded too. */
+.autocomplete-wrap.floating-add input {
+  width: 100%; height: 30px; box-sizing: border-box; background: var(--select-option-bg); border: 1px solid var(--border2);
+  border-radius: var(--radius) 0 0 var(--radius); box-shadow: 0 4px 16px var(--shadow); padding: 6px 10px;
+}
+.floating-add-row #add-commit-btn { border-radius: 0 var(--radius) var(--radius) 0; }
+/* A 2px gap below the input row above it (much smaller than the gap .autocomplete-list normally
+   leaves for its other, non-floating uses elsewhere in the editor) and exactly as wide as that
+   row, so its rounded bottom corners land exactly under the row's own outer edges. All four
+   corners are rounded -- the gap means it no longer sits flush against the row above it. */
+.autocomplete-wrap.floating-add .autocomplete-list {
+  top: calc(100% + 2px); width: 520px; border-radius: var(--radius);
+}
+.floating-add-container .force-type-bar {
+  border: 1px solid var(--border2); border-radius: var(--radius);
+  box-shadow: 0 4px 16px var(--shadow); flex-wrap: wrap;
+}
+.force-type-label { color: var(--text3); font-size: 11px; margin-right: 4px; }
+.type-btn {
+  background: var(--bg4); border: 1px solid var(--border2); color: var(--text2);
+  padding: 3px 9px; border-radius: var(--radius); cursor: pointer;
+  font-family: var(--font); font-size: 11px;
+  transition: background .15s, color .15s;
+}
+.type-btn:hover { background: var(--selected-bg); color: var(--accent); border-color: var(--accent2); }
+.type-btn.cancel { color: var(--text3); }
+.type-btn.cancel:hover { color: var(--red); border-color: var(--red); background: var(--bg4); }
+
+/* ── Search panel (toggleSearchPanel()) -- a floating input+dropdown anchored under
+   #search-toggle-btn, same positioning idea as .floating-add-container above but its own simpler
+   rule set: nothing here gets detached/reattached from elsewhere in the page, it's a self-
+   contained pair of elements created fresh on open and discarded on close. */
+.search-panel-container { position: fixed; z-index: 2000; }
+.search-panel-wrap { width: 380px; }
+.search-panel-wrap input {
+  width: 100%; box-sizing: border-box; height: 30px;
+  background: var(--popup-bg); border: 1px solid var(--border2);
+  border-radius: var(--radius); box-shadow: 0 4px 16px var(--shadow);
+  padding: 6px 10px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none;
+}
+/* The popup's surface (.tooltip), and inside it each result in the colours the same thing has
+   in the editor: the option's path like an option name, its value like a value -- plain text,
+   green for a Nix expression, the accent for a list of packages, dimmed when disabled. */
+.search-results-list {
+  top: calc(100% + 2px); width: 380px; border-radius: var(--radius);
+  background: var(--popup-bg); box-shadow: 0 4px 16px var(--shadow);
+}
+.search-results-list .ac-name { color: var(--text2); }
+.search-results-list .ac-desc { color: var(--text); }
+.search-results-list .ac-desc.is-expr { color: var(--green); }
+.search-results-list .ac-desc.is-pkgs { color: var(--accent); }
+.search-results-list .ac-desc.is-off  { opacity: 0.45; }
+/* The "No matches" / "N+ matches, refine" rows aren't results -- no hover highlight, no pointer. */
+.search-info-row { color: var(--text2); cursor: default; }
+.search-info-row:hover { background: transparent; }
+
+/* ── Expr field (object rendered as _expr) ── */
+.expr-field-wrap {
+  display: flex; align-items: flex-start; gap: 6px; width: 100%;
+}
+.expr-input {
+  flex: 1;
+  min-height: unset;
+  font-family: var(--font);
+  font-size: 12px;
+  background: transparent;
+  color: var(--green);
+  resize: vertical;
+  white-space: nowrap;
+  overflow-x: auto;
+}
+/* Raw Nix expr rendered inline in an array (renderArray's isExpr branch) -- same color as
+   .expr-input above, so an expression reads as green wherever it's shown as editable text. */
+.expr-value { color: var(--green); }
+
+
+/* ── Custom select ── */
+.custom-select-wrap { position: relative; display: inline-block; width: 100%; }
+.custom-select-btn {
+  background: transparent; border: 1px solid var(--input-border); color: var(--text);
+  padding: 3px 22px 3px 6px; border-radius: var(--input-radius); font-family: var(--font);
+  font-size: 12px; cursor: pointer; width: 100%; user-select: none; white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.custom-select-btn::after { content: '▾'; position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; font-size: 10px; }
+.custom-select-btn:focus { outline: none; }
+.custom-select-dropdown {
+  position: absolute; z-index: 200; top: calc(100% + 3px); left: 0; min-width: 100%;
+  background: var(--select-option-bg); border: 1px solid var(--border2);
+  border-radius: var(--radius); box-shadow: 0 4px 16px var(--shadow);
+  max-height: 260px; display: flex; flex-direction: column;
+}
+.custom-select-search {
+  border: none; border-bottom: 1px solid var(--border2); border-radius: var(--radius) var(--radius) 0 0;
+  padding: 5px 8px; width: 100%; flex-shrink: 0;
+}
+.custom-select-list { overflow-y: auto; flex: 1; }
+.custom-select-option {
+  padding: 5px 10px; font-family: var(--font); font-size: 12px;
+  color: var(--select-option-color); cursor: pointer; white-space: nowrap;
+}
+.custom-select-option:hover { background: var(--select-option-hover); }
+.custom-select-option.selected { color: var(--accent); }
+
+/* ── Right-click context menu (section/field/array-field actions) ── */
+.context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: var(--select-option-bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  min-width: 170px;
+  /* A long menu (e.g. many backups) previously had no cap and could grow taller than the
+     viewport, so hovering it and scrolling just scrolled the page underneath instead — this
+     caps its height and scrolls internally, and overscroll-behavior stops that internal scroll
+     from "spilling over" into the page once you hit the top/bottom. */
+  max-height: calc(100vh - 20px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* height + flex/align-items pins this to the same 26px as .term-run-btn (see its own comment) --
+   without it, this row's height came from padding plus the button's default line-height, which
+   isn't guaranteed to match .term-run-btn's own line-height pixel-for-pixel across browsers, so
+   a button-triggered dropdown could end up a few pixels off from the button it opened from. */
+.context-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 26px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--select-option-color);
+  padding: 0 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+}
+.context-menu-item:hover { background: var(--select-option-hover); }
+.context-menu-item:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.context-menu-item.danger:hover { background: var(--red); color: var(--danger-text); }
+.context-menu-item.has-submenu { justify-content: space-between; gap: 8px; }
+.context-menu-item.has-submenu::after { content: '▶'; font-size: 8px; opacity: 0.6; }
+.context-menu-sep { height: 1px; background: var(--border2); margin: 4px 2px; }
+
+/* ── Wildcard autocomplete hint ── */
+.autocomplete-item.ac-wildcard-hint {
+  background: var(--wildcard-bg);
+  border-bottom: 1px solid var(--border2);
+}
+.autocomplete-item.ac-wildcard-hint:hover { background: var(--wildcard-hover); }
+
+/* ── Editor placeholder / error states ── */
+.editor-placeholder { color: var(--text3); padding: 30px; text-align: center; }
+.editor-error { color: var(--red); padding: 30px; text-align: center; }
+.editor-error-hint { color: var(--text3); font-size: 11px; margin-top: 8px; display: block; }
+.editor-error-code { background: var(--bg4); padding: 2px 6px; border-radius: var(--radius-sm); }
+.editor-empty-state { color: var(--text3); padding: 40px 30px; text-align: center; line-height: 1.6; }
+
+/* ── Status bar IDs ── */
+#status-path { color: var(--text2); cursor: pointer; }
+#status-info { margin-left: auto; }
+#status-info[data-type=ok]  { color: var(--green); }
+#status-info[data-type=err] { color: var(--red); }
+
+/* ── Drag ghost ── */
+.drag-ghost {
+  position: fixed; pointer-events: none; z-index: 9999;
+  opacity: 0.8; border-radius: var(--radius); background: var(--bg3);
+  box-shadow: 0 4px 20px var(--overlay);
+}
+.is-dragging { opacity: 0.3; }
+
+/* ── Nullable string field ── */
+.nullable-string-wrap { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.nullable-string-wrap input { width: 100%; }
+
+/* ── Null value display ── */
+.null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
+
+/* ── Invalid input state ── */
+.input-error { border-color: var(--red) !important; }
+
+/* ── Package array autocomplete wrap ── */
+
+/* ── Wildcard autocomplete spans ── */
+.ac-wildcard-prefix { color: var(--text2); }
+.ac-wildcard-name { color: var(--purple); font-style: italic; }
+.ac-wildcard-desc { color: var(--purple); opacity: 0.8; }
+.ac-existing-path { color: var(--purple); }
+
+:::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-hover); }
+
+/* Standard scrollbar styling (Firefox, Chrome 121+, Brave on Linux) */
+* { scrollbar-width: thin; scrollbar-color: var(--scrollbar) transparent; }
+
+/* ── Add flash animation ── */
+@keyframes flash-added {
+  0%   { box-shadow: 0 0 0 0px var(--accent2); }
+  15%  { box-shadow: 0 0 0 3px var(--accent2); }
+  60%  { box-shadow: 0 0 0 2px var(--accent2); }
+  100% { box-shadow: 0 0 0 0px transparent;    }
+}
+.flash-added {
+  animation: flash-added 1s ease-out;
+  position: relative;
+  z-index: 1;
+}
+
+.nixos-spinner { width: 28px; height: 28px; flex-shrink: 0; }
+.nixos-spinner.spin { animation: nixos-spin 1.4s linear infinite; }
+.btn .nixos-spinner { width: 13px; height: 13px; }
+@keyframes nixos-spin { to { transform: rotate(360deg); } }

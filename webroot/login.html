@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>eznix (%%EZNIX_HOSTNAME%%) — login</title>
+<!-- favicon.svg/manifest.json are written into WEBROOT at build time -- see index.html's own
+     comment on this. manifest.json is linked here too, not just index.html: a user who tries
+     "Install page as app" while still on the login page (before authenticating) hits the exact
+     same missing-manifest letter-monogram fallback manifest.json was added to fix in the first
+     place if this page doesn't also link it -- and since both pages share the same origin/root,
+     the resulting installed shortcut ends up at the same site either way. -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<link rel="manifest" href="manifest.json">
+%%EZNIX_THEME_LINKS%%
+<link rel="stylesheet" href="style.css">
+<style>
+  /* Dressed like the editor itself: the page is the editor's page, the card is a top-level
+     section's card (same fill, hairline and soft shadow -- .section.nest-top in style.css), and
+     the two fields are filled like an option's value cell, with no outline of their own. */
+  body { align-items: center; justify-content: center; overflow: auto; background: var(--editor-bg); }
+  .login-card {
+    background: var(--card-bg); border-radius: var(--radius);
+    box-shadow: 0 0 0 1px var(--panel-hairline), 0 0 var(--panel-shadow-size) var(--panel-shadow);
+    padding: 40px 36px; width: 100%; max-width: 360px;
+  }
+  .login-card h1 { font-size: 18px; font-weight: 700; margin-bottom: 28px; color: var(--section-title-color); letter-spacing: .04em; }
+  .login-card h1 .login-host { font-weight: 400; color: var(--text2); margin-left: 6px; }
+  .login-card label { display: block; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .login-card input {
+    display: block; margin-bottom: 16px; padding: 8px 11px;
+    background: var(--value-bg); border: 0; border-radius: var(--radius);
+  }
+  /* A field the browser has filled in from a saved login gets the browser's own pale fill, set
+     in a way a page's background can't override. An inset shadow painted over it can, and the
+     text colour needs restating the same way. (Firefox tints with a filter instead.) The shadow
+     only covers the inside of a border, which is why these fields have none at all: a
+     transparent one left a 1px ring of the browser's fill showing around an autofilled field. */
+  .login-card input:-webkit-autofill,
+  .login-card input:-webkit-autofill:hover,
+  .login-card input:-webkit-autofill:focus,
+  .login-card input:autofill {
+    -webkit-box-shadow: 0 0 0 1000px var(--value-bg) inset;
+    box-shadow: 0 0 0 1000px var(--value-bg) inset;
+    -webkit-text-fill-color: var(--text);
+    caret-color: var(--text);
+    filter: none;
+    /* The shadow alone still left a thin pale ring: at the rounded edge the browser's fill and
+       the shadow on top of it are both anti-aliased, and the fill shows through that last
+       fraction of a pixel. A transition this long means the browser's fill never actually
+       arrives -- the field keeps the background it already had -- so there is nothing
+       underneath to show through. */
+    transition: background-color 600000s 0s, color 600000s 0s;
+  }
+  /* The username picker (allowed_users) -- deliberately not a native <datalist>, and deliberately
+     not opened by focusing or typing in the field either. Both were tried and both collided with
+     the browser's own saved-password autofill, which reacts to those same triggers on this same
+     field (see _read_login_page()'s own comment in eznix.py for the full history). This version
+     only ever opens on an explicit click of its own arrow button -- an action the browser's
+     autofill has no reason to react to at all, so there's nothing left for it to collide with. */
+  .login-suggest-wrap { position: relative; }
+  .login-suggest-wrap input { padding-right: 30px; }
+  .login-suggest-arrow {
+    position: absolute; top: 0; right: 2px; height: 100%; width: 26px;
+    display: flex; align-items: center; justify-content: center;
+    background: transparent; border: none; color: var(--text2); font-size: 10px; cursor: pointer;
+  }
+  .login-suggest-arrow:hover { color: var(--accent); }
+  .login-suggest {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10;
+    background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px;
+    max-height: 160px; overflow-y: auto; box-shadow: 0 8px 24px var(--shadow);
+  }
+  .login-suggest-item { padding: 7px 10px; font-size: 12px; color: var(--text); cursor: pointer; }
+  .login-suggest-item:hover { background: var(--bg4); }
+  .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  .login-error { color: var(--red); font-size: 12px; margin-top: 14px; min-height: 18px; text-align: center; }
+  .login-ca-link { text-align: center; margin-top: 14px; font-size: 11px; }
+  .login-ca-link a { color: var(--text2); text-decoration: none; }
+  .login-ca-link a:hover { color: var(--accent); }
+</style>
+</head>
+<body>
+<div class="login-card">
+  <h1>eznix <span class="login-host">%%EZNIX_HOSTNAME%%</span></h1>
+  <form method="post" action="/login">
+    <label for="u">Username</label>
+    %%EZNIX_USERNAME_FIELD%%
+    <label for="p">Password</label>
+    <input id="p" name="password" type="password" autocomplete="current-password" autofocus>
+    <button type="submit" class="btn primary" tabindex="-1">Sign in</button>
+  </form>
+  <div class="login-error">%%EZNIX_ERROR%%</div>
+  %%EZNIX_CA_LINK%%
+</div>
+<script>
+// Tab (and Shift+Tab) only ever moves between the two fields -- never on to the button, the
+// username picker's arrow, the certificate link or out into the browser's own toolbar. Enter
+// signs in from either field, so nothing else needs to be reachable by keyboard.
+(function() {
+  var u = document.getElementById('u'), p = document.getElementById('p');
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey) return;
+    e.preventDefault();
+    (document.activeElement === u ? p : u).focus();
+  });
+})();
+</script>
+</body>
+</html>

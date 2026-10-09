@@ -1,0 +1,122 @@
+:root {
+  /* ── Base palette ── */
+  --bg:   #282828;
+  --bg2:  #3c3836;
+  --bg3:  #1d2021;
+  --bg4:  #504945;
+  --text:  #ebdbb2;
+  --text2: #a89984;
+  --text3: #665c54;
+  --accent:  #d79921;
+  --accent2: #d65d0e;
+  --green:  #b8bb26;
+  --green2: #98971a;
+  --red:    #fb4934;
+  --purple: #d3869b;
+
+  /* ── Typography & shape ── */
+  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --radius:       8px;
+  --radius-sm:    5px;
+  --input-radius: 6px;
+  --term-padding: 4px;
+
+  /* ── Borders ── */
+  --border:  #3c3836;
+  --border2: #504945;
+  --input-border: #504945;
+  --select-option-bg:    #45403d;
+  --select-option-color: #ebdbb2;
+  --select-option-hover: #504945;
+  --popup-bg: #45403d; /* dialogs and tooltips */
+  /* ── Button states ── */
+  --btn-primary-bg:     #5b3f2e;
+  --btn-primary-border: #d65d0e;
+  --btn-primary-hover:  #724528;
+  --btn-primary-text:   #d79921;
+
+  /* ── Selection / highlight ── */
+  --selected-bg:   #4c4741;
+  --toggle-on-bg:  #5c4a26;
+  --toggle-on-knob:   #fbf1c7;
+  --toggle-on-border: var(--input-focus-border);
+  --input-focus-border: var(--section-key-color);
+
+  /* ── Section keys / active tab ── */
+  --section-key-color: var(--accent);
+  --tab-active-bg:     var(--bg4);
+  --tab-active-border: var(--border2);
+  --tab-active-text:   var(--text);
+
+  /* ── Semantic badges ── */
+  --required-bg:   #623b36;
+  --required-text: #fb4934;
+  --error-bg:      #593b36;
+  --success-bg:    #32331f;
+  --success-border: #545731;
+
+  /* ── Nix expression fields ── */
+  --expr-border: #4f4f23;
+
+  /* ── Editor fields ── */
+  --field-bg: rgba(235,219,178,0.05);
+  --editor-bg: var(--bg);  /* the editor page */
+  --card-bg:   var(--bg2); /* the filled block of a top-level section */
+
+  /* ── Editor layout ── */
+  --key-width:      300px; /* key column; every value starts right after it */
+  --list-key-width: 160px; /* key column inside an object that is a list item */
+  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --row-height:     28px;  /* minimum height of an option row */
+  --page-margin:    20px;  /* around the top-level blocks, on every side */
+  --section-gap:    16px;  /* between top-level blocks */
+  --card-gap:       12px;   /* around a bordered sub-section */
+  --nested-section-gap: 10px; /* below a section nested inside a sub-section */
+  --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
+  --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */
+  --section-title-size: 13px; /* top-level section name */
+  --panel-shadow-size:  6px;  /* blur of the soft shadow beside a panel edge */
+
+  /* ── Editor colours ── */
+  --section-title-color:    var(--section-key-color); /* top-level section name */
+  --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
+  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --danger-text:    #ffffff; /* text on a red (destructive) menu item */
+
+  /* ── Misc UI ── */
+  --statusbar-bg:   var(--bg2);
+  --dirty-color:    #fabd2f;
+  --wildcard-bg:    #3d3336;
+  --wildcard-hover: #4a3b3f;
+  --shadow:         #00000090;
+  --panel-hairline: rgb(0 0 0 / 28%); /* 1px line along a panel edge */
+  --panel-shadow:   rgb(0 0 0 / 40%); /* small soft shadow a panel casts beside that line */
+  --overlay:        #000000aa;
+  --scrollbar:      #3c3836;
+  --scrollbar-hover:#504945;
+
+  /* ── Terminal theme (Gruvbox Dark) ── */
+  --term-bg:             var(--editor-bg);
+  --term-fg:             #ebdbb2;
+  --term-cursor:         #ebdbb2;
+  --term-cursor-style:          bar;
+  --term-cursor-inactive-style: none;
+  --term-cursor-blink:          0;
+  --term-selection:      #504945;
+  --term-black:          #282828;
+  --term-red:            #cc241d;
+  --term-green:          #98971a;
+  --term-yellow:         #d79921;
+  --term-blue:           #458588;
+  --term-magenta:        #b16286;
+  --term-cyan:           #689d6a;
+  --term-white:          #a89984;
+  --term-bright-black:   #928374;
+  --term-bright-red:     #fb4934;
+  --term-bright-green:   #b8bb26;
+  --term-bright-yellow:  #fabd2f;
+  --term-bright-blue:    #83a598;
+  --term-bright-magenta: #d3869b;
+  --term-bright-cyan:    #8ec07c;
+  --term-bright-white:   #ebdbb2;
+}

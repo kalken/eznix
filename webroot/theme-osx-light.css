@@ -1,0 +1,124 @@
+/* OS X Light — the macOS light appearance: the system's own greys and status colours, with
+   its Graphite accent. The counterpart of theme-osx-dark.css. */
+:root {
+  /* ── Base palette ── */
+  --bg:   #ececec;
+  --bg2:  #f6f6f6;
+  --bg3:  #e4e4e4;
+  --bg4:  #d8d8d8;
+  --text:  #262626;
+  --text2: #595959;
+  --text3: color-mix(in srgb, #262626 45%, #ececec);
+  --accent:  #6e6e73;
+  --accent2: #8e8e93;
+  --green:  #248a3d;
+  --green2: #1d7332;
+  --red:    #d70015;
+  --purple: #8944ab;
+
+  /* ── Typography & shape ── */
+  --font: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  --radius:       8px;
+  --radius-sm:    5px;
+  --input-radius: 6px;
+  --term-padding: 4px;
+
+  /* ── Borders ── */
+  --border:  #d9d9d9;
+  --border2: #c6c6c8;
+  --input-border: #d1d1d6;
+  --select-option-bg:    #ffffff;
+  --select-option-color: #262626;
+  --select-option-hover: #e4e4e6;
+  --popup-bg: #ffffff; /* dialogs and tooltips */
+  /* ── Button states ── */
+  --btn-primary-bg:     #6e6e73;
+  --btn-primary-border: #6e6e73;
+  --btn-primary-hover:  #8e8e93;
+  --btn-primary-text:   #ffffff;
+
+  /* ── Selection / highlight ── */
+  --selected-bg:   #dcdce0;
+  --toggle-on-bg:  #8e8e93;
+  --toggle-on-knob:   #ffffff;
+  --toggle-on-border: #8e8e93;
+  --input-focus-border: var(--accent2);
+
+  /* ── Section keys / active tab ── */
+  --section-key-color: var(--text2);
+  --tab-active-bg:     #d0d0d4;
+  --tab-active-border: var(--border2);
+  --tab-active-text:   var(--text);
+
+  /* ── Semantic badges ── */
+  --required-bg:   color-mix(in srgb, #d70015 10%, #ffffff);
+  --required-text: var(--red);
+  --error-bg:      color-mix(in srgb, #d70015 8%, #ffffff);
+  --success-bg:    color-mix(in srgb, #248a3d 12%, #ffffff);
+  --success-border: color-mix(in srgb, #248a3d 40%, #ffffff);
+
+  /* ── Nix expression fields ── */
+  --expr-border: #d9d9d9;
+
+  /* ── Editor fields ── */
+  --field-bg: rgb(0 0 0 / 4%);
+  --editor-bg: var(--bg);  /* the editor page */
+  --card-bg:   #ffffff; /* the filled block of a top-level section */
+
+  /* ── Editor layout ── */
+  --key-width:      300px; /* key column; every value starts right after it */
+  --list-key-width: 160px; /* key column inside an object that is a list item */
+  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --row-height:     28px;  /* minimum height of an option row */
+  --page-margin:    20px;  /* around the top-level blocks, on every side */
+  --section-gap:    16px;  /* between top-level blocks */
+  --card-gap:       12px;   /* around a bordered sub-section */
+  --nested-section-gap: 10px; /* below a section nested inside a sub-section */
+  --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
+  --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */
+  --section-title-size: 13px; /* top-level section name */
+  --panel-shadow-size:  6px;  /* blur of the soft shadow beside a panel edge */
+
+  /* ── Editor colours ── */
+  --section-title-color:    var(--section-key-color); /* top-level section name */
+  --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
+  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --danger-text:    #ffffff; /* text on a red (destructive) menu item */
+
+  /* ── Misc UI ── */
+  --statusbar-bg:   var(--bg2);
+  --dirty-color:    #b25000;
+  --wildcard-bg:    #f2f2f7;
+  --wildcard-hover: #e5e5ea;
+  --shadow:         rgb(0 0 0 / 14%);
+  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
+  --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
+  --overlay:        #00000055;
+  --scrollbar:      #c7c7cc;
+  --scrollbar-hover:#aeaeb2;
+
+  /* ── Terminal theme ── */
+  --term-bg:             var(--editor-bg);
+  --term-fg:             #262626;
+  --term-cursor:         #262626;
+  --term-cursor-style:          bar;
+  --term-cursor-inactive-style: none;
+  --term-cursor-blink:          0;
+  --term-selection:      #b3d7ff;
+  --term-black:          #1d1d1f;
+  --term-red:            #d70015;
+  --term-green:          #248a3d;
+  --term-yellow:         #a67c00;
+  --term-blue:           #0040dd;
+  --term-magenta:        #8944ab;
+  --term-cyan:           #0071a4;
+  --term-white:          #8e8e93;
+  --term-bright-black:   #636366;
+  --term-bright-red:     #ff3b30;
+  --term-bright-green:   #34c759;
+  --term-bright-yellow:  #d9a400;
+  --term-bright-blue:    #007aff;
+  --term-bright-magenta: #af52de;
+  --term-bright-cyan:    #32ade6;
+  --term-bright-white:   #aeaeb2;
+}

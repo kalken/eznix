@@ -1,0 +1,8 @@
+{
+  "name": "system",
+  "description": "Export the whole flake as a zip, import one over it, restore an automatic backup.",
+  "server": "system.py",
+  "scripts": [
+    "system.js"
+  ]
+}
