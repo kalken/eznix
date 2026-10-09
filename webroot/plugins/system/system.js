@@ -167,7 +167,7 @@ async function showBackupsMenu(event) {
         danger: true,
         title: 'Click to restore it, right-click to delete it',
         onclick: () => restoreSystemBackup(b.name),
-        oncontextmenu: e => showContextMenu(e, [{ label: 'Delete this backup', danger: true, onclick: () => deleteSystemBackup(b) }]),
+        contextItems: [{ label: 'Delete this backup', danger: true, onclick: () => deleteSystemBackup(b) }],
       }))
     : [{ label: 'No system backups yet — Backup makes one, and so does any system import or restore, automatically.', disabled: true }];
   showContextMenu(anchor, items, { triggerEl: btn });

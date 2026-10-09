@@ -173,7 +173,8 @@ networking.hostName = "myhost";</pre>
 //                       the 'tabs' bar; returns it
 //   eznix.addMenuItem(menu, item)  an entry in the header's 'import' or 'export' menu
 //   showContextMenu(event, items)  a menu at the pointer; an item is { label, onclick, danger,
-//                       disabled, title, items (a submenu), oncontextmenu (its own right-click) }
+//                       disabled, title, items (a submenu), contextItems (a menu of its own
+//                       on a right-click, which leaves this one open) }
 //   apiFetch('/plugin/NAME/...')   what the plugin's own server code answers, if it has any
 //   eznix.on(event, fn) / eznix.emit(event, ...args)
 //     'init'   the page is starting up, nothing loaded yet: wire up controls
@@ -664,12 +665,19 @@ function _buildMenuLevel(items, depth) {
     } else {
       btn.onclick = () => { _closeContextMenu(); item.onclick(); };
       btn.addEventListener('mouseenter', closeDeeper);
-      // An entry can have a menu of its own, on a right-click: item.oncontextmenu(event), which
-      // usually calls showContextMenu() -- that closes this menu and opens the new one there.
-      // Without it a right-click on an entry gets nothing, not the browser's own menu.
+      // An entry can have a menu of its own, on a right-click: item.contextItems. It opens at
+      // the pointer as one more level of this menu, so the menu it belongs to stays where it
+      // is (opening it with showContextMenu() closed that one, which looked like a mistake).
+      // Without contextItems a right-click on an entry gets nothing, not the browser's menu.
       btn.addEventListener('contextmenu', e => {
         e.preventDefault();
-        if (item.oncontextmenu) item.oncontextmenu(e);
+        e.stopPropagation();
+        if (!item.contextItems) return;
+        closeDeeper();
+        const sub = _buildMenuLevel(item.contextItems, depth + 1);
+        document.body.appendChild(sub);
+        _positionMenuEl(sub, e.clientX, e.clientY);
+        _ctxMenuStack.push(sub);
       });
     }
     menu.appendChild(btn);
