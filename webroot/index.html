@@ -3427,7 +3427,10 @@ function renderEnumArray(container, arr, path, enumOpts) {
     // A free-text list (see nameListFor()) is thousands of names: nothing to show until
     // something's typed, and names starting with it come before ones merely containing it.
     if (enumOpts.freeText && !q) { acList.classList.add('hidden'); return; }
-    const pool = enumOpts.values.filter(v => !have.has(v));
+    // An enum's list is "what is left to add", so what's added drops out of it. A free-text
+    // list is searched like the packages are (renderPkgArray), and there a name that is
+    // missing reads as one that doesn't exist: it stays, and picking it says "already added".
+    const pool = enumOpts.freeText ? enumOpts.values : enumOpts.values.filter(v => !have.has(v));
     let hits = q ? pool.filter(v => v.toLowerCase().includes(q)) : pool;
     if (enumOpts.freeText) {
       const rank = v => { const l = v.toLowerCase(); return l === q ? 0 : l.startsWith(q) ? 1 : 2; };
