@@ -3,7 +3,8 @@
 eznix — a web editor for Nix configurations (NixOS, nix-darwin, home-manager).
 
 One file, standard library only. It serves the page in webroot/ and edits the *.json files in
-a folder of the flake; a small default.nix there (json2nix.nix) merges them into the system.
+a folder of the flake; the flake imports that folder through eznix.lib.jsonDir (json2nix.nix),
+which merges them into the system.
 
 Two ways it runs:
 
@@ -25,6 +26,8 @@ Configuration (eznix.toml; every key optional unless noted):
 
   flake           the flake being edited (default /etc/nixos, /etc/nix-darwin on macOS)
   config_dir      the folder of *.json files (default <flake>/eznix)
+  exclude         paths in config_dir that are not configuration, relative to it: a file, or
+                  a folder with everything under it
   default_file    file to open first
   state_dir       sessions, backups, autocomplete data, keys (default ~/.local/state/eznix)
   autocomplete_dir  where the generated suggestions are read from (default <state_dir>/autocomplete)
@@ -111,6 +114,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 FLAKE_DIR        = '/etc/nix-darwin' if sys.platform == 'darwin' else '/etc/nixos'
 CONFIG_DIR       = None          # the folder of *.json files being edited
+EXCLUDE          = []            # paths in it that are not configuration (see _excluded())
 DEFAULT_FILE     = None          # file to prefer as the first tab
 STATE_DIR        = os.path.expanduser('~/.local/state/eznix')
 AUTOCOMPLETE_DIR = None          # generated suggestions; <state>/autocomplete unless set
@@ -643,6 +647,17 @@ def _is_disabled_folder_name(name):
     return name.startswith('.') and name.endswith('.disabled') and len(name) > len('..disabled')
 
 
+def _excluded(rel):
+    """Is this path, relative to CONFIG_DIR, one `exclude` leaves out: listed itself, or inside
+    a listed folder? Excluded paths are no tabs and no folders, and can't be read or written
+    through the editor. For a config_dir that holds other JSON than configuration -- the
+    flake's own root, with its package.json. json2nix.nix takes the same list, and the two
+    have to agree: left out here only, a file is still built; there only, it is a tab that
+    changes nothing."""
+    rel = rel.replace('\\', '/').strip('/')
+    return any(rel == e or rel.startswith(e + '/') for e in EXCLUDE)
+
+
 def resolve_config_path(name):
     """Return the absolute path for a config file name inside CONFIG_DIR, or None if invalid.
 
@@ -663,7 +678,7 @@ def resolve_config_path(name):
     if not (name.endswith('.json') or name.endswith('.json.disabled')):
         return None
     parts = name.replace('\\', '/').split('/')
-    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts):
+    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts) or _excluded(name):
         return None
     base = os.path.realpath(CONFIG_DIR)
     full = os.path.realpath(os.path.join(base, name))
@@ -685,14 +700,16 @@ def list_config_files():
     base = os.path.realpath(CONFIG_DIR)
     names = []
     for root, dirs, filenames in os.walk(base):
-        dirs[:] = [d for d in dirs if not d.startswith('.') or _is_disabled_folder_name(d)]
+        rel_of = lambda n: os.path.relpath(os.path.join(root, n), base).replace(os.sep, '/')
+        dirs[:] = [d for d in dirs if (not d.startswith('.') or _is_disabled_folder_name(d)) and not _excluded(rel_of(d))]
         for fn in filenames:
             if fn == 'custom-options.json':
                 continue
             if not (fn.endswith('.json') or fn.endswith('.json.disabled')):
                 continue
-            rel = os.path.relpath(os.path.join(root, fn), base).replace(os.sep, '/')
-            names.append(rel)
+            rel = rel_of(fn)
+            if not _excluded(rel):
+                names.append(rel)
     names.sort()
     return names
 
@@ -709,10 +726,9 @@ def list_config_folders():
     base = os.path.realpath(CONFIG_DIR)
     names = []
     for root, dirs, _filenames in os.walk(base):
-        dirs[:] = [d for d in dirs if not d.startswith('.') or _is_disabled_folder_name(d)]
-        for d in dirs:
-            rel = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
-            names.append(rel)
+        rel_of = lambda n: os.path.relpath(os.path.join(root, n), base).replace(os.sep, '/')
+        dirs[:] = [d for d in dirs if (not d.startswith('.') or _is_disabled_folder_name(d)) and not _excluded(rel_of(d))]
+        names += [rel_of(d) for d in dirs]
     names.sort()
     return names
 
@@ -723,7 +739,7 @@ def resolve_folder_path(name):
     if not name:
         return None
     parts = name.replace('\\', '/').split('/')
-    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts):
+    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts) or _excluded(name):
         return None
     base = os.path.realpath(CONFIG_DIR)
     full = os.path.realpath(os.path.join(base, name))
@@ -1942,7 +1958,7 @@ def _start_terminal_for_self(cfg):
 
 
 def main():
-    global FLAKE_DIR, CONFIG_DIR, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
+    global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
     global BIND_ADDR, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
@@ -1986,6 +2002,7 @@ def main():
     FLAKE_DIR  = path(args.flake or cfg.get('flake') or FLAKE_DIR)
     CONFIG_DIR = path(args.config_dir or cfg.get('config_dir') or os.path.join(FLAKE_DIR, 'eznix'))
     DEFAULT_FILE = cfg.get('default_file')
+    EXCLUDE = [e for e in (str(x).replace('\\', '/').strip('/') for x in cfg.get('exclude', [])) if e]
     STATE_DIR  = path(args.state_dir or cfg.get('state_dir') or STATE_DIR)
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     try:

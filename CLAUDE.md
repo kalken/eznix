@@ -63,8 +63,8 @@ thing they sit on, and keep them when moving code.
 
 A web editor for Nix configuration: NixOS, nix-darwin and standalone home-manager. It edits
 `*.json` files in one folder inside the user's flake (`config_dir`, default `<flake>/eznix`),
-each file a tab, merged at evaluation time by `nix/json2nix.nix` (installed there as
-`default.nix`). No build step, no framework, no dependencies beyond Python's standard library
+each file a tab, merged at evaluation time by `nix/json2nix.nix`, which the user's flake
+imports as `eznix.lib.jsonDir ./eznix`. No build step, no framework, no dependencies beyond Python's standard library
 (`python-pam` for system-password login and `cryptography` for `--generate-ca` are optional).
 
 It is a from-scratch rewrite of an earlier project, ezconf, which ran as root. Nothing here
@@ -81,6 +81,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/plugins/NAME/` | the shipped plugins: `documents`, `system`, `password` |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `test/test_server.py` | server tests |
+| `test/json/` | a folder for `checks.json-dir` (`nix flake check --no-build`) |
 
 ## Design decisions worth knowing
 
@@ -136,6 +137,17 @@ shell (`terminal_end_on_logout`). Any other GET that changes something would nee
 way is a plugin calling `api.login(check, user)`; the shipped `password` plugin is the one
 configured password. System login is on when `users` is set or no plugin brought a login, and
 eznix refuses to start if nobody could log in.
+
+**eznix installs nothing in the folder it edits.** `json2nix.nix` used to be copied there as
+`default.nix` (`imports = [ ./eznix ]`); the user chose the function instead
+(`lib.jsonDir DIR`, or `{ dir, exclude }`), so the folder can be one with a `default.nix` and
+other JSON of its own, the flake's root included. `exclude` exists twice and the two must
+agree: the function's argument keeps a path out of the build, the editor's setting
+(`_excluded()`) keeps it from being a tab. A module can't pass its option to the function
+(what the function reads decides `config`, so reading `config` there recurses). Raw
+expressions (`_expr`) go through `builtins.toFile`, which fails under `nix flake check`'s
+read-only evaluation ("path ... expr.nix is not valid"); a rebuild is unaffected. That is as
+old as the feature. `checks.json-dir` covers the function, without `_expr` for that reason.
 
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.

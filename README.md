@@ -23,15 +23,29 @@ Run this way, eznix and its terminal both run as you. It keeps its own data in
 
 eznix edits `*.json` files in one folder inside your flake (`<flake>/eznix` by default). Each
 file is a tab in the editor; subfolders group them. Import the folder once from your
-configuration:
+configuration, through the function eznix's flake provides:
 
 ```nix
-imports = [ ./eznix ];
+imports = [ (inputs.eznix.lib.jsonDir ./eznix) ];
 ```
 
-The `default.nix` eznix puts in that folder merges every JSON file in it, the same way Nix
-merges modules. If the flake is a git repository, the folder has to be tracked by git for Nix
-to see it.
+It merges every JSON file in the folder, the same way Nix merges modules. eznix puts nothing
+of its own in there. If the flake is a git repository, the folder has to be tracked by git
+for Nix to see it.
+
+The folder can be any folder (`configDir`), also one that holds other things. JSON in it
+that is not configuration has to be left out, in both places: for the build, and for the
+editor, which would otherwise show it as a tab.
+
+```nix
+imports = [ (inputs.eznix.lib.jsonDir { dir = ./.; exclude = [ "package.json" "vendor" ]; }) ];
+
+services.eznix.configDir = "/etc/nixos";
+services.eznix.exclude   = [ "package.json" "vendor" ];
+```
+
+An entry is a path inside the folder: a file, or a folder with everything under it.
+Dot-folders are always left out.
 
 A value can also be a raw Nix expression (right-click a value), and anything can be switched
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
@@ -48,13 +62,15 @@ inputs.eznix.url = "github:kalken/eznix";
 ### NixOS
 
 ```nix
-imports = [ inputs.eznix.nixosModules.default ];
+imports = [ inputs.eznix.nixosModules.default (inputs.eznix.lib.jsonDir ./eznix) ];
 
 services.eznix = {
   enable = true;
   users  = [ "alice" ];
 };
 ```
+
+The `eznix` folder doesn't have to exist yet; the first rebuild creates it.
 
 The editor runs as its own account (`eznix`), never as root. Everyone in `users` logs in with
 their own system password and gets a terminal of their own, running as them. The JSON folder
@@ -66,7 +82,7 @@ terminal. See [Running commands as root](#running-commands-as-root).
 ### macOS (nix-darwin)
 
 ```nix
-imports = [ inputs.eznix.darwinModules.default ];
+imports = [ inputs.eznix.darwinModules.default (inputs.eznix.lib.jsonDir ./eznix) ];
 
 system.primaryUser = "alice";
 services.eznix.enable = true;
@@ -78,7 +94,7 @@ your macOS password.
 ### Other Linux (home-manager)
 
 ```nix
-imports = [ inputs.eznix.homeModules.default ];
+imports = [ inputs.eznix.homeModules.default (inputs.eznix.lib.jsonDir ./eznix) ];
 
 services.eznix = {
   enable       = true;
@@ -97,6 +113,7 @@ The common ones, the same in all three modules:
 |---|---|---|
 | `flake` | `/etc/nixos`, `/etc/nix-darwin`, `~/.config/home-manager` | the flake being edited |
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
+| `exclude` | `[ ]` | paths in it that are not configuration |
 | `users` | | who may log in with their system password |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
 | `listen`, `port` | `127.0.0.1`, `9090` | where the editor listens |

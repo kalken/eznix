@@ -6,6 +6,9 @@
 flake        = "/etc/nixos"            # /etc/nix-darwin on macOS
 # config_dir   = "/etc/nixos/eznix"    # default: <flake>/eznix
 default_file = "configuration.json"   # the file to open first
+# exclude    = ["package.json", "vendor"]   # paths in config_dir that are not configuration:
+#                                     # a file, or a folder with everything under it. Give
+#                                     # eznix.lib.jsonDir the same list.
 
 # Where eznix keeps its own data: sessions, backups, suggestions, keys.
 # state_dir        = "~/.local/state/eznix"

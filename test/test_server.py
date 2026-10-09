@@ -95,7 +95,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'hosts = ["https://nix.example.org"]\nplugins_dir = "{tmp}/plugins"\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
+                           'conf.toml': f'hosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -160,6 +160,10 @@ def main():
         finally:
             proc.terminate(); proc.wait()
 
+        # Other JSON than configuration in the folder, which conf.toml excludes.
+        os.makedirs(f'{tmp}/flake/eznix/vendor/deep')
+        for name in ('package.json', 'vendor/deep/x.json', 'vendored.json'):
+            open(f'{tmp}/flake/eznix/{name}', 'w').write('{}')
         proc = start(tmp, '--no-terminal', '--config', f'{tmp}/conf.toml')
         try:
             b = Browser()
@@ -171,6 +175,13 @@ def main():
             check('a plugin switched off is gone', 'plugins/documents' not in page
                   and b.request('/api/v1/plugin/documents/files')[0] == 404)
             save = lambda origin: b.request('/api/v1/file/save?file=a.json', b'{"a": 2}', headers={'Origin': origin})[0]
+            listed = b.json('/api/v1/files')[1]
+            check('excluded paths are no tabs and no folders, and a name that only starts like one is kept',
+                  listed['files'] == ['a.json', 'vendored.json'] and listed['folders'] == [], listed)
+            check('and cannot be read or written through the editor',
+                  b.request('/api/v1/file?file=package.json')[0] != 200
+                  and b.request('/api/v1/file/save?file=vendor/deep/x.json', b'{"a": 2}')[0] == 400
+                  and open(f'{tmp}/flake/eznix/vendor/deep/x.json').read() == '{}')
             check("behind a proxy, the page's address listed in hosts is accepted, and only that",
                   [save(o) for o in ('https://nix.example.org', 'http://nix.example.org', 'https://nix.example.org:8443')] == [200, 403, 403])
         finally:

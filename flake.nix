@@ -30,11 +30,35 @@
           };
 
           devShells.default = pkgs.mkShell { packages = [ p.python pkgs.nix pkgs.nodejs ]; };
+
+          # lib.jsonDir over test/json: files merge, subfolders count, and what is excluded,
+          # hidden or disabled stays out (each of those holds an option that doesn't exist).
+          # Decided while evaluating, so `nix flake check --no-build` runs it. No raw expression
+          # ("_expr") in there: those go through builtins.toFile, which the read-only evaluation
+          # of `nix flake check` cannot do.
+          checks.json-dir =
+            let
+              inherit (pkgs) lib;
+              got = (lib.evalModules {
+                modules = [
+                  (self.lib.jsonDir { dir = ./test/json; exclude = [ "skip.json" "vendor/" ]; })
+                  {
+                    options.t.list = lib.mkOption { type = lib.types.listOf lib.types.int; };
+                    options.t.vals = lib.mkOption { type = lib.types.attrsOf lib.types.str; };
+                    config._module.args.pkgs = pkgs;
+                  }
+                ];
+              }).config.t;
+              want = { list = [ 1 2 ]; vals = { a = "from a"; b = "from b"; }; };
+            in
+            if got // { list = lib.sort builtins.lessThan got.list; } == want then pkgs.emptyFile
+            else throw "lib.jsonDir: got ${builtins.toJSON got}, wanted ${builtins.toJSON want}";
         });
     in {
       packages  = builtins.mapAttrs (_: s: s.packages)  perSystem;
       apps      = builtins.mapAttrs (_: s: s.apps)      perSystem;
       devShells = builtins.mapAttrs (_: s: s.devShells) perSystem;
+      checks    = builtins.mapAttrs (_: s: { inherit (s.checks) json-dir; }) perSystem;
 
       # pkgs.eznix, and its parts as pkgs.eznix.autocomplete / pkgs.eznix.terminal (also
       # pkgs.eznix-autocomplete, pkgs.eznix-terminal), for a configuration that wants one of
@@ -42,6 +66,11 @@
       overlays.default = final: prev:
         let p = import ./nix/packages.nix { pkgs = final; version = self.shortRev or "dev"; };
         in { inherit (p) eznix eznix-terminal eznix-autocomplete; };
+
+      # The folder of *.json files eznix edits, as a module for `imports`:
+      #   eznix.lib.jsonDir ./eznix
+      #   eznix.lib.jsonDir { dir = ./eznix; exclude = [ "notes.json" "vendor" ]; }
+      lib.jsonDir = arg: import ./nix/json2nix.nix (if builtins.isAttrs arg then arg else { dir = arg; });
 
       nixosModules.default = import ./nix/nixos.nix self;
       darwinModules.default = import ./nix/darwin.nix self;

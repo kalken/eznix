@@ -27,6 +27,7 @@ let
   settings = noNulls ({
     flake            = cfg.flake;
     config_dir       = cfg.configDir;
+    exclude          = cfg.exclude;
     default_file     = cfg.defaultFile;
     state_dir        = stateDir;
     listen           = cfg.listen;
@@ -80,11 +81,10 @@ in
     exec ${packages.eznix-autocomplete}/bin/eznix-autocomplete --flake ${lib.escapeShellArg cfg.flake} --output "${out}" "$@"
   '';
 
-  # The folder of *.json files, and the default.nix in it that turns them into configuration.
+  # The folder of *.json files. Nothing is put in it: what turns the files into configuration
+  # is `eznix.lib.jsonDir`, imported by the flake (see json2nix.nix for what it replaced).
   configDirScript = ''
     mkdir -p ${lib.escapeShellArg cfg.configDir}
-    cp ${./json2nix.nix} ${lib.escapeShellArg cfg.configDir}/default.nix
-    chmod 644 ${lib.escapeShellArg cfg.configDir}/default.nix
   '';
 
   assertions = [
@@ -114,7 +114,13 @@ in
       type        = types.str;
       default     = "${cfg.flake}/eznix";
       defaultText = lib.literalExpression ''"''${flake}/eznix"'';
-      description = "The folder of *.json files eznix edits, each one a tab. It starts empty. Import it from your configuration (`imports = [ ./eznix ];`): the default.nix eznix puts there merges every file in it.";
+      description = "The folder of *.json files eznix edits, each one a tab. It starts empty. Import it from your configuration with `imports = [ (inputs.eznix.lib.jsonDir ./eznix) ];`, which merges every file in it.";
+    };
+    exclude = mkOption {
+      type        = types.listOf types.str;
+      default     = [ ];
+      example     = [ "package.json" "vendor" ];
+      description = "Paths in configDir, relative to it, that are not configuration: a file, or a folder with everything under it. The editor leaves them alone. Give `lib.jsonDir` the same list (`{ dir = ./eznix; exclude = [ ... ]; }`), which is what keeps them out of the configuration; a module cannot do that for you.";
     };
     defaultFile = mkOption {
       type        = types.str;
