@@ -30,6 +30,10 @@ body {
   flex-shrink: 0;
 }
 .header-actions { display: flex; gap: 8px; margin-left: auto; }
+/* The line between the plugins' buttons and Log out. Only there when a button stands before it,
+   so a page without plugins has no line leading its buttons. */
+.header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
+.header-actions .btn ~ .header-sep { display: block; }
 
 .btn {
   background: var(--bg3);
@@ -66,7 +70,7 @@ body {
 
 /* ── Tab bar (multi-file mode) ── */
 /* .tab-bar-row carries the bar's own background/border — split out from #tab-bar so the
-   search/Tree buttons (.tab-bar-actions) can sit in the same visual bar, at its right edge,
+   search button (.tab-bar-actions) can sit in the same visual bar, at its right edge,
    instead of getting a whole separate (near-empty, once the add-input is hidden) bar of their
    own below it — see .topbar below. */
 .tab-bar-row {
@@ -75,7 +79,7 @@ body {
      because .main below is positioned and would otherwise paint over the shadow. */
   box-shadow: 0 1px 0 var(--panel-hairline), 0 1px var(--panel-shadow-size) var(--panel-shadow);
   position: relative;
-  z-index: 30; /* above the tree sidebar (20) too, so the shade falls across its top as well */
+  z-index: 30; /* above what floats over the editor (plugins' panels), so the shade falls across their top */
   display: flex;
   align-items: flex-start;
   flex-shrink: 0;
@@ -112,69 +116,13 @@ body {
 /* ── Layout ── */
 .layout { display: flex; flex: 1; overflow: hidden; }
 
-/* ── Sidebar ── */
-/* Floats over .editor-area (position: absolute, anchored to .main below) instead of occupying
-   its own column at the screen's right edge — .main stays the visible width either way, this
-   panel just overlaps its right side rather than shrinking it. */
-.sidebar {
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: max-content;
-  min-width: 140px;
-  max-width: 70%;
-  background: var(--bg2);
-  /* Same panel edge as the top bar (see .tab-bar-row), along its left side */
-  box-shadow: -1px 0 0 var(--panel-hairline), -1px 0 var(--panel-shadow-size) var(--panel-shadow);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  z-index: 20;
-}
-.sidebar-header {
-  padding: 8px 12px;
-  border-bottom: 1px solid var(--border);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text3);
-}
-.tree { overflow-y: auto; flex: 1; padding: 4px 0; }
-.tree-row {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 3px 6px 3px calc(6px + var(--depth, 0) * 8px);
-  cursor: pointer;
-  border-radius: var(--radius-sm);
-  user-select: none;
-  transition: background .1s;
-}
-.tree-row:hover { background: var(--bg3); }
-.tree-row.selected { background: var(--selected-bg); }
-.tree-toggle {
-  width: 16px;
-  text-align: center;
-  color: var(--text3);
-  font-size: 9px;
-  flex-shrink: 0;
-  transition: transform .15s;
-}
-.tree-toggle.open { transform: rotate(90deg); }
-.tree-label { white-space: nowrap; color: var(--accent); font-size: 12px; padding-right: 12px; }
-.tree-leaf .tree-label { font-size: 11px; font-weight: 400; }
-.tree-leaf { opacity: 0.8; }
-.tree-leaf:hover { opacity: 1; }
-.tree-children { margin-left: 8px; }
-
 /* ── Main ── */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; position: relative; }
 
 /* Only ever houses the always-hidden add-input/button below — a home for showAddOptionMenu() to
    detach them from and restore them to (right-click "Add option..."/"Add sub option..." is the
    only way to open them now, via the floating panel). display:contents so it generates no box
-   of its own — it used to render as a full visual bar with nothing in it but the Tree
+   of its own — it used to render as a full visual bar with nothing in it but one
    button over on the right (everything else inside it hidden by the rule below), which is why
    it now lives in .tab-bar-actions instead, alongside the tab bar. */
 .topbar { display: contents; }
@@ -769,6 +717,8 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .context-menu-item.danger:hover { background: var(--red); color: var(--danger-text); }
 .context-menu-item.has-submenu { justify-content: space-between; gap: 8px; }
 .context-menu-item.has-submenu::after { content: '▶'; font-size: 8px; opacity: 0.6; }
+/* Its submenu will open to the left, for lack of room on the right: see _markSubmenuSides(). */
+.context-menu-item.has-submenu.opens-left::after { content: '◀'; }
 .context-menu-item.has-aside { justify-content: space-between; gap: 14px; padding-right: 4px; }
 /* The mark at the end of an entry with a second action (see item.aside). Outlined on hover
    rather than filled: the line under it may already be filled, red, by its own hover. */

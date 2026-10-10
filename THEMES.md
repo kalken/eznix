@@ -70,7 +70,7 @@ comes from them.
 | Surface | Variable | Notes |
 |---|---|---|
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
-| Bars and panels: top bar, tab bar, status bar, terminal bar, tree | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
+| Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
 | A top-level section's card | `--card-bg` | Must be told apart from the page it sits on |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 

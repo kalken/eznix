@@ -50,10 +50,10 @@ async function restoreSystemBackup(name) {
 // is saved, as with an export, so unsaved edits are not in it -- said in the message, since
 // "I backed up before trying this" is exactly when there are some. Nothing to confirm: it
 // changes no file of the flake. It can push the oldest backup out, like any new one.
+let _backingUp = false;
 async function backupSystem() {
-  const btn = document.getElementById('backup-btn');
-  if (btn.disabled) return;
-  btn.disabled = true;
+  if (_backingUp) return;
+  _backingUp = true;
   try {
     const res = await apiFetch('/plugin/system/backup', { method: 'POST' });
     const data = await res.json().catch(() => ({}));
@@ -62,12 +62,12 @@ async function backupSystem() {
   } catch (e) {
     setStatus('Backup failed: ' + e.message, 4000, 'err');
   } finally {
-    btn.disabled = false;
+    _backingUp = false;
   }
 }
 
 // Removes one backup from the list, for good: the ✕ at the end of its line in
-// showBackupsMenu(). Only the backup goes; the flake isn't touched.
+// showSystemMenu(). Only the backup goes; the flake isn't touched.
 async function deleteSystemBackup(backup) {
   const when = new Date(backup.mtime * 1000).toLocaleString();
   if (!confirm(`Delete the backup of ${when}?\n\nIt cannot be brought back.`)) return;
@@ -129,20 +129,20 @@ function initSystemImportButton() {
   });
 }
 
-// The Restore button opens a dropdown, not a modal — showContextMenu doesn't care whether it's
-// triggered by a right-click or a plain click, so it's reused here as a left-click dropdown menu.
-// Used to be split into "File"/"System" submenus, but restoring a specific file's own backup
-// moved to that file's tab right-click menu instead (see _makeTab()'s oncontextmenu) — this button
-// only ever covers the whole-NIXOS_TARGET case now (see eznix.py's
-// backup_system()/_restore_system_zip()), so there's nothing left to choose between; it goes
-// straight to the list. Named "Restore" rather than "Backups" since every action in this menu is a
-// restore; making one is the Backup button beside it (backupSystem()). The list holds those and
-// the ones made automatically right before an import or a restore overwrites something, so it
-// is mostly a history of "state right before the last few destructive writes". Clicking an
-// entry restores it directly (via restoreSystemBackup()'s own
-// confirm()) -- there's no separate download action either, since downloading a system backup for
-// its own sake isn't something this app needs to support.
-async function showBackupsMenu(event) {
+// One button, System, opening a dropdown with everything this plugin does: Backup, Import, Export,
+// and the backups to restore. showContextMenu doesn't care whether it's
+// triggered by a right-click or a plain click, so it's reused here as a left-click dropdown.
+// They were four things in the header until 2026-10 (a Backup and a Restore button of this
+// plugin's, and a "System" entry in the page's own Import and Export menus beside "Files"):
+// the user wanted one button, and the files' import and export left to the tabs' menus.
+//
+// Restore's list holds the backups made with Backup and the ones made automatically right
+// before an import or a restore overwrites something, so it is mostly a history of "state
+// right before the last few destructive writes". Clicking an entry restores it directly (via
+// restoreSystemBackup()'s own confirm()) -- there's no separate download action, since
+// downloading a system backup for its own sake isn't something this app needs to support.
+// Restoring a single file's backup is on that file's tab; this is the whole system.
+async function showSystemMenu(event) {
   // showContextMenu positions itself at event.clientX/clientY — for a right-click that's exactly
   // the cursor, which is fine, but for this left-click button it'd be wherever inside the button
   // you happened to click. Anchor to the button's own bottom-left corner instead, like a normal
@@ -156,46 +156,49 @@ async function showBackupsMenu(event) {
     clientX: rect.left, clientY: rect.bottom + 4,
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
+  // Backup, Import, Export, then the backups to restore: the order the user asked for, which
+  // also puts the one part whose length varies last.
+  const items = [];
   let systemBackups = [];
-  try {
-    const res = await apiFetch('/plugin/system/backups');
-    if (res.ok) systemBackups = (await res.json()).backups || [];
-  } catch (e) { /* falls through to the empty-state item below */ }
-  const items = systemBackups.length
-    ? systemBackups.map(b => ({
-        label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
-        danger: true,
-        title: 'Restore this backup',
-        onclick: () => restoreSystemBackup(b.name),
-        aside: { label: '✕', title: 'Delete this backup', onclick: () => deleteSystemBackup(b) },
-      }))
-    : [{ label: 'No system backups yet — Backup makes one, and so does any system import or restore, automatically.', disabled: true }];
+  if (SYSTEM_BACKUP_ENABLED) {
+    try {
+      const res = await apiFetch('/plugin/system/backups');
+      if (res.ok) systemBackups = (await res.json()).backups || [];
+    } catch (e) { /* falls through to the empty-state item below */ }
+    items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
+  }
+  items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
+  items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
+  if (SYSTEM_BACKUP_ENABLED) {
+    items.push({ separator: true });
+    // The backups are lines of this menu, under a heading, and not a submenu of a "Restore"
+    // entry as they first were: the button is at the window's right edge, so the submenu had
+    // to open on the left, a lone box out over the tab bar, which looked strange to the user.
+    items.push({ label: systemBackups.length ? 'Restore' : 'Restore: no backups yet', disabled: true });
+    systemBackups.forEach(b => items.push({
+      label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
+      danger: true,
+      title: 'Restore this backup',
+      onclick: () => restoreSystemBackup(b.name),
+      aside: { label: '✕', title: 'Delete this backup', onclick: () => deleteSystemBackup(b) },
+    }));
+  }
   showContextMenu(anchor, items, { triggerEl: btn });
 }
 
-eznix.addMenuItem('export', { label: 'System', title: NIXOS_TARGET, onclick: () => exportSystem() });
-eznix.addMenuItem('import', { label: 'System', onclick: () => importSystem() });
 eznix.on('init', () => {
   const input = document.createElement('input');
   input.type = 'file'; input.id = 'system-import-input'; input.accept = '.zip';
   document.querySelector('.header-actions').prepend(input);
   initSystemImportButton();
-  // Restoring a single file's backup is on that file's tab; this button is the whole system.
-  // The icon is the reload button's circular arrow plus a clock hand (Lucide's "history").
-  if (SYSTEM_BACKUP_ENABLED) {
-    eznix.addButton('header', {
-      id: 'restore-btn',
-      tooltip: 'Restore the whole system from a backup',
-      html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3.5-7.1"/><polyline points="3 3 3 8 8 8"/><path d="M12 7v5l4 2"/></svg> Restore',
-      onclick: showBackupsMenu,
-    });
-    // Added after Restore, so it lands in front of it: addButton() puts each new header button
-    // first. The icon is a storage box (Lucide's "archive").
-    eznix.addButton('header', {
-      id: 'backup-btn',
-      tooltip: 'Back up the whole system now, as it is on disk',
-      html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="5" rx="1"/><path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8"/><path d="M10 12h4"/></svg> Backup',
-      onclick: backupSystem,
-    });
-  }
+  // The icon is a disk drive (Lucide's "hard-drive"), with the name beside it as on Documents.
+  // It lands in front of Documents, which the user wanted (so this menu hangs further from the
+  // window's edge): addButton() puts each new header button first, and this one is added on
+  // 'init', after the documents plugin has added its own while loading.
+  eznix.addButton('header', {
+    id: 'system-btn',
+    tooltip: 'Back up, restore, import or export the whole system',
+    html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>System',
+    onclick: showSystemMenu,
+  });
 });

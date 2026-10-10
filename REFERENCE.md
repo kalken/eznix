@@ -118,6 +118,10 @@ is itself part of. Anything can be switched
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
 every save keeps the previous version of the file (right-click a tab, Restore).
 
+Importing and exporting files is on right-click too: a tab for one file, a folder for its
+files, and the empty part of the tab bar for all of them (Import, Export all). The System
+button at the top is the whole flake instead; see [plugins](#plugins).
+
 ## Notes on the quick start
 
 - **Without Nix**, `python3 bin/eznix.py --flake DIR --password PW` from a checkout does what
@@ -231,7 +235,8 @@ under `services.eznix.buttons` in any of your files, and they appear straight aw
 ] } } }
 ```
 
-`save_first` makes a button unavailable while there are unsaved changes. Buttons with the same
+A button with `save_first` saves any unsaved changes before it runs its command; the small
+Save icon on it is greyed until there is something to save. Buttons with the same
 `menu` become one dropdown.
 
 ## Suggestions
@@ -307,8 +312,8 @@ so it works the same everywhere and can be left out. Three ship with it:
 
 | Plugin | |
 |---|---|
-| `system` | export the whole flake as a zip, import one over it, back it up, restore a backup |
-| `documents` | read the flake's Markdown files beside the editor |
+| `system` | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
+| `documents` | the Documents button: read the flake's Markdown files beside the editor |
 | `password` | log in with one configured password |
 
 Leave one out, or change its settings, by name:

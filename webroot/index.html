@@ -57,6 +57,9 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
 
 <div class="header">
 <div class="btn-group">
+    <!-- Save leads the group of what is done to the edits themselves (save, undo, redo, the two
+         reloads). It was at the far right beside Log out until 2026-10. -->
+    <button class="btn" id="save-btn" onclick="saveToServer()" data-tooltip="Save all changes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save</button>
     <button class="btn" onclick="undo()" data-tooltip="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
     <button class="btn" onclick="redo()" data-tooltip="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg></button>
     <button class="btn" onclick="reloadAllFiles()" data-tooltip="Reload all files from disk"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3.5-7.1"/><polyline points="3 3 3 8 8 8"/></svg></button>
@@ -64,9 +67,8 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
   </div>
   <div class="header-actions">
     <input type="file" id="import-file-input" accept=".json,.nix,.zip">
-    <button class="btn" onclick="showImportMenu(event)" data-tooltip="Import"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Import</button>
-    <button class="btn" onclick="showExportMenu(event)" data-tooltip="Export"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg> Export</button>
-    <button class="btn" id="save-btn" onclick="saveToServer()" data-tooltip="Save all changes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save</button>
+    <!-- Between the plugins' buttons, which addButton() puts in front, and the page's own. -->
+    <div class="header-sep"></div>
     <button class="btn" onclick="location.href='/logout'" data-tooltip="Log out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
   </div>
 </div>
@@ -75,7 +77,6 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
   <div class="tab-bar" id="tab-bar"></div>
   <div class="tab-bar-actions">
     <button class="btn" id="search-toggle-btn" onclick="toggleSearchPanel()" data-tooltip="Search option paths and values (Ctrl+F)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
-    <button class="btn" id="tree-toggle-btn" onclick="toggleTree()" data-tooltip="Show/hide the configuration tree"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 5h13"/><path d="M13 12h8"/><path d="M13 19h8"/><path d="M3 10a2 2 0 0 0 2 2h3"/><path d="M3 5v12a2 2 0 0 0 2 2h3"/></svg></button>
   </div>
 </div>
 
@@ -102,12 +103,7 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
     <div class="editor-area" id="editor-area">
       <div class="editor-placeholder">Loading…</div>
     </div>
-    <!-- Floats over the editor area (position: absolute, .main is its positioning context)
-         instead of occupying its own column. Plugins add their own overlays to .main too. -->
-    <div class="sidebar hidden" id="sidebar">
-      <div class="sidebar-header">Configuration tree</div>
-      <div class="tree" id="tree-root"></div>
-    </div>
+    <!-- Plugins add their overlays here: position: absolute, .main is their positioning context. -->
   </div>
 </div>
 
@@ -169,9 +165,9 @@ networking.hostName = "myhost";</pre>
 // eznix and not a plugin, but is loaded and talked to the same way.) Nobody outside eznix
 // depends on this interface yet, so it may still change.
 //   eznix.config.NAME   that plugin's settings, from the server
-//   eznix.addButton(where, { id, html, tooltip, onclick })  a button in the 'header' or
-//                       the 'tabs' bar; returns it
-//   eznix.addMenuItem(menu, item)  an entry in the header's 'import' or 'export' menu
+//   eznix.addButton('header', { id, html, tooltip, onclick })  a button in the header, in
+//                       front of the ones there; returns it. ('header' is the one place there
+//                       is: the tab bar was another until its last user, Documents, moved.)
 //   showContextMenu(event, items)  a menu at the pointer; an item is { label, onclick, danger,
 //                       disabled, title, items (a submenu), aside ({ label, title, onclick }:
 //                       a small mark at the end of the line with an action of its own) }
@@ -186,8 +182,6 @@ networking.hostName = "myhost";</pre>
 const eznix = {
   config: %%EZNIX_PLUGIN_CONFIG%%,
   _handlers: {},
-  menus: { import: [], export: [] },
-  addMenuItem(menu, item) { this.menus[menu].push(item); },
   addButton(where, { id, html, tooltip, onclick }) {
     const btn = document.createElement('button');
     btn.className = 'btn';
@@ -195,15 +189,7 @@ const eznix = {
     btn.innerHTML = html;
     btn.onclick = onclick;
     if (tooltip) _wireHoverTooltip(btn, tooltip);
-    if (where === 'tabs') {
-      // Its own wrapper, so a plugin can hide its button (btn.parentElement) without a gap.
-      const wrap = document.createElement('div');
-      wrap.className = 'tab-bar-actions';
-      wrap.appendChild(btn);
-      document.getElementById('tab-bar').after(wrap);
-    } else {
-      document.querySelector('.header-actions').prepend(btn);
-    }
+    document.querySelector('.header-actions').prepend(btn);
     return btn;
   },
   on(event, fn) { (this._handlers[event] = this._handlers[event] || []).push(fn); },
@@ -612,6 +598,23 @@ function _positionSubmenu(menu, anchorRect) {
   menu.style.top = y + 'px';
 }
 
+// The arrow on an item with a submenu points to the side that submenu will open on: left when
+// there is no room to the right, as for a menu hanging from a button at the window's right
+// edge (the System menu's Restore, where an arrow pointing right with the list appearing on
+// the left looked wrong to the user). Asked once a level has its place, by measuring each
+// submenu the way _positionSubmenu() will: built, put in the page unseen, taken out again.
+function _markSubmenuSides(menu, depth) {
+  const right = menu.getBoundingClientRect().right;
+  menu.querySelectorAll(':scope > .has-submenu').forEach(btn => {
+    const probe = _buildMenuLevel(btn._submenuItems, depth + 1);
+    probe.style.visibility = 'hidden';
+    document.body.appendChild(probe);
+    const width = probe.getBoundingClientRect().width;
+    probe.remove();
+    btn.classList.toggle('opens-left', right + width > window.innerWidth);
+  });
+}
+
 // Builds one menu level's <div>. depth is this level's own index once it's pushed onto
 // _ctxMenuStack — an item with `items` (a submenu trigger, click-to-open per this app's
 // convention rather than hover) uses it to trim any previously-open child level before opening
@@ -643,6 +646,7 @@ function _buildMenuLevel(items, depth) {
     // popup layered on top of (or beside) the submenu that already answers the same question.
     if (item.title && !item.items) _wireHoverTooltip(btn, item.title);
     if (item.items) {
+      btn._submenuItems = item.items;
       const openSubmenu = () => {
         closeDeeper();
         const sub = _buildMenuLevel(item.items, depth + 1);
@@ -655,6 +659,7 @@ function _buildMenuLevel(items, depth) {
         const menuRect = menu.getBoundingClientRect();
         const btnRect = btn.getBoundingClientRect();
         _positionSubmenu(sub, { top: btnRect.top, left: menuRect.left, right: menuRect.right });
+        _markSubmenuSides(sub, depth + 1);
         _ctxMenuStack.push(sub);
       };
       btn.onclick = e => { e.stopPropagation(); openSubmenu(); };
@@ -706,6 +711,7 @@ function showContextMenu(event, items, opts = {}) {
   if (opts.sideOfAnchor) _positionSubmenu(menu, opts.anchorRect);
   else if (opts.anchorRect) _positionMenuAboveAnchor(menu, opts.anchorRect);
   else _positionMenuEl(menu, event.clientX, event.clientY);
+  _markSubmenuSides(menu, 0);
   _ctxMenuStack = [menu];
   _openMenuTriggerEl = opts.triggerEl || null;
   setTimeout(() => {
@@ -1855,12 +1861,12 @@ function doAdd() {
 
 // ── Search (option paths / values across all files) ────────────────────────────
 // Searches live data (fileConfigs), not the NixOS options schema optionSearch() covers (that's
-// for the "Add option" autocomplete, over options/packages docs, not what's actually set). Leaf
-// classification mirrors renderTreeLevel()'s own isSection test exactly, so every result this
-// finds is guaranteed to have a real element findEditorEl() can jump to -- an array, a disabled
-// wrapper, and an `_expr` object are none of them descended into here for the same reason the
-// tree doesn't expand them: there's no per-item/per-field row of their own to jump to, only one
-// row for the whole value.
+// for the "Add option" autocomplete, over options/packages docs, not what's actually set). Every
+// result has to be a real element findEditorEl() can jump to, so an array, a disabled wrapper
+// and an `_expr` object are none of them descended into: there's no per-item/per-field row of
+// their own to jump to, only one row for the whole value. (A tree of the open file in a side
+// panel used the same test and the same jump. It was taken out in 2026-10, on the user's word
+// that it was no longer needed once files were small and their sections fold.)
 const SEARCH_MAX_RESULTS = 150;
 
 function _searchMatchText(v) {
@@ -2028,87 +2034,11 @@ async function _jumpToSearchResult(match) {
   if (el) { scrollThenFlash(el, 'center'); setStatusPath(match.pathKey); }
 }
 
-// ── Tree ──────────────────────────────────────────────────────────────────────
+// The row of the editor that shows `pathKey` (a dotted path), unfolded if it was hidden.
 function findEditorEl(pathKey) {
   const el = document.querySelector(`.section[data-path="${pathKey}"]`)
       || document.querySelector(`.field-row[data-path="${pathKey}"]`);
   return el && _revealEditorEl(el);
-}
-
-function renderTree() {
-  const container = document.getElementById('tree-root');
-  container.innerHTML = '';
-  renderTreeLevel(container, config, []);
-}
-
-let treeExpanded = new Set();
-
-function renderTreeLevel(container, obj, path) {
-  if (typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
-  for (const [k, v] of Object.entries(obj)) {
-    const childPath = [...path, k];
-    const pathKey = childPath.join('.');
-    const isSection = v !== null && typeof v === 'object' && !Array.isArray(v) && !isExprPkg(v) && !isDisabled(v);
-
-    const nodeEl = document.createElement('div');
-    const row = document.createElement('div');
-    row.className = 'tree-row' + (isSection ? '' : ' tree-leaf');
-    row.style.setProperty('--depth', path.length);
-
-    if (isSection) {
-      const isOpen = treeExpanded.has(pathKey);
-      const toggle = document.createElement('span');
-      toggle.className = 'tree-toggle' + (isOpen ? ' open' : '');
-      toggle.textContent = '▶';
-      row.appendChild(toggle);
-
-      const lbl = document.createElement('span');
-      lbl.className = 'tree-label';
-      lbl.textContent = k;
-      row.appendChild(lbl);
-
-      toggle.addEventListener('click', e => {
-        e.stopPropagation();
-        if (treeExpanded.has(pathKey)) treeExpanded.delete(pathKey);
-        else treeExpanded.add(pathKey);
-        renderTree();
-      });
-
-      lbl.addEventListener('click', () => {
-        setStatusPath(pathKey);
-        const target = findEditorEl(pathKey);
-        if (target) { scrollThenFlash(target, 'start'); }
-      });
-
-      nodeEl.appendChild(row);
-
-      if (isOpen) {
-        const children = document.createElement('div');
-        children.className = 'tree-children';
-        renderTreeLevel(children, v, childPath);
-        nodeEl.appendChild(children);
-      }
-    } else {
-      const spacer = document.createElement('span');
-      spacer.className = 'tree-toggle';
-      spacer.style.visibility = 'hidden';
-      row.appendChild(spacer);
-      const lbl = document.createElement('span');
-      lbl.className = 'tree-label';
-      lbl.textContent = k;
-      row.appendChild(lbl);
-
-      row.addEventListener('click', () => {
-        setStatusPath(pathKey);
-        const target = findEditorEl(pathKey);
-        if (target) { scrollThenFlash(target, 'center'); }
-      });
-
-      nodeEl.appendChild(row);
-    }
-
-    container.appendChild(nodeEl);
-  }
 }
 
 // ── Status path ───────────────────────────────────────────────────────────────
@@ -2260,14 +2190,6 @@ function makeDraggable(el, key, parentPath, handle) {
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   });
-}
-
-// Hidden by default — remembered per-browser via
-// localStorage since which tab/path you're in doesn't affect whether the tree is useful.
-function toggleTree() {
-  const visible = document.getElementById('sidebar').classList.toggle('hidden') === false;
-  localStorage.setItem('eznix-tree-visible', visible ? 'true' : 'false');
-  document.getElementById('tree-toggle-btn').classList.toggle('active', visible);
 }
 
 function renderEditor() {
@@ -3729,16 +3651,6 @@ function _syncFileSavedToHistory(name, value) {
   if (changed) _schedulePersistHistory();
 }
 
-// Marks the active file's current in-memory state as matching disk. Call this only right
-// after fileConfigs[activeFile] has actually been written or reloaded from the server.
-function markSaved() {
-  if (activeFile) {
-    fileSaved[activeFile] = JSON.stringify(fileConfigs[activeFile]);
-    _syncFileSavedToHistory(activeFile, fileSaved[activeFile]);
-  }
-  _updateDirty();
-}
-
 function isAnyDirty() {
   return pendingFsOps.length > 0 || Object.keys(fileConfigs).some(f => JSON.stringify(fileConfigs[f]) !== fileSaved[f]);
 }
@@ -3933,7 +3845,6 @@ function renderAll() {
   if (activeFile) fileConfigs[activeFile] = config;
   _pushHistory();
   _updateDirty();
-  renderTree();
   renderEditor();
   eznix.emit('render');
 }
@@ -4279,8 +4190,8 @@ async function readZip(blob) {
 }
 
 // ── Export / Import (many files) ─────────────────────────────────────────────────
-// "Export" (tab/folder right-click) and "Export all" (the header's "⬆ Export" dropdown, see
-// showExportMenu()) package the current in-memory state of one or more files — including
+// "Export" (tab/folder right-click) and "Export all" (right-click the tab bar's blank space, see
+// renderFileSelector()) package the current in-memory state of one or more files — including
 // unsaved edits — into a download (a plain .json for a single file, a .zip for a folder or
 // everything). Dropping that zip (or a loose selection of .json files, or a whole folder) back
 // onto the window imports it the same way a
@@ -4318,23 +4229,12 @@ async function exportAll() {
   setStatus(`Exported ${entries.length} file(s)`, 3000, 'ok');
 }
 
-// The header's Import and Export buttons. Each has one action of its own; a plugin can add
-// more (eznix.addMenuItem()), and only then does the button open a dropdown -- anchored to the
-// button's own bottom-left corner instead of the real click position, reusing showContextMenu.
-function _showHeaderMenu(event, name, own) {
-  const items = [own, ...eznix.menus[name]];
-  if (items.length === 1) { own.onclick(); return; }
-  const btn = event.currentTarget;
-  const rect = btn.getBoundingClientRect();
-  const anchor = {
-    clientX: rect.left, clientY: rect.bottom + 4,
-    preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
-  };
-  showContextMenu(anchor, items, { triggerEl: btn });
-}
-function showExportMenu(event) { _showHeaderMenu(event, 'export', { label: 'Files', onclick: () => exportAll() }); }
-// "Files" is the paste/load-a-file-to-merge dialog (showImportModal()).
-function showImportMenu(event) { _showHeaderMenu(event, 'import', { label: 'Files', onclick: () => showImportModal() }); }
+// Importing and exporting files has no button of its own. A file's are on its tab's menu, a
+// folder's export on the folder's, and the two for all the files at once on the menu of the tab
+// bar's blank space (renderFileSelector()). The header had an Import and an Export button,
+// each a menu of "Files" and whatever a plugin added (eznix.addMenuItem(), which the system
+// plugin used for "System"), until 2026-10: with export already on right-click the user wanted
+// the header down to one System menu, which that plugin now adds whole.
 
 async function exportFolder(folder) {
   const prefix = folder + '/';
@@ -4495,9 +4395,6 @@ async function apiFetch(path, opts = {}) {
 function _cfgPathFor(name) {
   return name ? ('/api/v1/file?file=' + encodeURIComponent(name)) : '/api/v1/file';
 }
-function _cfgPath() {
-  return _cfgPathFor(activeFile);
-}
 
 // Two rows, however many folders there are. The first holds the top-level folders and then the
 // root-level files; the second holds the files of one folder (`viewFolder`), normally the one
@@ -4622,7 +4519,7 @@ async function _fileMenuItems(name) {
   items.push({ label: 'Export', onclick: () => exportFile(name) });
   items.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
   // This file's own backups (was the header Restore button's "File" submenu, back when it
-  // covered both scopes — see showBackupsMenu()'s own comment for why that split moved here).
+  // covered both scopes; the whole system's backups are in the system plugin's menu).
   // Explicitly this file, not activeFile: right-clicking a tab that isn't the active one should
   // restore into *that* file, not silently overwrite whatever's currently open.
   if (BACKUP_ENABLED) {
@@ -4917,6 +4814,9 @@ function renderFileSelector() {
     showContextMenu(e, [
       { label: 'New file', onclick: () => createFile() },
       { label: 'New folder', onclick: () => createFolder() },
+      { separator: true },
+      { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
+      { label: 'Export all', title: 'Every file, as a zip', onclick: () => exportAll() },
     ]);
   };
 }
@@ -5425,9 +5325,6 @@ async function _init() {
   initImportDrop();
   initRestartWatcher();
   initVersion();
-  const treeVisible = localStorage.getItem('eznix-tree-visible') === 'true';
-  document.getElementById('sidebar').classList.toggle('hidden', !treeVisible);
-  document.getElementById('tree-toggle-btn').classList.toggle('active', treeVisible);
   eznix.emit('ready');
   renderAll();
 

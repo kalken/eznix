@@ -1,13 +1,16 @@
-// The documents plugin: a "Documents" button in the tab bar listing every *.md file in the
+// The documents plugin: a "Documents" button in the header listing every *.md file in the
 // flake, each opening as a panel floating over the editor. documents.py in this folder lists
 // and reads the files; everything else is here.
 document.querySelector('.main').insertAdjacentHTML('beforeend', '<div class="markdown-panels" id="markdown-panels"></div>');
-const _mdMenuBtn = eznix.addButton('tabs', {
-  id: 'md-menu-btn', html: 'Documents', tooltip: 'Browse .md files in the flake',
+// In the header beside Backup/Restore/Import/Export, with an icon like theirs (a page with
+// lines, Lucide's "file-text") and its name, which the user asked to keep beside the icon. It was a button reading "Documents" at the end of the tab bar until
+// 2026-10, when the user wanted it on the row with those.
+const _mdMenuBtn = eznix.addButton('header', {
+  id: 'md-menu-btn', tooltip: 'Browse .md files in the flake',
+  html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>Documents',
   onclick: e => showMarkdownMenu(e),
 });
-_mdMenuBtn.parentElement.id = 'md-menu-wrap';
-_mdMenuBtn.parentElement.classList.add('hidden');
+_mdMenuBtn.classList.add('hidden');
 
 // Minimal Markdown → HTML parser, no dependencies — ported near-verbatim from
 // github.com/kalken/ezblog's app.js (same zero-dependency philosophy as this project). Raw HTML
@@ -229,14 +232,14 @@ async function initMarkdownMenu() {
   } catch (e) {
     _markdownFiles = [];
   }
-  document.getElementById('md-menu-wrap').classList.toggle('hidden', !_markdownFiles.length);
+  _mdMenuBtn.classList.toggle('hidden', !_markdownFiles.length);
   if (!_markdownFiles.length) return;
   let openNames = [];
   try { openNames = JSON.parse(localStorage.getItem('eznix-markdown-open') || '[]'); } catch (e) { /* ignore */ }
   openNames.filter(name => _markdownFiles.includes(name)).forEach(openMarkdownFile);
 }
 
-// Same left-click-reuses-showContextMenu trick as showBackupsMenu() — anchored to the button's
+// Same left-click-reuses-showContextMenu trick as the system plugin's menu — anchored to the button's
 // own bottom-left corner like a normal dropdown. Re-fetches the file list on every open (unlike
 // the initial load-time fetch in initMarkdownMenu()) so it reflects the current state of
 // NIXOS_TARGET's root, not just whatever existed when the page loaded. Each item toggles that
@@ -254,7 +257,7 @@ async function showMarkdownMenu(event) {
     const data = await res.json();
     _markdownFiles = data.files || [];
   } catch (e) { /* keep the previous list on a fetch failure */ }
-  document.getElementById('md-menu-wrap').classList.toggle('hidden', !_markdownFiles.length);
+  _mdMenuBtn.classList.toggle('hidden', !_markdownFiles.length);
   if (!_markdownFiles.length) {
     showContextMenu(anchor, [{ label: 'No .md files found.', disabled: true }], { triggerEl: btn });
     return;
@@ -311,7 +314,7 @@ async function openMarkdownFile(name, fragment) {
   panel.className = 'markdown-panel';
   panel.dataset.mdPath = name; // read by the doc-link click handler below to resolve relative hrefs
   panel.innerHTML =
-    '<div class="sidebar-header markdown-panel-header"><span></span>' +
+    '<div class="markdown-panel-header"><span></span>' +
     '<button class="icon-btn" data-tooltip="Close">✕</button></div>' +
     '<div class="markdown-content">Loading…</div>';
   panel.querySelector('span').textContent = name;

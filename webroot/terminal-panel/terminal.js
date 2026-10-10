@@ -367,8 +367,7 @@ function connectTerminalWs() {
 
 // Persisted across reloads, independent of the terminal session itself (which is shared, server-
 // side, not tied to any one browser at all -- see bin/eznix-terminal.py's _SESSION) -- this is purely
-// "was the panel showing, and how big" per-browser UI state, same convention as
-// eznix-tree-visible. Restored once at init, below.
+// "was the panel showing, and how big" per-browser UI state. Restored once at init, below.
 function _persistTerminalOpen(open) {
   try { localStorage.setItem('eznix-terminal-open', open ? 'true' : 'false'); } catch (e) {}
 }
@@ -512,20 +511,19 @@ function renderButtons() {
   container.innerHTML = '';
   installContainer.innerHTML = '';
   const buttons = getAllButtons();
-  const dirty = isAnyDirty();
   // Each entry keeps its index into the *full* buttons list — runButton()/showButtonMenu() both
   // index into that same full list, so splitting into two rows here doesn't need to change
   // either of them.
   const entries = buttons.map((btn, idx) => ({ btn, idx }));
-  _renderButtonRow(installContainer, entries.filter(e => e.btn.mode === 'install'), buttons, dirty);
-  _renderButtonRow(container, entries.filter(e => e.btn.mode !== 'install'), buttons, dirty, INSTALL_MODE ? 'Disabled in install mode' : null);
+  _renderButtonRow(installContainer, entries.filter(e => e.btn.mode === 'install'), buttons);
+  _renderButtonRow(container, entries.filter(e => e.btn.mode !== 'install'), buttons, INSTALL_MODE ? 'Disabled in install mode' : null);
 }
 
 // disabledTitle, when set, overrides every button's own title in this row (used for the ordinary
 // row during install mode) — set directly on each button rather than relying on the container's
 // own title showing through its pointer-events: none children on hover, which isn't consistent
 // enough across browsers to depend on.
-function _renderButtonRow(container, entries, buttons, dirty, disabledTitle) {
+function _renderButtonRow(container, entries, buttons, disabledTitle) {
   const seenMenus = new Set();
   entries.forEach(({ btn, idx }) => {
     if (btn.menu) {
@@ -556,18 +554,32 @@ function _renderButtonRow(container, entries, buttons, dirty, disabledTitle) {
     _wireHoverTooltip(b, disabledTitle || btn.command);
     if (btn.save_first) {
       b.dataset.saveFirst = '1';
-      b.disabled = dirty;
+      b.dataset.label = b.textContent;
+      b.dataset.command = disabledTitle || btn.command;
+      _markSaveFirst(b, isAnyDirty());
     }
     b.onclick = () => runButton(idx);
     container.appendChild(b);
   });
 }
 
+// What tells that a save_first button saves: the Save button's icon, small, in front of its
+// name. It is always there, so the button keeps its size and look: greyed while there is
+// nothing to save, and clear, with a tooltip saying so, while a click will save. Only a mark:
+// the name and the colours stay (see runButton() for the louder shapes that were tried).
+const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+function _markSaveFirst(b, dirty) {
+  b.textContent = b.dataset.label;
+  b.insertAdjacentHTML('afterbegin', _SAVE_MARK);
+  b.classList.toggle('will-save', dirty);
+  b.dataset.tooltip = dirty ? 'Saves your changes first, then runs: ' + b.dataset.command : b.dataset.command;
+}
+
 // Turns a flat list of {btn, idx, path} entries into a showContextMenu()-compatible items array,
 // recursively — an entry with no path segments left becomes a leaf (runs the button); entries
 // still sharing a next segment collapse into one {label, items} submenu-trigger, which
 // _buildMenuLevel() renders as a click-to-open nested flyout instead of a plain action.
-function _buildButtonMenuItems(entries, dirty) {
+function _buildButtonMenuItems(entries) {
   const items = [];
   const seenGroups = new Set();
   entries.forEach(({ btn, idx, path }) => {
@@ -575,7 +587,6 @@ function _buildButtonMenuItems(entries, dirty) {
       items.push({
         label: btn.label || '(no label)',
         title: btn.command,
-        disabled: !!btn.save_first && dirty,
         onclick: () => runButton(idx),
       });
       return;
@@ -589,7 +600,7 @@ function _buildButtonMenuItems(entries, dirty) {
     items.push({
       label: head,
       title: sub.map(e => e.btn.label || '(no label)').join(', '),
-      items: _buildButtonMenuItems(sub, dirty),
+      items: _buildButtonMenuItems(sub),
     });
   });
   return items;
@@ -597,11 +608,7 @@ function _buildButtonMenuItems(entries, dirty) {
 
 // The dropdown a grouped button (btn.menu) opens — same left-click-reuses-showContextMenu trick
 // as showExportMenu()/showBackupsMenu(), anchored to the group button's own bottom-left corner.
-// save_first is honored per item rather than for the group button itself (a menu can mix
-// save_first and non-save_first commands), and re-checked at open time via isAnyDirty() rather
-// than baked in at the last renderButtons() — the button bar isn't otherwise re-rendered on every
-// keystroke, only _updateDirty()'s direct dataset-based toggle is, which only reaches standalone
-// buttons.
+// save_first needs nothing here: it is honored when the entry is run (runButton()).
 function showButtonMenu(event, idxs) {
   const btn = event.currentTarget;
   const btnRect = btn.getBoundingClientRect();
@@ -618,7 +625,6 @@ function showButtonMenu(event, idxs) {
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
   const buttons = getAllButtons();
-  const dirty = isAnyDirty();
   // The bar-level dropdown already consumed the shared first "/" segment — strip it here so each
   // entry's remaining path is what's left to group into (nested) submenus.
   const entries = idxs.map(idx => ({
@@ -629,12 +635,24 @@ function showButtonMenu(event, idxs) {
   // Windows' Start-menu pattern: the top-level menu is a dropup, but any nested submenu inside it
   // (see _positionSubmenu) still cascades to the side, aligned with whatever row triggered it.
   // triggerEl: btn is what makes a second click on the same button toggle it closed.
-  showContextMenu(anchor, _buildButtonMenuItems(entries, dirty), { anchorRect: rect, triggerEl: btn });
+  showContextMenu(anchor, _buildButtonMenuItems(entries), { anchorRect: rect, triggerEl: btn });
 }
 
-function runButton(idx) {
+// save_first: unsaved changes are saved, then the command runs, in the one click. A small mark
+// on the button says so while there is something to save (_markSaveFirst()). It went through
+// three shapes on 2026-10-10 before this one, which is the user's: unavailable while anything
+// was unsaved (grey, with nothing saying why), then a button reading "Save" until saved, then
+// its own name with the Save icon, lit. Each of the last two put a second and third Save on
+// screen, and that looked strange however it was drawn.
+// The button is taken before the save, since saving redraws the bar and `idx` may then be
+// another's. Still unsaved afterwards means the save failed, and said so: nothing is run.
+async function runButton(idx) {
   const btn = getAllButtons()[idx];
   if (!btn) return;
+  if (btn.save_first && isAnyDirty()) {
+    await saveToServer();
+    if (isAnyDirty()) return;
+  }
   _runInTerminal(btn);
 }
 // Type a command into the terminal and run it, opening the panel first if it's closed.
@@ -685,7 +703,7 @@ eznix.on('ready', () => {
 });
 eznix.on('render', renderButtons);
 eznix.on('dirty', dirty => {
-  document.querySelectorAll('.term-run-btn[data-save-first]').forEach(b => { b.disabled = dirty; });
+  document.querySelectorAll('.term-run-btn[data-save-first]').forEach(b => _markSaveFirst(b, dirty));
 });
 eznix.on('theme', () => {
   if (_term) _term.options.theme = _buildTermTheme();

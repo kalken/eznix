@@ -5,7 +5,7 @@
 .terminal-panel {
   background: var(--bg2);
   /* Same panel edge as the top bar (see .tab-bar-row), along its top; z-index so it's drawn
-     over the editor and the tree sidebar above it rather than under them. */
+     over the editor above it rather than under it. */
   box-shadow: 0 -1px 0 var(--panel-hairline), 0 -1px var(--panel-shadow-size) var(--panel-shadow);
   z-index: 30;
   flex-shrink: 0;
@@ -75,6 +75,10 @@
    .context-menu-item, so a button's own dropdown lines up with the button that opened it) can
    drift by a few pixels depending on the browser's font metrics. */
 .term-run-btn { white-space: nowrap; height: 26px; }
+/* On a save_first button, always: greyed until there is something to save (.will-save). See
+   _markSaveFirst() in terminal.js. */
+.term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; }
+.term-run-btn.will-save .term-save-mark { opacity: 1; }
 /* The size/hide icons (quarter/half/full/toggle) used to be a smaller .btn-sm variant, which
    visibly mismatched .term-run-btn (the command buttons sharing the same .terminal-header bar)
    in both height and padding/font-size. Switched to plain .btn instead of trying to keep a

@@ -1,10 +1,10 @@
 /* The documents plugin's own rules. */
 
 /* ── Markdown panels ── */
-/* Wrapper floats over .editor-area same as .sidebar above (position: absolute, .main as
+/* Wrapper floats over .editor-area (position: absolute, .main as
    positioning context). Width matching one panel — children are position: absolute now
    (cascaded, see .markdown-panel below), so they no longer contribute to the wrapper's own
-   intrinsic size the way flex children did. Unlike .sidebar, this wrapper has no "hidden" class
+   intrinsic size the way flex children did. This wrapper has no "hidden" class
    to remove when empty (it's just left with zero children), so pointer-events: none is what
    stops its 50vw-wide box from blocking right-click/drag on editor rows underneath it when no
    markdown panel is open; .markdown-panel re-enables it so an actually-open panel still works. */
@@ -40,7 +40,17 @@
   transform: translateX(calc(var(--from-front, 0) * -40px));
   transition: transform .15s;
 }
-.markdown-panel-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+/* The first six lines were the page's own .sidebar-header, shared with the configuration tree's
+   panel; they came here when the tree was taken out. */
+.markdown-panel-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text3);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
 .markdown-content {
   overflow-y: auto;
   flex: 1;

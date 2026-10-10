@@ -292,7 +292,7 @@ in
         options = {
           label       = mkOption { type = types.str; description = "Text on the button."; };
           command     = mkOption { type = types.str; description = "What it types into the terminal."; };
-          save_first  = mkOption { type = types.bool; default = false; description = "Unavailable while there are unsaved changes."; };
+          save_first  = mkOption { type = types.bool; default = false; description = "Saves any unsaved changes before running the command."; };
           clear_first = mkOption { type = types.bool; default = true;  description = "Clear the terminal before running."; };
           menu        = mkOption { type = types.nullOr types.str; default = null; description = "Group buttons of the same menu name into one dropdown; \"A/B\" nests."; };
           mode        = mkOption { type = types.nullOr (types.enum [ "install" ]); default = null; description = "\"install\": shown in the install-mode row."; };

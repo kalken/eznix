@@ -229,7 +229,7 @@ change, so it can be reshaped freely.
 - **Page side**: its scripts are loaded after the page's own script and before `_init()` runs.
   They share the page's global scope, which is what let existing code move out unchanged; the
   page itself only ever reaches a plugin through `eznix.emit()` events (`init`, `ready`,
-  `render`, `dirty`, `theme`, `ping`), `eznix.addButton()` and `eznix.addMenuItem()`. All of
+  `render`, `dirty`, `theme`, `ping`), and `eznix.addButton()`. All of
   it is documented at the top of the main script, under "Plugins". The page must never name a
   plugin's function directly, or it breaks when that plugin is left out.
 - **Server side**: `setup(api)` in the server file registers handlers under
@@ -295,8 +295,9 @@ was seen on NixOS and macOS across an update that changed the terminal. The user
 - The `darwin` and `nixos` templates on a machine that had nothing. (`home` was: on a fresh
   Debian 13 VM, `nix flake init -t`, the name filled in, the password file, the first
   switch, and it worked first time.)
-- The Documents button and the Import/Export/Restore buttons since their code moved out of
-  `index.html`: never opened in a browser by a session.
+- The Documents button and the System menu (Backup, Import, Export, the backups to restore): never opened in
+  a browser by a session, neither when their code moved out of `index.html` nor when the four
+  header buttons became that one menu and Documents moved to the header (2026-10-10).
 - System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
   there uses a password file).
 - home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator
