@@ -90,4 +90,10 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # save_first  = true                  # saves unsaved changes before it runs
 # clear_first = true
 # menu        = "System"              # buttons sharing a menu name become one dropdown; "A/B" nests
+# separator   = "before"              # a dividing line beside it: "before", "after" or "both"
+#
+# A menu itself, by its name: where it stands, and a line beside it.
+# [menus.System]
+# order     = 10                      # lowest first; plain buttons and other menus count as 0
+# separator = "before"
 # static      = true

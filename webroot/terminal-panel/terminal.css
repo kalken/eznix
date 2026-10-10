@@ -75,6 +75,8 @@
    .context-menu-item, so a button's own dropdown lines up with the button that opened it) can
    drift by a few pixels depending on the browser's font metrics. */
 .term-run-btn { white-space: nowrap; height: 26px; }
+/* The line a button's `separator` puts in front of it (_renderButtonRow() in terminal.js). */
+.term-btn-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border2); flex-shrink: 0; }
 /* On a save_first button, always: greyed until there is something to save (.will-save). See
    _markSaveFirst() in terminal.js. */
 .term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; pointer-events: none; }

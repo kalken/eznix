@@ -7,6 +7,7 @@
 const _TERM_CONFIG       = eznix.config.terminal || {};
 const TERMINAL_AUTO_HIDE = _TERM_CONFIG.auto_hide !== false; // terminal_auto_hide in eznix.toml -- see initTerminalAutoHide()
 const STATIC_BUTTONS     = _TERM_CONFIG.buttons || [];       // from [[buttons]] in eznix.toml — not tied to any tab
+const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME] in eznix.toml, see getMenus()
 
 // The panel sits between the editor and the status bar. The restart notice is fixed to the
 // right corner of the screen, right above wherever the terminal bar starts (bottom set fresh
@@ -495,13 +496,43 @@ function _normalizeButton(b) {
     clear_first: _unwrapButtonField(b.clear_first),
     menu: _unwrapButtonField(b.menu),
     mode: _unwrapButtonField(b.mode),
+    separator: _unwrapButtonField(b.separator),
   };
 }
+// What is set about a menu itself, by its name (the first part of a button's `menu`):
+// services.eznix.menus.NAME = { order, separator }, from every file, a later file's over an
+// earlier one's, over [menus.NAME] of eznix.toml. A place of its own, and not settings of the
+// buttons in the menu, so a menu's position is said once while its buttons stay each in the
+// file they belong to: the user's case was the rotate buttons of two tunnels, each defined
+// with its tunnel, in one menu that should stand last. (`order` on each button was built
+// first, the same day: it had to be repeated on every entry of a menu.) A menu holding its
+// buttons as a list was considered and left: it would have to be written in one place.
+function getMenus() {
+  const menus = {};
+  const take = set => {
+    if (!set || typeof set !== 'object' || isDisabled(set)) return;
+    for (const [name, m] of Object.entries(set)) {
+      if (!m || typeof m !== 'object' || isDisabled(m)) continue;
+      menus[name] = { ...menus[name], order: _unwrapButtonField(m.order) ?? menus[name]?.order,
+                      separator: _unwrapButtonField(m.separator) ?? menus[name]?.separator };
+    }
+  };
+  take(STATIC_MENUS);
+  files.forEach(f => take(fileConfigs[f]?.services?.eznix?.menus));
+  return menus;
+}
+// Where a button stands: in the order it is found (the buttons set where eznix is deployed,
+// then each file's by its path, each list as written), except that a menu with an `order`
+// takes all its buttons along: lowest first, where everything else counts as 0. So a menu
+// given 10 stands after the plain buttons and -10 before them, and one without a number where
+// the first of its buttons is found, as it always did. sort() keeps equals in place.
 function getAllButtons() {
   const perFile = files.flatMap(f => fileConfigs[f]?.services?.eznix?.buttons || [])
     .map(_normalizeButton);
   const staticSurviving = STATIC_BUTTONS.filter(b => b.static === true);
-  return [...staticSurviving, ...perFile];
+  const menus = getMenus();
+  const order = b => (b.menu && Number(menus[b.menu.split('/')[0]]?.order)) || 0;
+  return [...staticSurviving, ...perFile].sort((a, b) => order(a) - order(b));
 }
 
 let _buttonsShown = null;   // the buttons the bar was last built from, as JSON: see renderButtons()
@@ -522,7 +553,7 @@ function renderButtons() {
   // a click that starts on one element and ends on another reaches neither: the first press
   // did nothing and the user had to press twice. It showed once save_first buttons could be
   // pressed with unsaved changes; before, they were unavailable until Save had been pressed.
-  const shown = JSON.stringify(buttons);
+  const shown = JSON.stringify([buttons, getMenus()]);
   if (shown === _buttonsShown) {
     const dirty = isAnyDirty();
     document.querySelectorAll('.term-run-btn[data-save-first]').forEach(b => _markSaveFirst(b, dirty));
@@ -543,8 +574,28 @@ function renderButtons() {
 // row during install mode) — set directly on each button rather than relying on the container's
 // own title showing through its pointer-events: none children on hover, which isn't consistent
 // enough across browsers to depend on.
+// `separator`: a dividing line, "before", "after" or on "both" sides. Set on a menu
+// (getMenus()) it is in the bar, beside the menu; on a button, beside it in the bar, or across
+// the dropdown when the button is in a menu (_buildButtonMenuItems()). One line at most
+// between two things, whichever of them asked (an "after" met by a "before"), and none at the
+// start or the end of a row or a list. _separatorDue() is that rule for both places: told
+// what the next thing asks for, it says whether a line goes in front of it, and remembers
+// what the thing asked for after itself.
+function _separatorDue(state, separator, isFirst) {
+  const due = !isFirst && (state.after || separator === 'before' || separator === 'both');
+  state.after = separator === 'after' || separator === 'both';
+  return due;
+}
 function _renderButtonRow(container, entries, buttons, disabledTitle) {
   const seenMenus = new Set();
+  const menus = getMenus();
+  const lines = { after: false };
+  const divide = what => {
+    if (!_separatorDue(lines, what && what.separator, !container.childElementCount)) return;
+    const sep = document.createElement('div');
+    sep.className = 'term-btn-sep';
+    container.appendChild(sep);
+  };
   entries.forEach(({ btn, idx }) => {
     if (btn.menu) {
       // menu is a "/"-separated path (e.g. "Disk/Advanced") — only the first segment groups at
@@ -555,6 +606,7 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
       const topMenu = btn.menu.split('/')[0];
       if (seenMenus.has(topMenu)) return;
       seenMenus.add(topMenu);
+      divide(menus[topMenu]);
       const idxs = entries.filter(e => e.btn.menu && e.btn.menu.split('/')[0] === topMenu).map(e => e.idx);
       const b = document.createElement('button');
       b.className = 'btn term-run-btn';
@@ -568,6 +620,7 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
       container.appendChild(b);
       return;
     }
+    divide(btn);
     const b = document.createElement('button');
     b.className = 'btn term-run-btn';
     b.textContent = btn.label || '(no label)';
@@ -603,8 +656,10 @@ function _markSaveFirst(b, dirty) {
 function _buildButtonMenuItems(entries) {
   const items = [];
   const seenGroups = new Set();
+  const lines = { after: false };
   entries.forEach(({ btn, idx, path }) => {
     if (path.length === 0) {
+      if (_separatorDue(lines, btn.separator, !items.length)) items.push({ separator: true });
       items.push({
         label: btn.label || '(no label)',
         title: btn.command,
@@ -615,6 +670,7 @@ function _buildButtonMenuItems(entries) {
     const head = path[0];
     if (seenGroups.has(head)) return;
     seenGroups.add(head);
+    if (_separatorDue(lines, null, !items.length)) items.push({ separator: true });
     const sub = entries
       .filter(e => e.path[0] === head)
       .map(e => ({ btn: e.btn, idx: e.idx, path: e.path.slice(1) }));

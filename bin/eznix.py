@@ -60,7 +60,8 @@ Configuration (eznix.toml; every key optional unless noted):
   plugins_dir     folder of your own plugins, one folder each (see _load_plugins())
   [plugin.NAME]   settings for the plugin NAME; enabled = false leaves it out
   backups         how many saved versions of each file to keep (0: none)
-  [[buttons]]     label, command, save_first, clear_first, menu, mode, static
+  [[buttons]]     label, command, save_first, clear_first, menu, mode, static, separator
+  [menus.NAME]    order, separator: where the menu NAME of those buttons stands, and a line beside it
 
 The HTTP API the page uses is documented where it is handled, in Handler.do_GET/do_POST.
 """
@@ -164,6 +165,7 @@ CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_c
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
 SECTIONS_EXPANDED = False        # foldable sections start out shown
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
+STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
 PLUGINS          = {}            # name -> {dir, scripts, styles, config}; see _load_plugins()
 # The terminal's part of the page, in WEBROOT/terminal-panel/: loaded like a plugin's files
 # (after the page's own script, talking to it through the same events), but only when a
@@ -1009,7 +1011,7 @@ def _render_index():
     config = {name: p['config'] for name, p in PLUGINS.items()}
     if TERMINALS:
         config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS,
-                              'autocomplete': _autocomplete_command()}
+                              'menus': STATIC_MENUS, 'autocomplete': _autocomplete_command()}
     plugin_config = json.dumps(config).replace('</', '<\\/')
     return (open(os.path.join(WEBROOT, 'index.html')).read()
         .replace('%%EZNIX_PLUGIN_STYLES%%', plugin['styles'])
@@ -2135,7 +2137,7 @@ def main():
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
-    global STATIC_BUTTONS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_COOKIE_AGE, SESSION_RENEW
+    global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
         prog='eznix', description='A web editor for Nix configurations.',
@@ -2230,6 +2232,7 @@ def main():
     SECTIONS_EXPANDED = cfg.get('sections') == 'expanded'
     TERMINAL_AUTO_HIDE = bool(cfg.get('terminal_auto_hide', True))
     STATIC_BUTTONS = [b for b in cfg.get('buttons', []) if isinstance(b, dict) and b.get('label') and b.get('command')]
+    STATIC_MENUS = {name: m for name, m in (cfg.get('menus') or {}).items() if isinstance(m, dict)}
 
     # Terminals: the ones the config names, or one of our own.
     TERMINAL_SCRIPT = cfg.get('terminal_script') or next(

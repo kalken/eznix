@@ -297,6 +297,18 @@ in
           menu        = mkOption { type = types.nullOr types.str; default = null; description = "Group buttons of the same menu name into one dropdown; \"A/B\" nests."; };
           mode        = mkOption { type = types.nullOr (types.enum [ "install" ]); default = null; description = "\"install\": shown in the install-mode row."; };
           static      = mkOption { type = types.bool; default = false; description = "Show this button although it is declared in Nix and not in a *.json file."; };
+          separator   = mkOption { type = types.nullOr (types.enum [ "before" "after" "both" ]); default = null; description = "A dividing line beside this button, on the side named: in the bar, or across the list when the button is in a menu. There is never more than one line between two buttons, and none at either end."; };
+        };
+      });
+    };
+    menus = mkOption {
+      default     = { };
+      description = "Settings of a menu of buttons, by the name the buttons give as their menu. Like the buttons, read by the editor straight from the *.json files.";
+      example     = lib.literalExpression ''{ Network = { order = 10; separator = "before"; }; }'';
+      type        = types.attrsOf (types.submodule {
+        options = {
+          order     = mkOption { type = types.int; default = 0; description = "Where the menu stands in the bar: lowest first, where plain buttons and menus without a number count as 0. So 10 puts it after them and -10 before them."; };
+          separator = mkOption { type = types.nullOr (types.enum [ "before" "after" "both" ]); default = null; description = "A dividing line beside the menu, on the side named."; };
         };
       });
     };

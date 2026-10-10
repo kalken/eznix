@@ -240,6 +240,20 @@ A button with `save_first` saves any unsaved changes before it runs its command;
 Save icon on it is greyed until there is something to save. Buttons with the same
 `menu` become one dropdown.
 
+Buttons stand in the order they are found: file by file, by path, and each list as written.
+A menu stands where its first button is found. To move a menu, give it an `order` under
+`services.eznix.menus`, by its name: a number, lowest first, where plain buttons and menus
+without one count as 0. So 10 puts the menu after everything else, wherever its buttons are
+defined, and -10 before. `separator` draws a dividing line beside it: `"before"`, `"after"`
+or `"both"`.
+
+```json
+{ "services": { "eznix": { "menus": { "Flake": { "order": 10, "separator": "before" } } } } }
+```
+
+A button can have a `separator` too: a line beside it in the bar, or across the list when it
+is in a menu. Two lines never end up next to each other, and there is none at either end.
+
 ## Suggestions
 
 The option and package suggestions are generated from your own flake, so they match exactly
