@@ -304,10 +304,9 @@ function _queueFsOp(op) {
       if (passed.has(op.from)) break;
     }
   } else if (op.type === 'disable-folder' || op.type === 'enable-folder') {
-    const disabledName = name => `.${name}.disabled`;
     // The folder under both of its names: the one it has now, and the one this gives it.
-    const names = op.type === 'disable-folder' ? [op.folder, disabledName(op.folder)]
-                                                : [op.folder, op.folder.slice(1, -'.disabled'.length)];
+    const names = op.type === 'disable-folder' ? [op.folder, op.folder + '.disabled']
+                                                : [op.folder, _folderLabel(op.folder)];
     for (let i = pendingFsOps.length - 1; i >= 0; i--) {
       const o = pendingFsOps[i];
       const paths = o.type === 'rename-file' ? [o.from, o.to] : [o.path || o.folder];
@@ -4442,13 +4441,20 @@ function _endPeekFolder() {
 function _folderMenuItems(folder) {
   const folderDisabled = _isDisabledFolderSegment(folder);
   return [
-    { label: 'New file here', onclick: () => createFile(folder) },
-    { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
     { label: 'Export', onclick: () => exportFolder(folder) },
+    { label: 'New file', onclick: () => createFile(folder) },
     { separator: true },
+    // With Delete, as Disable file is with Clear and Delete on a file's menu.
+    { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
     { label: 'Delete folder', danger: true, onclick: () => deleteFolder(folder) },
   ];
 }
+
+// The order of the tabs: by the name shown, not the name on disk. A disabled folder is
+// "name.disabled" there (".name.disabled" until 2026-10, which put it in front of its row the
+// moment it was disabled) and a disabled file "name.json.disabled".
+const _byFolderLabel = (a, b) => _folderLabel(a).localeCompare(_folderLabel(b)) || a.localeCompare(b);
+const _byTabLabel = (a, b) => _tabLabel(a).localeCompare(_tabLabel(b)) || a.localeCompare(b);
 
 // A folder's tab in the first row. `inside` is the files in it.
 function _makeFolderTab(folder, inside) {
@@ -4467,7 +4473,7 @@ function _makeFolderTab(folder, inside) {
   tab.addEventListener('click', () => {
     if (tab.querySelector('input')) return;
     const last = _lastFileIn[folder];
-    const open = inside.includes(last) ? last : inside.slice().sort()[0];
+    const open = inside.includes(last) ? last : inside.slice().sort(_byTabLabel)[0];
     if (open && open !== activeFile) switchFile(open);
     else { viewFolder = folder; renderFileSelector(); }
   });
@@ -4483,17 +4489,18 @@ function _tabLabel(name) {
 
 // A file is disabled either directly (its own name ends in ".json.disabled" — a plain
 // /api/v1/file/rename to that name, see _toggleFileDisabled()) or because it lives inside a
-// disabled folder (a ".name.disabled" path segment, see /api/v1/folder/disable) — either way
+// disabled folder (a "name.disabled" path segment, see /api/v1/folder/disable) — either way
 // json2nix.nix's Nix-eval merge skips it, so the UI dims/strikes it the same way isDisabled()
 // dims a single disabled option.
-function _isDisabledFolderSegment(seg) { return seg.startsWith('.') && seg.endsWith('.disabled'); }
+// ".name.disabled", the form before 2026-10, still counts: _is_disabled_folder_name() in eznix.py.
+function _isDisabledFolderSegment(seg) { return seg.endsWith('.disabled') && seg.replace(/^\.+/, '').length > '.disabled'.length; }
 function _isFileDisabled(name) {
   return name.endsWith('.json.disabled') || name.split('/').slice(0, -1).some(_isDisabledFolderSegment);
 }
-// Strips the disabled-folder wrapper (".name.disabled" -> "name") for display; a plain
+// Strips the disabled-folder wrapper ("name.disabled" -> "name") for display; a plain
 // (enabled) folder name passes through unchanged.
 function _folderLabel(name) {
-  return _isDisabledFolderSegment(name) ? name.slice(1, -'.disabled'.length) : name;
+  return _isDisabledFolderSegment(name) ? name.slice(0, -'.disabled'.length).replace(/^\.+/, '') : name;
 }
 
 // Tabs are plain divs, not <button>s, because rename mode swaps the label for a live <input> —
@@ -4506,6 +4513,14 @@ async function _fileMenuItems(name) {
   const disabled = _isFileDisabled(name);
   const items = [];
   const ownDisabled = name.endsWith('.json.disabled');
+  // Export, Import and then the rest: the order of the system plugin's menu too, which the user
+  // set for both.
+  items.push({ label: 'Export', onclick: () => exportFile(name) });
+  items.push({ label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) });
+  if (BACKUP_ENABLED) items.push({ label: 'Backup', title: 'Back this file up now, as it is on disk', onclick: () => backupFile(name) });
+  items.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
+  items.push({ separator: true });
+  // With Clear and Delete: the three that take the file, or what is in it, out of use.
   // If the file is only disabled because it sits in a disabled folder, toggling its own
   // state here would have no visible effect until the folder itself is re-enabled — so the
   // item is only offered when this file's own disabled-ness is what's being toggled.
@@ -4515,10 +4530,6 @@ async function _fileMenuItems(name) {
       onclick: () => _toggleFileDisabled(name, !ownDisabled),
     });
   }
-  items.push({ label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) });
-  items.push({ label: 'Export', onclick: () => exportFile(name) });
-  items.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
-  items.push({ separator: true });
   items.push({ label: 'Clear', onclick: () => clearFile(name) });
   items.push({ label: 'Delete', danger: true, onclick: () => deleteFile(name) });
   // This file's own backups, last and as lines of this menu under a heading, the way the
@@ -4776,21 +4787,21 @@ function renderFileSelector() {
   const rootRow = document.createElement('div');
   rootRow.className = 'tab-row tab-row-root';
   _wireHoverTooltip(rootRow, 'Right-click for New file / New folder');
-  Array.from(topFolders).sort().forEach(folder =>
+  Array.from(topFolders).sort(_byFolderLabel).forEach(folder =>
     rootRow.appendChild(_makeFolderTab(folder, filesByFolder[folder] || [])));
   if (topFolders.size && rootFiles.length) {
     const sep = document.createElement('div');
     sep.className = 'tab-row-sep';
     rootRow.appendChild(sep);
   }
-  rootFiles.sort().forEach(name => rootRow.appendChild(_makeTab(name)));
+  rootFiles.sort(_byTabLabel).forEach(name => rootRow.appendChild(_makeTab(name)));
   bar.appendChild(rootRow);
 
   // No folders, no second row: a flat set of files stays one line. With folders the row is
   // always there, empty when the open file is in none, so the bar keeps its height while
   // switching (the hint is what holds an empty row to a tab's height).
   if (topFolders.size) {
-    const inside = (filesByFolder[viewFolder] || []).slice().sort();
+    const inside = (filesByFolder[viewFolder] || []).slice().sort(_byTabLabel);
     const row = document.createElement('div');
     row.className = 'tab-row tab-row-files';
     row.dataset.folder = viewFolder;
@@ -4860,7 +4871,7 @@ function _normalizeFileName(raw) {
 // The new file is only created in memory (and left dirty) — it isn't written to disk until
 // Save actually runs, so Save has real, visible work to do right after creating a tab instead
 // of reporting "nothing to save" because it was already persisted silently. folder defaults to
-// the root, but "New file here" on a folder's own context menu passes its name so a file can be
+// the root, but "New file" on a folder's own context menu passes its name so a file can be
 // created directly inside it without a follow-up drag.
 async function createFile(folder = '') {
   let base = 'untitled', n = 1;
@@ -5049,13 +5060,13 @@ async function _toggleFileDisabled(name, disable) {
 // Toggles a whole top-level folder's disabled state (the same scope "Delete folder" already
 // operates at — nested subfolders aren't individually addressable in the tab bar, see
 // renderFileSelector()). Server side this is a single directory os.rename that adds/strips the
-// ".name.disabled" wrapper (see /api/v1/folder/disable|enable) — everything nested inside moves
+// "name.disabled" wrapper (see /api/v1/folder/disable|enable) — everything nested inside moves
 // with it "for free", so every file/folder key under this prefix (including the folder's own
 // entry in `folders`) is remapped client-side to match in one pass. Deferred like everything
 // else here: queued in pendingFsOps when the folder is confirmed to exist on disk (folderExists),
 // and only actually replayed at Save time.
 async function _toggleFolderDisabled(name, disable) {
-  const target = disable ? `.${name}.disabled` : _folderLabel(name);
+  const target = disable ? name + '.disabled' : _folderLabel(name);
   if (target === name) return;
   if (folders.includes(target) || files.some(f => f === target || f.startsWith(target + '/'))) {
     setStatus('That folder already exists', 4000, 'err');
@@ -5225,6 +5236,21 @@ function _formatBackupSize(n) {
 // but a tab's own right-click Restore (see _makeTab()) passes that tab's name explicitly — a
 // backup is always a specific file's own history, so restoring one should never silently land in
 // whichever *other* file happens to be open at the time.
+// Backs one file up now, into the list its menu offers under Restore (the one every save adds
+// to). What is on disk is what is kept, as with the system plugin's Backup, so unsaved edits
+// are not in it, which the message says. Nothing to confirm: no file changes.
+async function backupFile(name) {
+  try {
+    const res = await apiFetch('/file/backup?file=' + encodeURIComponent(name), { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) { setStatus('Backup failed: ' + (data.error || res.status), 5000, 'err'); return; }
+    const unsaved = JSON.stringify(fileConfigs[name]) !== fileSaved[name];
+    setStatus('Backed up ' + name + (unsaved ? ' as saved on disk — unsaved changes are not in it' : ''), 4000, 'ok');
+  } catch (e) {
+    setStatus('Backup failed: ' + e.message, 4000, 'err');
+  }
+}
+
 async function loadBackup(name, targetFile) {
   const file = targetFile || activeFile;
   try {

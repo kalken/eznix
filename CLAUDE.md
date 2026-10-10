@@ -303,7 +303,7 @@ was seen on NixOS and macOS across an update that changed the terminal. The user
 - The `darwin` and `nixos` templates on a machine that had nothing. (`home` was: on a fresh
   Debian 13 VM, `nix flake init -t`, the name filled in, the password file, the first
   switch, and it worked first time.)
-- The Documents button and the System menu (Backup, Import, Export, the backups to restore): never opened in
+- The Documents button and the System menu (Export, Import, Backup, the backups to restore): never opened in
   a browser by a session, neither when their code moved out of `index.html` nor when the four
   header buttons became that one menu and Documents moved to the header (2026-10-10).
 - System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template

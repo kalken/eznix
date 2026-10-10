@@ -10,6 +10,7 @@ import http.cookiejar
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -134,6 +135,28 @@ def main():
             check('a file saves', b.request('/api/v1/file/save?file=a.json', b'{"a": 2}')[0] == 200
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 2})
             check('and the earlier version is kept', len(b.json('/api/v1/backups?file=a.json')[1]['backups']) == 1)
+            kept = lambda: len(b.json('/api/v1/backups?file=a.json')[1]['backups'])
+            check('a file is backed up on request too', b.json('/api/v1/file/backup?file=a.json', b'', 'POST')[0] == 200
+                  and kept() == 2)
+            check('one that is not on disk is not', b.json('/api/v1/file/backup?file=nope.json', b'', 'POST')[0] == 400
+                  and kept() == 2)
+
+            # A folder is switched off by its name, which json2nix.nix leaves out ("X.disabled").
+            os.makedirs(f'{tmp}/flake/eznix/web')
+            with open(f'{tmp}/flake/eznix/web/w.json', 'w') as f:
+                f.write('{}')
+            folder = lambda what, name: b.json(f'/api/v1/folder/{what}', json.dumps({'folder': name}).encode(), 'POST')[0]
+            listed = lambda: b.json('/api/v1/files')[1]
+            check('a folder is disabled by renaming it, and its files are still listed',
+                  folder('disable', 'web') == 200 and os.path.isdir(f'{tmp}/flake/eznix/web.disabled')
+                  and 'web.disabled/w.json' in listed()['files'], listed())
+            check('and enabled again', folder('enable', 'web.disabled') == 200
+                  and 'web/w.json' in listed()['files'], listed())
+            os.rename(f'{tmp}/flake/eznix/web', f'{tmp}/flake/eznix/.web.disabled')
+            check('one disabled the old way, with a dot in front, is still listed and can be enabled',
+                  '.web.disabled/w.json' in listed()['files'] and folder('enable', '.web.disabled') == 200
+                  and 'web/w.json' in listed()['files'], listed())
+            shutil.rmtree(f'{tmp}/flake/eznix/web')
             save = lambda origin: b.request('/api/v1/file/save?file=a.json', b'{"a": 2}', headers={'Origin': origin})[0]
             check('a save from the page itself is accepted', save(BASE) == 200)
             check('one from another page is not: another port of this host, another site, none',

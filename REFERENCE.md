@@ -116,7 +116,8 @@ module is given: `pkgs`, `lib`, `config`, `options`, and what your flake passes 
 `config.networking.hostName`. As in any Nix module, an expression cannot read the setting it
 is itself part of. Anything can be switched
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
-every save keeps the previous version of the file (right-click a tab, Restore).
+every save keeps the previous version of the file (right-click a tab, Restore; Backup there
+keeps a copy of the file as it is on disk right now).
 
 Importing and exporting files is on right-click too: a tab for one file, a folder for its
 files, and the empty part of the tab bar for all of them (Import, Export all). The System

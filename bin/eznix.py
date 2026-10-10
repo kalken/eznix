@@ -671,12 +671,21 @@ def resolve_backup_path(name):
 
 
 def _is_disabled_folder_name(name):
-    """True for a single path segment marking a disabled folder, e.g. '.services.disabled'.
+    """True for a single path segment marking a disabled folder: 'services.disabled'.
+    json2nix.nix's walk() leaves such a folder, and everything in it, out of the Nix merge.
 
-    The leading dot piggybacks on the dotdir skip that already excludes .eznix-backups from
-    both list_config_folders() and json2nix.nix's walk() — no change to json2nix.nix needed for
-    a disabled folder (and everything nested inside it) to drop out of the Nix merge."""
-    return name.startswith('.') and name.endswith('.disabled') and len(name) > len('..disabled')
+    It was '.services.disabled' until 2026-10, kept out of the merge by being a dot-folder;
+    the user wanted it to stay a visible part of the configuration, as a disabled file
+    ('x.json.disabled') always was. The dot also kept it out of every system export and
+    backup, which leave dot-folders out (the system plugin's `dotfiles`). The old form is still read as disabled, so one disabled
+    before the change keeps its tab and can be enabled; nothing writes it any more."""
+    return name.endswith('.disabled') and len(name.lstrip('.')) > len('.disabled')
+
+
+def _enabled_folder_name(name):
+    """The name a disabled folder goes back to: without '.disabled', and without the dot the
+    old form had in front."""
+    return name[:-len('.disabled')].lstrip('.')
 
 
 def _excluded(rel):
@@ -749,7 +758,7 @@ def list_config_folders():
 
     Unlike the folders implied by list_config_files(), this also reports directories that
     don't (yet) contain any *.json file, so a folder created via /api/v1/folder/create still
-    shows up as an (empty) tab group after a reload. A disabled folder (dot-prefixed, see
+    shows up as an (empty) tab group after a reload. A disabled folder (see
     _is_disabled_folder_name()) is listed too — and still walked into, so any subfolders
     nested inside it are listed as well.
     """
@@ -1356,6 +1365,26 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 self.wfile.write(b'{"ok":true}')
             except Exception as e:
                 self.send_error(500, str(e))
+        elif parsed.path == '/api/v1/file/backup':
+            # A backup of one file on request, as it is on disk, into the list every save adds
+            # to (the page: Backup on a file's menu). It pushes the oldest out like any other.
+            try:
+                target = resolve_config_path(parse_qs(parsed.query).get('file', [''])[0])
+                if BACKUP_COUNT <= 0:
+                    status, resp = 400, {'error': 'backups are switched off (backups = 0)'}
+                elif not target or not os.path.isfile(target):
+                    status, resp = 400, {'error': 'no such file on disk: save it first'}
+                else:
+                    backup_config(target)
+                    status, resp = 200, {'ok': True}
+                resp = json.dumps(resp).encode()
+                self.send_response(status)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(resp)))
+                self.end_headers()
+                self.wfile.write(resp)
+            except Exception as e:
+                self.send_error(500, str(e))
         elif parsed.path == '/api/v1/file/delete':
             try:
                 length = int(self.headers.get('Content-Length', 0))
@@ -1468,7 +1497,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(resp)
                     return
-                dst = os.path.join(os.path.dirname(target), '.' + os.path.basename(target) + '.disabled')
+                dst = os.path.join(os.path.dirname(target), os.path.basename(target) + '.disabled')
                 if os.path.exists(dst):
                     resp = b'{"error":"a disabled version already exists"}'
                     self.send_response(400)
@@ -1502,7 +1531,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(resp)
                     return
-                inner = base_name[1:-len('.disabled')]
+                inner = _enabled_folder_name(base_name)
                 dst = os.path.join(os.path.dirname(target), inner)
                 if os.path.exists(dst):
                     resp = b'{"error":"a folder already exists at the destination"}'

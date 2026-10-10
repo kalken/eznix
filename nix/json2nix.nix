@@ -36,7 +36,10 @@
   # Every *.json file under this directory (including subfolders, for organizing tabs) is an
   # independent config "tab" (edited separately in the UI). No file name is special: what is
   # not configuration is kept out with `exclude`. Dotdirs (e.g. .eznix-backups, when it lives
-  # here) are skipped so backup files never get picked up. They're combined below via lib.mkMerge, so
+  # here) are skipped so backup files never get picked up. So is a folder named "X.disabled":
+  # one the editor switched off, with everything in it (a file is switched off the same way,
+  # "X.json.disabled", which no longer ends in .json). It was ".X.disabled" until 2026-10 and
+  # skipped as a dotdir; the user wanted it to stay a visible part of the configuration. They're combined below via lib.mkMerge, so
   # the real NixOS module system performs the merge (list concat, attrset merge, scalar
   # conflict = eval error) — same as splitting configuration.nix across files. Mirrors
   # list_config_files() in bin/eznix.py, `exclude` (_excluded() there) included.
@@ -45,7 +48,7 @@
       name: type: let relPath = prefix + name; in
         if excluded relPath then []
         else if type == "directory"
-        then (if lib.hasPrefix "." name then [] else walk (dir + "/${name}") "${relPath}/")
+        then (if lib.hasPrefix "." name || lib.hasSuffix ".disabled" name then [] else walk (dir + "/${name}") "${relPath}/")
         else if type == "regular" && lib.hasSuffix ".json" name
         then [relPath]
         else []

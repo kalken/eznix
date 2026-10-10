@@ -129,7 +129,7 @@ function initSystemImportButton() {
   });
 }
 
-// One button, System, opening a dropdown with everything this plugin does: Backup, Import, Export,
+// One button, System, opening a dropdown with everything this plugin does: Export, Import, Backup,
 // and the backups to restore. showContextMenu doesn't care whether it's
 // triggered by a right-click or a plain click, so it's reused here as a left-click dropdown.
 // They were four things in the header until 2026-10 (a Backup and a Restore button of this
@@ -156,8 +156,8 @@ async function showSystemMenu(event) {
     clientX: rect.left, clientY: rect.bottom + 4,
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
-  // Backup, Import, Export, then the backups to restore: the order the user asked for, which
-  // also puts the one part whose length varies last.
+  // Export, Import, Backup, then the backups to restore: the order the user asked for (a
+  // file's menu starts the same way), which also puts the one part whose length varies last.
   const items = [];
   let systemBackups = [];
   if (SYSTEM_BACKUP_ENABLED) {
@@ -165,11 +165,11 @@ async function showSystemMenu(event) {
       const res = await apiFetch('/plugin/system/backups');
       if (res.ok) systemBackups = (await res.json()).backups || [];
     } catch (e) { /* falls through to the empty-state item below */ }
-    items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
   }
-  items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
   items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
+  items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
   if (SYSTEM_BACKUP_ENABLED) {
+    items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
     items.push({ separator: true });
     // The backups are lines of this menu, under a heading, and not a submenu of a "Restore"
     // entry as they first were: the button is at the window's right edge, so the submenu had
