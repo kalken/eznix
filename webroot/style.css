@@ -794,6 +794,11 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 }
 
 .nixos-spinner { width: 28px; height: 28px; flex-shrink: 0; }
+/* The logo's two colours, every other arm (_nixosLogoSvg() in terminal.js). A theme that sets
+   neither gets its two accents, which is what a theme of one's own made before these existed
+   shows. */
+.nixos-spinner .ns-a { fill: var(--logo-1, var(--accent2)); }
+.nixos-spinner .ns-b { fill: var(--logo-2, var(--accent)); }
 .nixos-spinner.spin { animation: nixos-spin 1.4s linear infinite; }
 .btn .nixos-spinner { width: 13px; height: 13px; }
 @keyframes nixos-spin { to { transform: rotate(360deg); } }

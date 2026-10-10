@@ -9,6 +9,9 @@
   --text3: #665c54;
   --accent:  #d79921;
   --accent2: #d65d0e;
+  /* The NixOS logo, every other arm: orange and yellow. */
+  --logo-1: var(--accent2);
+  --logo-2: var(--accent);
   --green:  #b8bb26;
   --green2: #98971a;
   --red:    #fb4934;

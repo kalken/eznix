@@ -11,6 +11,9 @@
   --text3: color-mix(in srgb, #262626 45%, #ececec);
   --accent:  #6e6e73;
   --accent2: #8e8e93;
+  /* The NixOS logo, every other arm: the two Graphite greys. */
+  --logo-1: var(--accent2);
+  --logo-2: var(--accent);
   --green:  #248a3d;
   --green2: #1d7332;
   --red:    #d70015;

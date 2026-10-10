@@ -9,6 +9,9 @@
   --text3: #354560;
   --accent:  #4a9edd;
   --accent2: #2678c0;
+  /* The NixOS logo, every other arm: the logo's own two blues. */
+  --logo-1: #5277c3;
+  --logo-2: #7ebae4;
   --green:  #28d17a;
   --green2: #18a858;
   --red:    #f05060;

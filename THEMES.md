@@ -114,6 +114,12 @@ follow the accent or not.
 - A destructive menu item fills with `--red` on hover and shows `--danger-text` on it, so
   those two have to work together.
 
+## The logo
+
+The NixOS logo (it turns while the terminal reconnects) is drawn in two colours, every other
+arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, `dark` two greys, the
+others their two accents. A theme that sets neither gets `--accent2` and `--accent`.
+
 ## Spacing
 
 The "Editor layout" block is the same in every built-in theme, on purpose:

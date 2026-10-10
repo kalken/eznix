@@ -228,22 +228,26 @@ async function initTerminal() {
 // reconnects). The icon is the NixOS snowflake (nix-snowflake-colours.svg from
 // github.com/NixOS/nixos-artwork, CC-BY-SA), pared down to just its drawable geometry -- one
 // path (plus its own mirrored twin) repeated via <use> at 60deg rotations, keeping the original
-// coordinates/transforms as-is so re-checking against the source stays straightforward. Filled
-// with currentColor rather than the source artwork's own two-tone blue gradients, matching every
-// other icon in the app (all stroke="currentColor"), so it inherits the button's own theme color
-// instead of a fixed brand color that clashes against a dark/light/gruvbox button background.
+// coordinates/transforms as-is so re-checking against the source stays straightforward. Two
+// colours, as in the artwork, where every other arm is the lighter blue: the arms are .ns-a and
+// .ns-b, and style.css fills them from the theme (--logo-1 and --logo-2, see THEMES.md), so
+// each theme has the logo in its own colours. It was one colour, currentColor, until 2026-10,
+// to keep the artwork's fixed blues from clashing with a dark/light/gruvbox background; the
+// user asked for two per theme. The path is in <defs> and drawn only through <use>: a fill
+// set on the path itself would hold for every copy of it.
 // .nixos-spinner's own size (style.css) is what each call site scales it to -- the markup itself
 // is size-agnostic; the "spin" class is what actually animates it (see @keyframes nixos-spin).
 function _nixosLogoSvg(spinning = false) {
   return `<svg class="nixos-spinner${spinning ? ' spin' : ''}" viewBox="0 0 501.56251 501.56249" aria-hidden="true">
   <g transform="translate(-156.41121,933.30685)">
     <g transform="matrix(0.99994059,0,0,0.99994059,-0.06321798,33.188377)">
-      <path id="ns-p1" fill="currentColor" d="m 309.54892,-710.38827 122.19683,211.67512 -56.15706,0.5268 -32.6236,-56.8692 -32.85645,56.5653 -27.90237,-0.011 -14.29086,-24.6896 46.81047,-80.4901 -33.22946,-57.8257 z"/>
-      <use href="#ns-p1" transform="rotate(60,407.11155,-715.78724)"/>
-      <use href="#ns-p1" transform="rotate(-60,407.31177,-715.70016)"/>
-      <use href="#ns-p1" transform="rotate(180,407.41868,-715.7565)"/>
-      <use href="#ns-p1" transform="rotate(120,407.33916,-716.08356)"/>
-      <use href="#ns-p1" transform="rotate(-120,407.28823,-715.86995)"/>
+      <defs><path id="ns-p1" d="m 309.54892,-710.38827 122.19683,211.67512 -56.15706,0.5268 -32.6236,-56.8692 -32.85645,56.5653 -27.90237,-0.011 -14.29086,-24.6896 46.81047,-80.4901 -33.22946,-57.8257 z"/></defs>
+      <use class="ns-a" href="#ns-p1"/>
+      <use class="ns-b" href="#ns-p1" transform="rotate(60,407.11155,-715.78724)"/>
+      <use class="ns-b" href="#ns-p1" transform="rotate(-60,407.31177,-715.70016)"/>
+      <use class="ns-b" href="#ns-p1" transform="rotate(180,407.41868,-715.7565)"/>
+      <use class="ns-a" href="#ns-p1" transform="rotate(120,407.33916,-716.08356)"/>
+      <use class="ns-a" href="#ns-p1" transform="rotate(-120,407.28823,-715.86995)"/>
     </g>
   </g>
 </svg>`;
@@ -697,9 +701,9 @@ function _runInTerminal(btn) {
 // *behind* the flake was built first (a checksum of flake.nix and flake.lock, the icon greyed
 // when it matched) and dropped the same day: it could not see a module added in another file,
 // and the user preferred a button that is simply always there over one that is sometimes wrong.
-// While it turns the button cannot be pressed, so a run is not started twice. The icon is two
-// arrows in a circle (Lucide's "refresh-cw"), the user's choice; the header's two reload
-// buttons have one arrow each.
+// While it turns the button cannot be pressed, so a run is not started twice. The icon is the
+// NixOS logo in the theme's two colours (_nixosLogoSvg(), which the reconnect notice turns the
+// same way); it was two arrows in a circle first.
 let _autocompleteClickedAt = 0;
 const _AUTOCOMPLETE_GRACE_MS = 20000;
 function _spinAutocomplete(running) {
@@ -713,7 +717,7 @@ if (!INSTALL_MODE && _TERM_CONFIG.autocomplete) {
   eznix.addButton('header', {
     id: 'autocomplete-btn',
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
-    html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>Autocomplete',
+    html: _nixosLogoSvg() + 'Autocomplete',
     onclick: () => {
       _autocompleteClickedAt = Date.now();
       _spinAutocomplete(true);
