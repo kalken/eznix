@@ -12,12 +12,23 @@
 {
   dir,
   exclude ? [ ],
-}: {
+}: args @ {
   pkgs,
   lib,
+  config,
   ...
 }: let
-  scope = {inherit pkgs lib;};
+  # What a raw expression ("_expr") can name: everything this module is given. That is `lib`,
+  # `config`, `options`, whatever the flake put in `specialArgs` (`inputs`, usually) and
+  # `modulesPath` on NixOS, plus `pkgs`, which is only handed to a module that names it, as
+  # above. Anything else set through `_module.args` would have to be named there too.
+  # `config` is safe here for the reason it is in any module: the names in a file come from
+  # the JSON alone and each expression is evaluated only when its value is asked for. The
+  # limits are the module system's own: one that reads the option it is part of recurses, a
+  # neighbouring name in the same attribute set included (`attrsOf` evaluates every entry to
+  # learn which exist). Tried by hand with `nix eval`; checks.json-dir cannot hold an "_expr"
+  # (see flake.nix).
+  scope = args;
 
   excludes = map (lib.removeSuffix "/") exclude;
   excluded = relPath: lib.any (e: relPath == e || lib.hasPrefix "${e}/" relPath) excludes;
@@ -48,7 +59,7 @@
     if builtins.isAttrs val && val ? "_expr"
     then
       import (builtins.toFile "expr.nix" ''
-        { pkgs, lib }: ${val._expr}
+        { pkgs, lib, config, ... } @ args: with args; ${val._expr}
       '')
       scope
     else if builtins.isList val

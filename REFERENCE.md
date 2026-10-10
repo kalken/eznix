@@ -107,7 +107,11 @@ services.eznix.exclude   = [ "package.json" "vendor" ];
 An entry is a path inside the folder: a file, or a folder with everything under it.
 Dot-folders are always left out.
 
-A value can also be a raw Nix expression (right-click a value), and anything can be switched
+A value can also be a raw Nix expression (right-click a value), which can use what a Nix
+module is given: `pkgs`, `lib`, `config`, `options`, and what your flake passes in
+`specialArgs` (often `inputs`). For example `pkgs.hello`, `lib.mkForce 1`,
+`config.networking.hostName`. As in any Nix module, an expression cannot read the setting it
+is itself part of. Anything can be switched
 off without deleting it (right-click, Disable). Nothing is written until you press Save, and
 every save keeps the previous version of the file (right-click a tab, Restore).
 

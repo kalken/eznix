@@ -174,7 +174,10 @@ eznix refuses to start if nobody could log in.
 other JSON of its own, the flake's root included. `exclude` exists twice and the two must
 agree: the function's argument keeps a path out of the build, the editor's setting
 (`_excluded()`) keeps it from being a tab. A module can't pass its option to the function
-(what the function reads decides `config`, so reading `config` there recurses). Raw
+(what the function reads decides `config`, so reading `config` there recurses). A raw
+expression is another matter and gets every argument the module does (`config`, `options`,
+`specialArgs` such as `inputs`, beside `pkgs` and `lib`): it is a value, evaluated when asked
+for, like one in any module. Raw
 expressions (`_expr`) go through `builtins.toFile`, which fails under `nix flake check`'s
 read-only evaluation ("path ... expr.nix is not valid"); a rebuild is unaffected. That is as
 old as the feature. `checks.json-dir` covers the function, without `_expr` for that reason.
