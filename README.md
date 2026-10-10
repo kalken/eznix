@@ -252,6 +252,25 @@ services.eznix = {
 Two user services, running as you. It edits your home-manager flake
 (`~/.config/home-manager`), and rebuilding is `home-manager switch`, with no root involved.
 
+## 🔁 Migrating from configuration.nix
+
+After the Quick Start, or after adding eznix to your own flake, your old configuration is
+still in `configuration.nix`, used beside what you set in eznix. To move it into the editor:
+
+1. Right-click the empty part of the tab bar and choose **Import**. Press **Load file** and
+   pick your `configuration.nix`, or paste its contents.
+2. Take the `imports = [ … ];` line out of the text: eznix refuses it, because a JSON file
+   cannot import other files. Remember what it listed.
+3. Under **Import into**, type a name for the new file, for example `configuration`, and
+   press **Import**. Settings that are not plain values are kept as Nix expressions.
+4. In `flake.nix`, take `./configuration.nix` out of the list of modules, and put what the
+   `imports` line listed there in its place (usually `./hardware-configuration.nix`).
+5. Press **Create Generation**.
+
+Do steps 1 to 4 before rebuilding: with the same setting in both places Nix reports a
+conflict. Afterwards you can spread the settings over more files by dragging them onto
+other tabs. Keep `configuration.nix` until the rebuild has worked.
+
 ## 🔘 Buttons
 
 A button in the terminal bar types a command into the terminal. Set them in the editor itself,

@@ -306,10 +306,15 @@ http); NixOS on a real machine ("works cleanly", including `interface` once `cer
 set); home-manager on another Linux in a VM, where the terminal's missing environment and
 `home.packages` not being a package list were found and fixed. The terminal restart notice
 was seen on NixOS and macOS across an update that changed the terminal. The user tested
-"all I could" and it works on the three; the points below are what nobody went through.
+"all I could" and it works on the three. `trustCert` on NixOS (the per-user units) was tried
+by the user on 2026-10-10: the authority deleted from `~/.pki/nssdb` with `certutil -D`, the
+unit `eznix-trust-USER` restarted, and `certutil -L` listed it again with `C,,` (their
+paste), and the browser, restarted, opened the page without a warning ("yes works"). The home-manager step was tried on
+Debian, and on macOS it is confirmed. The Documents button and the System menu, in
+the header since 2026-10-10, work by the user's word that day ("the document menu and system
+menu works"); which entries of the System menu were used was not said. The points below are
+what nobody went through.
 
-- `trustCert` on NixOS (the per-user units). The home-manager step was tried by the user on
-  Debian; on macOS it is confirmed.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
@@ -318,9 +323,6 @@ was seen on NixOS and macOS across an update that changed the terminal. The user
 - The `darwin` and `nixos` templates on a machine that had nothing. (`home` was: on a fresh
   Debian 13 VM, `nix flake init -t`, the name filled in, the password file, the first
   switch, and it worked first time.)
-- The Documents button and the System menu (Export, Import, Backup, the backups to restore): never opened in
-  a browser by a session, neither when their code moved out of `index.html` nor when the four
-  header buttons became that one menu and Documents moved to the header (2026-10-10).
 - System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
   there uses a password file).
 - home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator
