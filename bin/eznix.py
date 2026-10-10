@@ -885,10 +885,11 @@ def _theme_vars(theme):
 
 
 def _icon_colours(theme):
-    """The two colours of the icon in a theme: the colour of a section's name and that of the
-    header and tab bar (--section-title-color and --bg2), which the user chose over the logo's
-    own pair (--logo-1 and --logo-2, still what the page draws its logo in). Every var() in
-    them is followed to a value: an image has no stylesheet to look them up in."""
+    """The colours of the icon in a theme: the logo's two are the colour of a section's name and
+    that of the header and tab bar (--section-title-color and --bg2), which the user chose
+    over the logo's own pair (--logo-1 and --logo-2, still what the page draws its logo in),
+    and behind it is the editor's page (--editor-bg). Every var() in them is followed to a
+    value: an image has no stylesheet to look them up in."""
     found = _theme_vars(theme)
 
     def value(text, depth=0):
@@ -896,7 +897,7 @@ def _icon_colours(theme):
             v = found.get(m.group(1), m.group(2))
             return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
         return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
-    return tuple(value('var(%s)' % name) for name in ('--section-title-color', '--bg2'))
+    return tuple(value('var(%s)' % name) for name in ('--section-title-color', '--bg2', '--editor-bg'))
 
 
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
@@ -904,9 +905,12 @@ def _icon_colours(theme):
 # how it was pared down. Twice, because that one is drawn by the page, in the page's
 # stylesheet, and this one is a file a browser fetches by itself. It has a width and a height
 # because an image with only a viewBox has no size of its own, and a browser making an app's
-# icon out of it has nothing to draw it at.
+# icon out of it has nothing to draw it at. The logo is on a rounded square in the colour of
+# the editor's page, at 72% of it, so that it reads the same on a light and a dark tab strip.
 _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 501.56251 501.56249">
 <style>%s</style>
+<rect class="g" width="100%%" height="100%%" rx="22%%"/>
+<g transform="translate(250.78 250.78) scale(.72) translate(-250.78 -250.78)">
 <g transform="translate(-156.41121,933.30685)">
 <g transform="matrix(0.99994059,0,0,0.99994059,-0.06321798,33.188377)">
 <defs><path id="p" d="m 309.54892,-710.38827 122.19683,211.67512 -56.15706,0.5268 -32.6236,-56.8692 -32.85645,56.5653 -27.90237,-0.011 -14.29086,-24.6896 46.81047,-80.4901 -33.22946,-57.8257 z"/></defs>
@@ -918,6 +922,7 @@ _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" 
 <use class="a" href="#p" transform="rotate(-120,407.28823,-715.86995)"/>
 </g>
 </g>
+</g>
 </svg>
 """
 
@@ -927,7 +932,7 @@ def _favicon_svg(theme):
     automatic theme gets both of its pairs, the dark one behind a media query; where the icon
     is turned into a picture once (an installed app) that comes out as the light one."""
     def rules(name):
-        return '.a{fill:%s}.b{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _icon_colours(name))
+        return '.a{fill:%s}.b{fill:%s}.g{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _icon_colours(name))
     if theme in AUTO_THEMES:
         light, dark = AUTO_THEMES[theme]
         css = rules(light) + '@media (prefers-color-scheme:dark){' + rules(dark) + '}'
@@ -1919,9 +1924,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         manifest['name'] = manifest['short_name'] = f'eznix ({HOSTNAME})'
         # The theme is in the icon's address so that another theme is another manifest: an
         # installed app keeps the icon it was installed with until the browser sees a change.
+        # So is a checksum of the picture, for a theme whose colours were changed.
         for icon in manifest.get('icons') or []:
             if icon.get('src') == 'favicon.svg':
-                icon['src'] += '?theme=' + THEME
+                icon['src'] += '?theme=%s&v=%s' % (
+                    THEME, hashlib.sha256(_favicon_svg(THEME).encode()).hexdigest()[:8])
         data = json.dumps(manifest).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/manifest+json')

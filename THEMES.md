@@ -121,7 +121,8 @@ arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, `dark` tw
 others their two accents. A theme that sets neither gets `--accent2` and `--accent`.
 
 The tab's icon is the same logo in two other colours of the theme, every other arm: that of
-a section's name (`--section-title-color`) and that of the header and tab bar (`--bg2`). So
+a section's name (`--section-title-color`) and that of the header and tab bar (`--bg2`), on
+a rounded square in the colour of the editor's page (`--editor-bg`). So
 is the icon of the page installed as an app. That one is in the colours of the theme set as `theme`, not of one
 picked with the swatches: the browser fetches it by itself, and shows a new one only after
 the app has been closed and opened again.

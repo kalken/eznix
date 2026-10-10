@@ -148,13 +148,15 @@ Polling, not `EventSource`: one reconnecting after a restart wiped Chromium's co
 origin.
 
 **The icon is drawn by the server** (`_favicon_svg()`, `/favicon.svg?theme=NAME`): the logo
-in a theme's `--section-title-color` and `--bg2` (the header's fill), read out of the theme's stylesheet with
+in a theme's `--section-title-color` and `--bg2` (the header's fill) on a rounded square of
+`--editor-bg`, read out of the theme's stylesheet with
 every `var()` followed, since an image has no stylesheet. Those two are the user's choice
 (2026-10-11) over `--logo-1` and `--logo-2`, which the icon had for a day and the page's own
 logo still has. It was nixpkgs' snowflake, copied in at build
 time, so a checkout had none. The page asks for the theme chosen in that browser
 (`_loadIcon()`); the manifest, which a browser fetches with nothing the page knows, names the
-configured one, in the icon's address so that another theme is another manifest. The logo's
+configured one, in the icon's address with a checksum of the picture, so that another theme
+or another colour is another manifest. The logo's
 geometry is therefore in two places, there and in `terminal-panel/terminal.js`. Seen by the
 user on 2026-10-11, on a Mac with the app installed in Brave (Chromium 154): after the update
 the browser replaced the installed app's icon without a reinstall, visible once the app was
