@@ -7,6 +7,7 @@ It covers the server and the plugins' server halves. What happens in the page (t
 terminal panel) is not covered and has to be looked at in a browser."""
 import http.client
 import http.cookiejar
+import importlib.util
 import io
 import json
 import os
@@ -97,7 +98,37 @@ def login_cookie():
         conn.close()
 
 
+def terminal_history():
+    """The terminal's own record of the screen, which a page that reconnects is sent: since
+    2026-10 with the lines that scrolled off the top above it. No server needed for these."""
+    spec = importlib.util.spec_from_file_location('term', os.path.join(ROOT, 'bin', 'eznix-terminal.py'))
+    term = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(term)
+    screen = term._VirtualScreen(5, 20)
+    screen.feed(b'$ ')
+    check('terminal: a screen nothing has scrolled off is sent as before, cursor placed by row',
+          screen.snapshot() == b'$\x1b[0m\x1b[1;3H', screen.snapshot())
+    for i in range(1, 13):
+        screen.feed(f'\x1b[31mline {i}\x1b[0m\r\n'.encode())
+    screen.feed(b'$ ')
+    sent = screen.snapshot().decode()
+    lines = [l for l in sent.split('\r\n') if 'line' in l]
+    check('terminal: lines that scrolled off the top come back above the screen, oldest first, in colour',
+          lines[0] == '$ \x1b[0;31mline 1\x1b[0m' and lines[1] == '\x1b[0;31mline 2\x1b[0m' and len(lines) == 12, lines)
+    check('terminal: the cursor is then placed counted from the last line', sent.endswith('$\x1b[0m\x1b[3G'), sent[-20:])
+    screen.feed(b'\x1b[?1049h')
+    check('terminal: not while a full-screen program has the screen', 'line 1' not in screen.snapshot().decode())
+    screen.feed(b'\x1b[?1049l')
+    check('terminal: and again once it is gone', 'line 1\x1b' in screen.snapshot().decode())
+    screen.feed(b'\x1b[H\x1b[2J\x1b[3J')
+    check('terminal: `clear` empties the history too', screen.snapshot() == b'\x1b[0m\x1b[1;1H', screen.snapshot())
+    for _ in range(term.SCROLLBACK_LINES + 50):
+        screen.feed(b'x\r\n')
+    check('terminal: the history is bounded', len(screen._scrollback) == term.SCROLLBACK_LINES)
+
+
 def main():
+    terminal_history()
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(f'{tmp}/flake/eznix')
         os.makedirs(f'{tmp}/flake/.git')

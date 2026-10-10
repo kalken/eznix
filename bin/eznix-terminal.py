@@ -32,6 +32,7 @@ that whole failure mode not exist, than to also chase down killing an entire job
 import argparse
 import base64
 import codecs
+import collections
 import hashlib
 import http.server
 import json
@@ -200,6 +201,24 @@ def _sgr_params_for(sgr_tuple):
     return ';'.join(parts) if parts else '0'
 
 
+# How many lines that have scrolled off the top are kept for a client that reattaches. The same
+# number the page's own terminal keeps (scrollback, in terminal.js).
+SCROLLBACK_LINES = 5000
+
+
+def _render_row(row):
+    """One row of the grid as text a terminal can be sent: its characters with their colours,
+    starting from and ending in the plain state, so a line stands by itself."""
+    out = []
+    prev_sgr = _BLANK_SGR
+    for ch, sgr in row:
+        if sgr != prev_sgr:
+            out.append('\x1b[0m' if sgr == _BLANK_SGR else f'\x1b[0;{_sgr_params_for(sgr)}m')
+            prev_sgr = sgr
+        out.append(ch)
+    return ''.join(out).rstrip() + ('' if prev_sgr == _BLANK_SGR else '\x1b[0m')
+
+
 class _VirtualScreen:
     def __init__(self, rows, cols):
         self.rows = rows
@@ -217,6 +236,15 @@ class _VirtualScreen:
         self._decoder = codecs.getincrementaldecoder('utf-8')(errors='replace')
         self._pending = ''
         self._grid = self._blank_grid()
+        # The lines that have scrolled off the top, oldest first, each already rendered
+        # (_render_row()): a row of cells is some hundred objects, its text a few hundred bytes.
+        # They are what a page that reloads gets back above the screen, see snapshot(). Until
+        # 2026-10 nothing above the screen was kept, and a rebuild that restarted the editor,
+        # and so reloaded the page, took its own earlier output out of reach: what the user
+        # wanted back. Not the raw bytes replayed, which is what was given up before (see the
+        # comment above this class): finished lines, with nothing in them to interpret twice.
+        self._scrollback = collections.deque(maxlen=SCROLLBACK_LINES)
+        self._alt = False   # the alternate screen is showing: a full-screen program's, no history
 
     def _blank_row(self):
         return [(' ', _BLANK_SGR) for _ in range(self.cols)]
@@ -246,6 +274,10 @@ class _VirtualScreen:
     def _scroll_up(self, n=1):
         top, bot = self.top_margin, self.bottom_margin
         for _ in range(n):
+            # Off the top of the ordinary screen is into the history, as in any terminal; a
+            # line leaving a scrolling region further down, or the alternate screen, is gone.
+            if top == 0 and not self._alt:
+                self._scrollback.append(_render_row(self._grid[top]))
             del self._grid[top]
             self._grid.insert(bot, self._blank_row())
 
@@ -288,6 +320,11 @@ class _VirtualScreen:
             self._erase_cell(self.cur_row, c)
 
     def _erase_in_display(self, mode):
+        if mode == 3:
+            # The history and not the screen, as xterm has it: what `clear` sends last, after
+            # erasing the screen itself.
+            self._scrollback.clear()
+            return
         if mode == 0:
             self._erase_in_line(0)
             rows = range(self.cur_row + 1, self.rows)
@@ -355,6 +392,7 @@ class _VirtualScreen:
                 # snapshots are only ever taken of "the screen as it looks right now", never a
                 # diff against what used to be there.
                 self.reset()
+                self._alt = final == 'h'
             return
         if final == 'm':
             self._apply_sgr(params)
@@ -467,6 +505,7 @@ class _VirtualScreen:
                     continue
                 if nxt == 'c':
                     self.reset()
+                    self._scrollback.clear()
                     i += 2
                     continue
                 if nxt == 'D':
@@ -527,7 +566,11 @@ class _VirtualScreen:
         for r, row in enumerate(self._grid):
             if any(ch != ' ' for ch, _ in row):
                 last_row = max(last_row, r)
-        out = []
+        # The history first, when there is one and it is the ordinary screen that shows: every
+        # line that scrolled off the top, then the screen under them, as it would stand in a
+        # terminal that had been there all along.
+        history = [] if self._alt else list(self._scrollback)
+        out = [line + '\r\n' for line in history]
         prev_sgr = _BLANK_SGR
         for r, row in enumerate(self._grid[:last_row + 1]):
             if r > 0:
@@ -539,7 +582,17 @@ class _VirtualScreen:
                     prev_sgr = sgr
                 line.append(ch)
             out.append(''.join(line).rstrip())
-        out.append(f'\x1b[0m\x1b[{self.cur_row + 1};{self.cur_col + 1}H')
+        if history:
+            # With lines above it the screen no longer starts at the client's first row (it
+            # ends at its last one once there are more lines than rows), so the cursor is put
+            # where it belongs counted from the line just written: up to its row, then to its
+            # column. The prompt then stands at the bottom with the history over it. A program
+            # that addresses rows of the ordinary screen by number would be off by that
+            # shift until it clears the screen; shells and build output move relatively.
+            up = last_row - self.cur_row
+            out.append('\x1b[0m' + (f'\x1b[{up}A' if up else '') + f'\x1b[{self.cur_col + 1}G')
+        else:
+            out.append(f'\x1b[0m\x1b[{self.cur_row + 1};{self.cur_col + 1}H')
         return ''.join(out).encode('utf-8')
 
 
@@ -767,7 +820,9 @@ def _terminal_ws(handler):
         with session['lock']:
             snapshot = session['vscreen'].snapshot()
         try:
-            _ws_send(wfile, b'\x1b[2J\x1b[H', opcode=0x02)
+            # 3J: this client's own history too. One that only lost its connection still has
+            # it, and the snapshot brings the session's, which would then be there twice.
+            _ws_send(wfile, b'\x1b[2J\x1b[3J\x1b[H', opcode=0x02)
             _ws_send(wfile, snapshot, opcode=0x02)
         except Exception:
             pass

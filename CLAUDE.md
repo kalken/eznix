@@ -105,6 +105,14 @@ cookie with that terminal's own secret (`key_file`). Each user's terminal has it
 or the allowed users could reach each other's shells over loopback. The terminal never creates
 the secret; whoever starts it does, before it starts.
 
+**A page that reconnects gets the terminal's history back**, up to 5000 lines: the terminal
+keeps each line that scrolls off the top of its record of the screen (`_VirtualScreen`,
+`_scrollback`), already rendered as text with its colours, and sends them ahead of the screen
+itself. The user needed it for rebuilds: one that updates eznix restarts the editor, the page
+reloads, and the rebuild's earlier output was out of reach. It is not the replay of raw output
+that was given up before (the comment above the class says why); nothing in those lines is
+interpreted again. Not kept: what a full-screen program showed.
+
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
 false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch and reloads a
