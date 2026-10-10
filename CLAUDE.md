@@ -222,6 +222,22 @@ else, and dot-folders are skipped for the same reason. It gives the service noth
 didn't have: a JSON file it could already write can hold any Nix expression, built as root
 at the next rebuild.
 
+**The suggestions are parsed by their form, never by an option's name.** The user's rule,
+set on 2026-10-10 after two fixes that had each been shaped by the one option being looked at
+(networking.hosts): as general as possible, because most options are never looked at by
+anyone. In `index.html`: a part of a path in angle brackets is a placeholder whatever it says
+(`_isWildcard()`; nixpkgs has `<name>` but also `<path>`, `<config-name>`, and others); a
+quoted part is one part (`_pathParts()`); a type is a set if it says "attribute set", under
+any wrapping (`_setEntryType()`), and what is inside a set has the type the set says it holds
+(`_typeAt()`), so a new entry can be added to any of them. One thing can't be read off: whether
+a dot typed after a set belongs to the entry's name. It is taken as part of the name only
+where the entry is certainly a plain value (`_isPlainType()`, a list of what is known), since
+types are free text and a wrong yes would glue a section and its key together; everywhere else
+a dotted name needs its quotes, as in Nix. `checkOptionParsing()`, from the browser's console,
+runs every option of the loaded suggestions through all of it and lists what fails: none of
+27,654 on NixOS and of 1,257 on nix-darwin when it was written. Run it after touching any of
+this, on both kinds of data.
+
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 

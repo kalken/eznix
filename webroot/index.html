@@ -1260,24 +1260,213 @@ function parseNixDefault(nixDefault, jsType) {
 
 // ── Option matching ───────────────────────────────────────────────────────────
 
-// Wildcard segments in options.json that can match any concrete segment
-const WILDCARDS = new Set(['<name>', '<n>', '*']);
+// A part of an option's path that stands for any name: "*" (an item of a list) and whatever is
+// written in angle brackets. Not a list of the ones known: nixpkgs has <name>, but also
+// <config-name>, <path>, <tmpfiles-type>, <drive-bay-name>, and a module is free to invent
+// another. Naming three of them, as was done until 2026-10, left every option under the others
+// (40 on a NixOS system) impossible to add or to look up.
+//
+// The user's rule for all of this parsing: as general as possible, because most options are
+// never looked at by anyone. So nothing here names an option, and what the suggestions hold
+// is read by its form: a path by its dots, quotes and placeholders, a type by its words.
+// `checkOptionParsing()` runs every option there is through it.
+function _isWildcard(seg) { return seg === '*' || /^<[^<>]+>$/.test(seg); }
+
+// A dotted path as its parts, where a part in double quotes is one part, dots and all, the
+// way Nix writes a name that has them: boot.kernel.sysctl."net.core.rmem_max" is four parts,
+// the last being net.core.rmem_max. The suggestions list such options in exactly that form.
+// Splitting at every dot, as was done until 2026-10, made six parts of it.
+function _optParts(o) { return o._parts || (o._parts = _pathParts(o.path)); }
+function _pathParts(str) {
+  const parts = [];
+  let cur = '', quoted = false;
+  for (const ch of str) {
+    if (ch === '"') quoted = !quoted;
+    else if (ch === '.' && !quoted) { parts.push(cur); cur = ''; }
+    else cur += ch;
+  }
+  parts.push(cur);
+  return parts;
+}
+
+// What one entry of a set is, read from the set's own type: "attribute set of list of string"
+// gives "list of string". The words a type can be wrapped in are taken off first, in any order
+// and number ("null or (open submodule of lazy attribute set of X)"). Returns undefined when
+// the type is not a set, and '' for a set that does not say what it holds ("attribute set").
+// A type that is a set *or* something else ("string or (attribute set)") is not one here.
+function _setEntryType(type) {
+  let t = (type || '').trim();
+  for (;;) {
+    const before = t;
+    t = _stripWrappingParens(t);
+    for (const w of ['null or ', 'non-empty ', 'open submodule of ', 'lazy ', 'nested ']) {
+      if (t.startsWith(w)) t = t.slice(w.length);
+    }
+    if (t === before) break;
+  }
+  if (t === 'attribute set') return '';
+  if (!t.startsWith('attribute set of ')) return undefined;
+  return _stripWrappingParens(t.slice('attribute set of '.length));
+}
+
+// The type of whatever is at `parts`, an option or something inside one: the option's own
+// type where the suggestions have it (findOption(), placeholders included), and otherwise the
+// nearest option above, stepped down one level of "attribute set of" for each further name.
+// So networking.hosts."192.168.1.1" is "list of string" though no option describes it, and the
+// same goes for a set inside a set. undefined when nothing can be said.
+function _typeAt(parts) {
+  for (let i = parts.length; i >= 1; i--) {
+    const opt = findOption(parts.slice(0, i));
+    if (!opt) continue;
+    let type = opt.type || '';
+    for (let j = i; j < parts.length; j++) {
+      type = _setEntryType(type);
+      if (type === undefined) return undefined;
+    }
+    return type;
+  }
+  return undefined;
+}
+
+// Whether `parts` is a set of named entries: by its type, or because the suggestions list
+// options for its entries (PATH.<name>.FIELD, with whatever placeholder).
+function _isEntrySet(parts) {
+  if (!parts.length) return false;
+  if (_setEntryType(_typeAt(parts)) !== undefined) return true;
+  // What the suggestions declare beneath it decides the rest. A placeholder there: a set.
+  // Nothing at all, while the configuration has names in it: a set as well, one whose type
+  // does not say so in words that can be read (a section of an INI file under
+  // services.samba.settings: "section of an INI file (attrs of …)"). Only names that are
+  // declared one by one make it a group of options, where a new one is "Add sub option…".
+  let declared = false;
+  for (const o of options) {
+    const op = _optParts(o);
+    if (op.length <= parts.length || !parts.every((p, i) => _isWildcard(op[i]) || op[i] === String(p))) continue;
+    if (_isWildcard(op[parts.length]) && op[parts.length] !== '*') return true;
+    declared = true;
+  }
+  const here = getAtPath(config, parts);
+  return !declared && here !== null && typeof here === 'object' && !Array.isArray(here) && !isExprPkg(here) && !isDisabled(here);
+}
+
+// Whether a type is one that certainly holds no further names: text, a number, a yes/no, a
+// path, a package, one of a list of words, a list, or a choice between those. Asked to know if
+// a dot typed after the name of a set can only belong to an entry's name (see _addPathParts()).
+// It has to be certain, so it is a list of what is known and "no" for everything else: types
+// are free text ("section of an INI file (attrs of …)", "systemd option", "sysctl option
+// value"), and a guess that one of them holds nothing would glue a section and its key into
+// one name. Guessing "no" costs only the quotes Nix asks for anyway.
+function _isPlainType(type) {
+  const alternatives = [];
+  let depth = 0, quoted = false, cur = '';
+  const t = _stripWrappingParens((type || '').trim());
+  for (let i = 0; i < t.length; i++) {
+    const ch = t[i];
+    if (ch === '"') quoted = !quoted;
+    else if (!quoted && ch === '(') depth++;
+    else if (!quoted && ch === ')') depth--;
+    if (!quoted && depth === 0 && t.startsWith(' or ', i)) { alternatives.push(cur); cur = ''; i += 3; continue; }
+    cur += ch;
+  }
+  alternatives.push(cur);
+  // Each alternative has to be one of these from its first word to its last. Words may stand
+  // in front of "string", "integer" and "number" ("non-empty string", "16 bit unsigned
+  // integer; between 0 and 65535"), but not "of": "attribute set of string" is a set.
+  const plain = /^(?:null|boolean|package|derivation|path|absolute path|float|(?:(?!of )[\w-]+ )*string(?: .*)?|strings concatenated with .*|(?:(?!of )[\w-]+ )*(?:integer|number)(?:[;,] .*| between .*| \(.*\))?|one of .*|value .* \(singular enum\)|list of .*)$/;
+  return alternatives.length > 0 && alternatives.every(a => {
+    a = _stripWrappingParens(a.trim());
+    return _setEntryType(a) === undefined && plain.test(a);
+  });
+}
+
+// The type of one entry of the set at `parts`, when its entries certainly hold no further names
+// (networking.hosts: "list of string"), else null.
+function _freeEntryType(parts) {
+  const entry = _setEntryType(_typeAt(parts));
+  return entry && _isPlainType(entry) ? entry : null;
+}
+
+// What was typed into "Add option", as the parts of the path to set. Beyond _pathParts(): under
+// a set whose entries hold no further names, everything after the set is the entry's name, so
+// that networking.hosts.192.168.1.2 adds the host 192.168.1.2 and not a tree of 192 > 168 > 1
+// > 2. Nothing can lie further in there, so there is nothing a dot could otherwise mean. Not
+// when the first part after the set is something the set is known to have (an open submodule
+// lists some of its own options): that is then a path into it. Everywhere else a dot
+// separates, and a name with dots is written in quotes, as in Nix.
+function _addPathParts(raw) {
+  const parts = _pathParts(raw);
+  for (let i = parts.length - 2; i >= 1; i--) {
+    const set = parts.slice(0, i);
+    if (!_freeEntryType(set)) continue;
+    const declared = options.some(o => {
+      const op = _optParts(o);
+      return op.length > i && op[i] === parts[i] && set.every((p, k) => _isWildcard(op[k]) || op[k] === p);
+    });
+    if (!declared) return [...set, parts.slice(i).join('.')];
+  }
+  return parts;
+}
 
 // Check if a concrete path array matches an option path string (which may have wildcards)
 function concreteMatchesOption(concreteParts, optionPath) {
-  const optParts = optionPath.split('.');
+  const optParts = typeof optionPath === 'string' ? _pathParts(optionPath) : _optParts(optionPath);
   if (optParts.length !== concreteParts.length) return false;
-  return optParts.every((p, i) => WILDCARDS.has(p) || p === concreteParts[i]);
+  return optParts.every((p, i) => _isWildcard(p) || p === concreteParts[i]);
+}
+
+// The option with exactly this path, through an index made once per set of suggestions: a
+// lookup is asked for every row drawn, and for several paths per row (_typeAt()).
+let _optionIndex = null, _optionIndexOf = null;
+function _optionExact(path) {
+  if (_optionIndexOf !== options) {
+    _optionIndex = new Map(options.map(o => [o.path, o]));
+    _optionIndexOf = options;
+  }
+  return _optionIndex.get(path) || null;
 }
 
 function findOption(concretePath) {
-  const exact = concretePath.join('.');
-  let found = options.find(o => o.path === exact);
+  const found = _optionExact(concretePath.join('.'));
   if (found) return found;
   for (const o of options) {
-    if (concreteMatchesOption(concretePath, o.path)) return o;
+    if (concreteMatchesOption(concretePath, o)) return o;
   }
   return null;
+}
+
+// What the tooltip of a row with no option of its own says its type is: see _typeAt().
+function _entryTypeLabel(path) { return _typeAt(path) || null; }
+
+// Runs every option of the suggestions through the parsing above and returns what does not
+// come out right: the check that covers the options nobody looks at. For each one, with a
+// name put in for every placeholder (one containing a dot, to prove the quotes): the path
+// splits back into the same parts, the option is found again from them, and typing it is
+// accepted; for each that is a set, a new entry is accepted too and has a type. From the
+// browser's console: checkOptionParsing(). An empty `failures` is the result to expect.
+function checkOptionParsing() {
+  const quote = s => (/^[A-Za-z_][\w'-]*$/.test(s) ? s : '"' + s + '"');
+  const failures = [];
+  let checked = 0, sets = 0;
+  for (const o of options) {
+    const op = _optParts(o);
+    if (op.some(isInternalSegment)) continue;
+    checked++;
+    const concrete = op.map(seg => (seg === '*' ? '0' : _isWildcard(seg) ? 'a.name' : seg));
+    const typed = concrete.map(quote).join('.');
+    const fail = why => { if (failures.length < 40) failures.push(o.path + ': ' + why); };
+    if (_pathParts(typed).join('\x00') !== concrete.join('\x00')) fail('splits into ' + JSON.stringify(_pathParts(typed)));
+    const found = findOption(concrete);
+    if (!found) fail('not found again');
+    else if (!concreteMatchesOption(concrete, found)) fail('found as ' + found.path);
+    if (!isValidOptionPath(typed)) fail('typing it is refused');
+    if (_setEntryType(o.type) !== undefined) {
+      sets++;
+      const entry = [...concrete, 'new.entry'];
+      if (!isValidOptionPath(entry.map(quote).join('.'))) fail('a new entry is refused');
+      if (_typeAt(entry) === undefined) fail('a new entry has no type');
+    }
+  }
+  return { checked, sets, failures };
 }
 
 // Returns true if path segment starts with _ (internal NixOS module options)
@@ -1290,21 +1479,21 @@ function optionSearch(query) {
   const q = query.trim();
   if (!q) return [];
 
-  const parts = q.split('.');
+  const parts = _pathParts(q);
   const partial = parts[parts.length - 1].toLowerCase();
   const confirmed = parts.slice(0, -1);
 
   const results = [];
 
   for (const o of options) {
-    const op = o.path.split('.');
+    const op = _optParts(o);
     if (op.some(isInternalSegment)) continue;
     if (op.length < confirmed.length + 1) continue;
 
     // Confirmed segments must match exactly (wildcards in option path match anything)
     let ok = true;
     for (let i = 0; i < confirmed.length; i++) {
-      if (!WILDCARDS.has(op[i]) && op[i].toLowerCase() !== confirmed[i].toLowerCase()) {
+      if (!_isWildcard(op[i]) && op[i].toLowerCase() !== confirmed[i].toLowerCase()) {
         ok = false; break;
       }
     }
@@ -1319,7 +1508,7 @@ function optionSearch(query) {
     // substitutes what they typed in its place, so deeper fields (e.g. under an already-typed
     // array index like buttons.0) are still reachable by continuing to type past it.
     const nextSeg = op[confirmed.length];
-    const isWild = WILDCARDS.has(nextSeg);
+    const isWild = _isWildcard(nextSeg);
     if (!isWild && !nextSeg.toLowerCase().startsWith(partial)) continue;
     if (isWild && !partial) continue; // let getWildcardBoundary handle the empty-partial case
 
@@ -1330,13 +1519,13 @@ function optionSearch(query) {
     // anything nested under it becomes a real, completable path.
     let hasDeeperWildcard = false;
     for (let i = confirmed.length + 1; i < op.length; i++) {
-      if (WILDCARDS.has(op[i])) { hasDeeperWildcard = true; break; }
+      if (_isWildcard(op[i])) { hasDeeperWildcard = true; break; }
     }
     if (hasDeeperWildcard) continue;
 
     // Resolve wildcards to what the user typed so the display path looks concrete
     const displayParts = op.map((seg, i) => {
-      if (!WILDCARDS.has(seg)) return seg;
+      if (!_isWildcard(seg)) return seg;
       if (i < confirmed.length) return confirmed[i];
       if (i === confirmed.length) return partial;
       return seg; // remaining wildcards stay as-is (user hasn't typed that far yet)
@@ -1362,14 +1551,14 @@ function isObjectArrayNixType(nixType) {
 function blankObjectFromOptions(path) {
   const fields = {};
   for (const o of options) {
-    const op = o.path.split('.');
+    const op = _optParts(o);
     if (op.length !== path.length + 2) continue;
     let ok = true;
     for (let i = 0; i < path.length; i++) {
-      if (!WILDCARDS.has(op[i]) && op[i] !== String(path[i])) { ok = false; break; }
+      if (!_isWildcard(op[i]) && op[i] !== String(path[i])) { ok = false; break; }
     }
     if (!ok) continue;
-    if (!WILDCARDS.has(op[path.length])) continue;
+    if (!_isWildcard(op[path.length])) continue;
     const key = op[path.length + 1];
     if (isInternalSegment(key)) continue;
     if (!(key in fields) && o.required) {
@@ -1387,15 +1576,15 @@ function requiredChildDefaults(parts) {
   const fields = {};
   for (const o of options) {
     if (!o.required) continue;
-    const op = o.path.split('.');
+    const op = _optParts(o);
     if (op.length !== parts.length + 1) continue;
     let ok = true;
     for (let i = 0; i < parts.length; i++) {
-      if (!WILDCARDS.has(op[i]) && op[i] !== String(parts[i])) { ok = false; break; }
+      if (!_isWildcard(op[i]) && op[i] !== String(parts[i])) { ok = false; break; }
     }
     if (!ok) continue;
     const key = op[parts.length];
-    if (isInternalSegment(key) || WILDCARDS.has(key)) continue;
+    if (isInternalSegment(key) || _isWildcard(key)) continue;
     if (!(key in fields)) {
       const jsType = typeFromNix(o.type);
       const parsed = parseNixDefault(o.default, jsType);
@@ -1407,11 +1596,13 @@ function requiredChildDefaults(parts) {
 
 // Validate that a concrete path string matches at least one option
 function isValidOptionPath(raw) {
-  const parts = raw.split('.');
+  const parts = _addPathParts(raw);
   // Exact match
-  if (options.some(o => o.path === raw)) return true;
+  if (_optionExact(raw)) return true;
+  // A new entry of a set, whatever the set holds: any name will do (see _typeAt())
+  if (parts.length >= 2 && parts[parts.length - 1] && _setEntryType(_typeAt(parts.slice(0, -1))) !== undefined) return true;
   // Wildcard match
-  if (options.some(o => concreteMatchesOption(parts, o.path))) return true;
+  if (options.some(o => concreteMatchesOption(parts, o))) return true;
   // Container match: `raw` isn't a leaf option itself, but is a valid prefix (its own trailing
   // segment standing in for a <name>/<n> wildcard) with real fields beneath it — e.g.
   // "services.ezrouter.vlan.test2" for a vlan.<name>.address/.enable/... submodule instance.
@@ -1420,10 +1611,10 @@ function isValidOptionPath(raw) {
   // doAdd() treats this the same as any other object-type add, seeding it via
   // requiredChildDefaults(parts).
   return options.some(o => {
-    const op = o.path.split('.');
+    const op = _optParts(o);
     if (op.length <= parts.length) return false;
     for (let i = 0; i < parts.length; i++) {
-      if (!WILDCARDS.has(op[i]) && op[i] !== parts[i]) return false;
+      if (!_isWildcard(op[i]) && op[i] !== parts[i]) return false;
     }
     return true;
   });
@@ -1433,12 +1624,12 @@ function isValidOptionPath(raw) {
 function getWildcardBoundary(query) {
   const q = query.trim();
   if (!q) return null;
-  const typedParts = q.split('.');
+  const typedParts = _pathParts(q);
   const lastPartial = typedParts[typedParts.length - 1];
   const confirmedParts = typedParts.slice(0, -1);
 
   for (const o of options) {
-    const optParts = o.path.split('.');
+    const optParts = _optParts(o);
     if (optParts.some(isInternalSegment)) continue;
     if (optParts.length < confirmedParts.length + 1) continue;
 
@@ -1446,14 +1637,14 @@ function getWildcardBoundary(query) {
     for (let i = 0; i < confirmedParts.length; i++) {
       const op = optParts[i];
       const cp = confirmedParts[i];
-      if (!WILDCARDS.has(op) && op.toLowerCase() !== cp.toLowerCase()) { match = false; break; }
+      if (!_isWildcard(op) && op.toLowerCase() !== cp.toLowerCase()) { match = false; break; }
     }
     if (!match) continue;
 
     const nextSeg = optParts[confirmedParts.length];
     // "*" (a list-of-submodule index) has no name to type, unlike <name>/<n> — see the matching
     // skip in optionSearch above.
-    if (!WILDCARDS.has(nextSeg) || nextSeg === '*') continue;
+    if (!_isWildcard(nextSeg) || nextSeg === '*') continue;
 
     const prefix = confirmedParts.join('.');
     let cur = config;
@@ -1518,7 +1709,33 @@ function initAddPanel() {
     acIdx = -1;
     acSaved = null;
     const wildcard = getWildcardBoundary(inp.value);
-    if (!hits.length && !wildcard) {
+    // The name of a new entry of a set is being typed (a host under networking.hosts): there
+    // may be nothing to suggest, only to say what Enter will do. And nothing may be added
+    // yet: doForceAdd(), below, adds whatever is a valid path once no suggestion is left, and
+    // here every character typed makes one, so the first "1" of an address became an entry.
+    // Sets the suggestions list entries for (PATH.<name>.FIELD) have their own hint, `wildcard`.
+    const typed = _addPathParts(inp.value.trim());
+    const entrySet = !wildcard && typed.length >= 2 && _setEntryType(_typeAt(typed.slice(0, -1))) !== undefined;
+    if (entrySet) {
+      const hint = document.createElement('div');
+      hint.className = 'autocomplete-item ac-wildcard-hint';
+      const name = document.createElement('span');
+      name.className = 'ac-name';
+      name.textContent = typed.slice(0, -1).join('.') + '.' + (typed[typed.length - 1] || '<entry>');
+      const desc = document.createElement('span');
+      desc.className = 'ac-desc';
+      // What an entry is called is not always a name: under networking.hosts it is an address,
+      // and "<name>" there looked strange to the user. The option's own example knows: its
+      // first entry is shown as what to type.
+      const setOpt = findOption(typed.slice(0, -1));
+      const first = setOpt && typeof setOpt.example === 'string' && /^\s*\{?\s*"?([^"=\s{]+)"?\s*=/.exec(setOpt.example);
+      desc.textContent = typed[typed.length - 1] ? 'new entry: press Enter to add it'
+        : 'new entry: type what it is called' + (first ? ', for example ' + first[1] : '');
+      hint.append(name, desc);
+      hint.addEventListener('mousedown', e => { e.preventDefault(); inp.focus(); });
+      acList.appendChild(hint);
+    }
+    if (!hits.length && !wildcard && !entrySet) {
       hideAcList();
       if (inp.value.trim()) doForceAdd();
       return;
@@ -1726,7 +1943,7 @@ function doForceAddWithType(type) {
   const inp = document.getElementById('add-input');
   const raw = inp.value.trim();
   if (!raw) return;
-  const parts = raw.split('.');
+  const parts = _addPathParts(raw);
   const cur = traverseForSet(config, parts);
   if (!cur) return;
   const key = parts[parts.length - 1];
@@ -1735,7 +1952,7 @@ function doForceAddWithType(type) {
   _closeFloatingAddPanel();
   renderAll();
   setTimeout(() => {
-    const pathKey = raw;
+    const pathKey = CSS.escape(parts.join('.'));
     const row = document.querySelector(`.field-row[data-path="${pathKey}"]`);
     if (row) {
       _revealEditorEl(row);
@@ -1775,13 +1992,17 @@ function doAdd() {
   }
 
   // Find matched option and determine type + default
-  const rawParts = raw.split('.');
+  const rawParts = _addPathParts(raw);
+  const entryType = rawParts.length >= 2 ? _setEntryType(_typeAt(rawParts.slice(0, -1))) : undefined;
   let matchedOpt = addSelectedOption;
   if (!matchedOpt) {
-    matchedOpt = options.find(o => o.path === raw) || options.find(o => concreteMatchesOption(rawParts, o.path));
+    matchedOpt = _optionExact(raw) || options.find(o => concreteMatchesOption(rawParts, o));
   }
   if (matchedOpt) {
     addSelectedType = typeFromNix(matchedOpt.type);
+  } else if (entryType !== undefined) {
+    // A new entry of a set (see _typeAt()): its type is what the set says it holds.
+    addSelectedType = typeFromNix(entryType);
   } else {
     // No leaf/exact option matches raw itself, yet isValidOptionPath accepted it — it must be a
     // container match (a fresh <name>/<n> instance with no doc entry of its own, see
@@ -1789,7 +2010,7 @@ function doAdd() {
     addSelectedType = 'object';
   }
 
-  const parts = raw.split('.');
+  const parts = rawParts;
   const cur = traverseForSet(config, parts);
   if (!cur) return;
   const key = parts[parts.length - 1];
@@ -1847,7 +2068,7 @@ function doAdd() {
 
   // Focus and highlight the newly added field
   setTimeout(() => {
-    const pathKey = raw;
+    const pathKey = CSS.escape(parts.join('.'));
     const row = document.querySelector(`.field-row[data-path="${pathKey}"]`);
     if (row) {
       _revealEditorEl(row);
@@ -2433,7 +2654,8 @@ function _showFieldTooltip(anchor, opt, typeLabel) {
     _fieldTooltipEl.style.position = 'fixed';
     document.body.appendChild(_fieldTooltipEl);
   }
-  _fieldTooltipEl.innerHTML = buildTooltip(opt, typeLabel).innerHTML;
+  // typeLabel may be a function: what it takes to work a type out is only spent on a hover.
+  _fieldTooltipEl.innerHTML = buildTooltip(opt, typeof typeLabel === 'function' ? typeLabel() : typeLabel).innerHTML;
   _fieldTooltipEl.classList.add('tt-visible');
   const rect = anchor.getBoundingClientRect();
   const ttRect = _fieldTooltipEl.getBoundingClientRect();
@@ -2582,9 +2804,20 @@ function _detachForFloat(el) {
 // root-level option) so you don't have to back out to blank editor space just to add one of those.
 function _addOptionMenuItems(event, path, subLabel = 'Add sub option…') {
   return [
+    ..._entryAddMenuItems(event, path),
     { label: subLabel, onclick: () => showAddOptionMenu(event, path) },
     { label: 'Add option…', onclick: () => showAddOptionMenu(event, []) },
   ];
+}
+
+// "Add entry…" on whatever is one entry of a set of named ones: a host under networking.hosts,
+// a disk under fileSystems. It opens the add field at the set, for another entry beside this
+// one. The same thing is "Add sub option…" on the set's own heading, but the user, pointing at
+// an entry, looked for it there. What a set is: _isEntrySet().
+function _entryAddMenuItems(event, path) {
+  const setPath = path.slice(0, -1);
+  if (!_isEntrySet(setPath)) return [];
+  return [{ label: 'Add entry…', onclick: () => showAddOptionMenu(event, setPath) }];
 }
 
 // An object inside a list has no header of its own to right-click -- its "Add field" lives on
@@ -2592,6 +2825,8 @@ function _addOptionMenuItems(event, path, subLabel = 'Add sub option…') {
 // row directly inside such an item offers the item's add entries itself, on top of its own.
 function _listItemAddMenuItems(event, path) {
   const itemPath = path.slice(0, -1);
+  const entry = _entryAddMenuItems(event, path);
+  if (entry.length) return entry;
   if (!itemPath.length || !Array.isArray(getAtPath(config, itemPath.slice(0, -1)))) return [];
   return _addOptionMenuItems(event, itemPath, 'Add field');
 }
@@ -2789,7 +3024,7 @@ function renderArrayField(container, key, arr, path) {
   keyLabelInner.className = 'tt-anchor'; keyLabelInner.textContent = key;
   keyLabel.appendChild(keyLabelInner);
   keyText.appendChild(keyLabel);
-  _wireTooltipAnchor(keyLabelInner, opt, getTypeLabel(arr));
+  _wireTooltipAnchor(keyLabelInner, opt, () => (!opt && _entryTypeLabel(path)) || getTypeLabel(arr));
   const keyInner = document.createElement('span');
   keyInner.className = 'field-key-inner';
   keyInner.appendChild(keyText);
@@ -3006,7 +3241,7 @@ function renderField(container, key, val, path) {
   keyLabelInner.className = 'tt-anchor'; keyLabelInner.textContent = key;
   keyLabel.appendChild(keyLabelInner);
   keyText.appendChild(keyLabel);
-  _wireTooltipAnchor(keyLabelInner, opt, getTypeLabel(val));
+  _wireTooltipAnchor(keyLabelInner, opt, () => (!opt && _entryTypeLabel(path)) || getTypeLabel(val));
   const keyInner = document.createElement('span');
   keyInner.className = 'field-key-inner';
   keyInner.appendChild(keyText);
@@ -3257,6 +3492,20 @@ function isKernelPath(path) {
   return path.length === 2 && path[0] === 'boot' && path[1] === 'kernelPackages';
 }
 
+// Puts the cursor in item `index` of the list at `path`, at the end of its text, after a
+// re-render. Items that are groups of settings have no text box of their own, so the box is
+// found by counting the plain items before it.
+function _focusListItem(path, arr, index) {
+  const row = document.querySelector('.field-row[data-path="' + CSS.escape(path.join('.')) + '"]');
+  if (!row) return;
+  const plain = v => !(v !== null && typeof v === 'object' && !Array.isArray(v) && !isExprPkg(v));
+  if (!plain(arr[index])) return;
+  const box = row.querySelectorAll('.array-item > input, .array-item > textarea')[arr.slice(0, index).filter(plain).length];
+  if (!box) return;
+  box.focus();
+  box.setSelectionRange(box.value.length, box.value.length);
+}
+
 function renderArray(container, arr, path) {
   arr.forEach((v, i) => {
     const itemPath = [...path, i];
@@ -3297,6 +3546,25 @@ function renderArray(container, arr, path) {
       editor = document.createElement('input');
       editor.type = 'text'; editor.value = strVal;
       editor.addEventListener('input', () => setAtPath(config, itemPath, isExpr ? { _expr: editor.value } : editor.value));
+      // Enter makes a new item under this one, and Backspace in an item that is already empty
+      // takes it away, as in any list one types into: the user's idea, to spare the right-click
+      // for "Add item". Only here, for one-line values; an item that is a group of settings
+      // has no such keys (what an empty one is, and what a new one needs, is not obvious
+      // there). The last item stays even when empty, or there would be nothing left to type in.
+      editor.addEventListener('keydown', e => {
+        if (e.isComposing) return;
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          arr.splice(i + 1, 0, '');
+          renderAll();
+          _focusListItem(path, arr, i + 1);
+        } else if (e.key === 'Backspace' && editor.value === '' && arr.length > 1) {
+          e.preventDefault();
+          arr.splice(i, 1);
+          renderAll();
+          _focusListItem(path, arr, Math.max(0, i - 1));
+        }
+      });
     }
     if (isExpr) editor.classList.add('expr-value');
     item.oncontextmenu = e => {
