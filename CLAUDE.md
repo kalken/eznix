@@ -153,7 +153,11 @@ read out of the theme's stylesheet with every `var()` followed, since an image h
 stylesheet. Those two colours are what the user settled on (2026-10-11) after trying a
 section's name and the header's fill on the editor's page: every other arm all but vanished.
 It then sat on a rounded square of `--bg2` (the header's fill) for some hours, until the user
-asked for the installed app's icon to have no background of its own. It was nixpkgs' snowflake, copied in at build
+asked for the installed app's icon to have no background of its own. On a Mac that came out
+on a white plate in the dock, so the manifest names two icons: the bare logo (`"purpose":
+"any"`), which the user wants on Linux, and a filled one (`"maskable"`, `?filled=1`,
+`_LOGO_FILLED`) meant for the Mac. That a Mac's browser takes the maskable one and Linux's
+the other is how Chromium is documented to choose, not something seen yet. It was nixpkgs' snowflake, copied in at build
 time, so a checkout had none. The page asks for the theme chosen in that browser
 (`_loadIcon()`); the manifest, which a browser fetches with nothing the page knows, names the
 configured one, in the icon's address with a checksum of the picture, so that another theme

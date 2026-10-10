@@ -886,7 +886,8 @@ def _theme_vars(theme):
 
 def _icon_colours(theme):
     """The colours of the icon in a theme: the logo's own two (--logo-1 and --logo-2, see
-    THEMES.md). For a day the two were a section's name and the header's fill on the editor's
+    THEMES.md), and the fill of the header (--bg2), which is where the page shows the same
+    logo and is what the filled icon has behind it (_favicon_svg()). For a day the two were a section's name and the header's fill on the editor's
     page, and every other arm all but vanished. Every var() in them is followed to a value:
     an image has no stylesheet to look them up in."""
     found = _theme_vars(theme)
@@ -896,7 +897,8 @@ def _icon_colours(theme):
             v = found.get(m.group(1), m.group(2))
             return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
         return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
-    return value(found.get('--logo-1') or 'var(--accent2)'), value(found.get('--logo-2') or 'var(--accent)')
+    return (value(found.get('--logo-1') or 'var(--accent2)'), value(found.get('--logo-2') or 'var(--accent)'),
+            value('var(--bg2)'))
 
 
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
@@ -907,9 +909,11 @@ def _icon_colours(theme):
 # icon out of it has nothing to draw it at. Nothing is drawn behind the logo, like the logo's
 # own file: it was on a rounded square in the colour of the header (--bg2) for a day, until
 # the user asked for the installed app's icon to have no background of its own (2026-10-11).
+# A Mac has no such icon: there the bare logo came out on a white plate in the dock, so the
+# manifest names a second, filled one for it (_LOGO_FILLED).
 _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 501.56251 501.56249">
 <style>%s</style>
-<g transform="translate(-156.41121,933.30685)">
+%s<g transform="translate(-156.41121,933.30685)">
 <g transform="matrix(0.99994059,0,0,0.99994059,-0.06321798,33.188377)">
 <defs><path id="p" d="m 309.54892,-710.38827 122.19683,211.67512 -56.15706,0.5268 -32.6236,-56.8692 -32.85645,56.5653 -27.90237,-0.011 -14.29086,-24.6896 46.81047,-80.4901 -33.22946,-57.8257 z"/></defs>
 <use class="a" href="#p"/>
@@ -920,22 +924,30 @@ _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" 
 <use class="a" href="#p" transform="rotate(-120,407.28823,-715.86995)"/>
 </g>
 </g>
-</svg>
+%s</svg>
 """
 
+# What the filled icon adds: the whole square in the header's fill and the logo at 72% of it.
+# The whole square and no rounded corners, because this is the manifest's "maskable" icon,
+# which a browser cuts to the shape the system's icons have; 72% keeps the logo inside the
+# part no shape cuts away (a circle of 80%).
+_LOGO_FILLED = ('<rect class="g" width="100%" height="100%"/>\n'
+                '<g transform="translate(250.78 250.78) scale(.72) translate(-250.78 -250.78)">\n', '</g>\n')
 
-def _favicon_svg(theme):
+
+def _favicon_svg(theme, filled=False):
     """The icon of the tab, and of the page installed as an app, in a theme's colours. An
     automatic theme gets both of its pairs, the dark one behind a media query; where the icon
-    is turned into a picture once (an installed app) that comes out as the light one."""
+    is turned into a picture once (an installed app) that comes out as the light one.
+    `filled` is the one on the header's fill, for where an icon can't be transparent."""
     def rules(name):
-        return '.a{fill:%s}.b{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _icon_colours(name))
+        return ('.a{fill:%s}.b{fill:%s}.g{fill:%s}' if filled else '.a{fill:%s}.b{fill:%s}') % tuple(c.replace('<', '').replace('&', '') for c in _icon_colours(name)[:3 if filled else 2])
     if theme in AUTO_THEMES:
         light, dark = AUTO_THEMES[theme]
         css = rules(light) + '@media (prefers-color-scheme:dark){' + rules(dark) + '}'
     else:
         css = rules(theme)
-    return _LOGO_SVG % css
+    return _LOGO_SVG % ((css,) + (_LOGO_FILLED if filled else ('', '')))
 
 
 class PluginError(Exception):
@@ -1921,11 +1933,14 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         manifest['name'] = manifest['short_name'] = f'eznix ({HOSTNAME})'
         # The theme is in the icon's address so that another theme is another manifest: an
         # installed app keeps the icon it was installed with until the browser sees a change.
-        # So is a checksum of the picture, for a theme whose colours were changed.
+        # So is a checksum of the picture, for a theme whose colours were changed. The
+        # "maskable" one is the filled icon (see _LOGO_FILLED), the other the bare logo.
         for icon in manifest.get('icons') or []:
             if icon.get('src') == 'favicon.svg':
-                icon['src'] += '?theme=%s&v=%s' % (
-                    THEME, hashlib.sha256(_favicon_svg(THEME).encode()).hexdigest()[:8])
+                filled = icon.get('purpose') == 'maskable'
+                icon['src'] += '?theme=%s%s&v=%s' % (
+                    THEME, '&filled=1' if filled else '',
+                    hashlib.sha256(_favicon_svg(THEME, filled).encode()).hexdigest()[:8])
         data = json.dumps(manifest).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/manifest+json')
@@ -1937,11 +1952,13 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         """The logo in a theme's colours (_favicon_svg()): ?theme=NAME, which is how the page asks
         for the theme chosen in that browser, or the configured one. The manifest's icon and
         the login page can only get the configured one: the first is fetched without anything
-        the page knows, the second has no choice of theme."""
-        theme = (parse_qs(query).get('theme') or [''])[0]
+        the page knows, the second has no choice of theme. ?filled=1 is the one with the
+        header's fill behind it."""
+        query = parse_qs(query)
+        theme = (query.get('theme') or [''])[0]
         if theme not in BUILTIN_THEMES and theme not in AUTO_THEMES and theme not in CUSTOM_THEMES:
             theme = THEME
-        data = _favicon_svg(theme).encode()
+        data = _favicon_svg(theme, bool(query.get('filled'))).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'image/svg+xml')
         self.send_header('Content-Length', str(len(data)))

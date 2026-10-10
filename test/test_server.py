@@ -168,10 +168,15 @@ def main():
                   all(c in icon('?theme=nixos') for c in ('#5277c3', '#7ebae4'))
                   and '#0d1a2e' not in icon('?theme=nixos') and '<rect' not in icon('?theme=nixos')
                   and '#d65d0e' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=dark'))
+            check('the filled icon has the header\'s fill behind the logo',
+                  '#0d1a2e' in icon('?theme=nixos&filled=1') and '<rect' in icon('?theme=nixos&filled=1'))
             check('an unknown theme gets the configured one', icon('?theme=../x') == icon())
             manifest = json.loads(anon.request('/manifest.json')[1])
             check('the manifest names the icon with the configured theme',
                   manifest['icons'][0]['src'].startswith('favicon.svg?theme='), manifest)
+            check('the manifest\'s maskable icon is the filled one, its other the bare logo',
+                  ['filled=1' in i['src'] for i in manifest['icons']] == [False, True]
+                  and manifest['icons'][1]['purpose'] == 'maskable', manifest)
 
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
             check('a file saves', b.request('/api/v1/file/save?file=a.json', b'{"a": 2}')[0] == 200
