@@ -51,6 +51,9 @@ body {
 }
 .btn:hover { background: var(--bg4); border-color: var(--border2); }
 .btn:disabled { opacity: .45; cursor: default; pointer-events: none; }
+/* Save with nothing to save: the look of a disabled button, but still under the pointer, for
+   its tooltip (see _updateDirty()). */
+.btn.is-idle, .btn.is-idle:hover { opacity: .45; cursor: default; background: var(--bg3); border-color: var(--border2); }
 .btn.primary { background: var(--btn-primary-bg); border-color: var(--btn-primary-border); color: var(--btn-primary-text); }
 .btn.primary:hover { background: var(--btn-primary-hover); }
 .btn.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }

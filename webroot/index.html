@@ -59,7 +59,7 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
 <div class="btn-group">
     <!-- Save leads the group of what is done to the edits themselves (save, undo, redo, the two
          reloads). It was at the far right beside Log out until 2026-10. -->
-    <button class="btn" id="save-btn" onclick="saveToServer()" data-tooltip="Save all changes"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Save</button>
+    <button class="btn is-idle" id="save-btn" onclick="saveToServer()" data-tooltip="Nothing to save (Ctrl+S)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
     <button class="btn" onclick="undo()" data-tooltip="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></button>
     <button class="btn" onclick="redo()" data-tooltip="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 14 20 9 15 4"/><path d="M4 20v-7a4 4 0 0 1 4-4h12"/></svg></button>
     <button class="btn" onclick="reloadAllFiles()" data-tooltip="Reload all files from disk"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3.5-7.1"/><polyline points="3 3 3 8 8 8"/></svg></button>
@@ -3708,12 +3708,30 @@ function initRestartWatcher() {
   poll();
 }
 
+// A shortcut is written "(Ctrl+S)" in the page and shown the Mac way on a Mac: Cmd-S, and
+// Shift-Cmd-Z for redo, which is what it is there (Ctrl+Y works as well), with the hyphen
+// Apple writes them with, as the user wanted. In words and not
+// the ⌘ and ⇧ signs, which were tried first: the tooltip's monospace font has neither, and
+// the ones the browser borrowed came out much smaller than the letter beside them. Both keys are accepted
+// everywhere (see the keydown handler in _init()); this is only how a tooltip names them.
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+function _shortcutText(text) {
+  return IS_MAC ? text.replace('Ctrl+Y', 'Shift-Cmd-Z').replace(/Ctrl\+(\w)/g, 'Cmd-$1') : text;
+}
+
 function _updateDirty() {
   const dirty = isAnyDirty();
   document.querySelector('.status-dot').classList.toggle('dirty', dirty);
   document.querySelector('.status-ready').textContent = dirty ? 'Modified' : 'Ready';
+  // Greyed with a class and not the `disabled` attribute: a disabled button gets no pointer
+  // events (.btn:disabled), so it could not show the tooltip saying why it is grey, which the
+  // user asked for. A click on it then only reports "Nothing to save" (saveToServer()).
   const saveBtn = document.getElementById('save-btn');
-  if (saveBtn) saveBtn.disabled = !dirty;
+  if (saveBtn) {
+    saveBtn.classList.toggle('is-idle', !dirty);
+    saveBtn.setAttribute('aria-disabled', String(!dirty));
+    saveBtn.dataset.tooltip = _shortcutText(dirty ? 'Save all changes (Ctrl+S)' : 'Nothing to save (Ctrl+S)');
+  }
   eznix.emit('dirty', dirty);
   // A restart was seen while still dirty (onRestartDetected() couldn't reload immediately then)
   // -- this is the "finish saving/undoing" half of that, run after every edit/undo/Save.
@@ -5353,6 +5371,7 @@ async function _init() {
   initVersion();
   eznix.emit('ready');
   renderAll();
+  document.querySelectorAll('[data-tooltip*="Ctrl+"]').forEach(el => { el.dataset.tooltip = _shortcutText(el.dataset.tooltip); });
 
   document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
