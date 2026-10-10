@@ -120,8 +120,7 @@ The NixOS logo (it turns while the terminal reconnects) is drawn in two colours,
 arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, `dark` two greys, the
 others their two accents. A theme that sets neither gets `--accent2` and `--accent`.
 
-The tab's icon is the same logo in the same two colours, on a rounded square in the colour of
-the header (`--bg2`), which is where the page shows the logo too. So
+The tab's icon is the same logo in the same two colours, with nothing behind it. So
 is the icon of the page installed as an app. That one is in the colours of the theme set as `theme`, not of one
 picked with the swatches: the browser fetches it by itself, and shows a new one only after
 the app has been closed and opened again.

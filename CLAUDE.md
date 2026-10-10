@@ -148,11 +148,12 @@ Polling, not `EventSource`: one reconnecting after a restart wiped Chromium's co
 origin.
 
 **The icon is drawn by the server** (`_favicon_svg()`, `/favicon.svg?theme=NAME`): the logo
-in a theme's `--logo-1` and `--logo-2` on a rounded square of `--bg2` (the header's fill),
+in a theme's `--logo-1` and `--logo-2` with nothing behind it,
 read out of the theme's stylesheet with every `var()` followed, since an image has no
-stylesheet. It is the page's own logo where the page shows it, which the user settled on
-(2026-10-11) after trying a section's name and the header's fill as the two colours on the
-editor's page: every other arm all but vanished. It was nixpkgs' snowflake, copied in at build
+stylesheet. Those two colours are what the user settled on (2026-10-11) after trying a
+section's name and the header's fill on the editor's page: every other arm all but vanished.
+It then sat on a rounded square of `--bg2` (the header's fill) for some hours, until the user
+asked for the installed app's icon to have no background of its own. It was nixpkgs' snowflake, copied in at build
 time, so a checkout had none. The page asks for the theme chosen in that browser
 (`_loadIcon()`); the manifest, which a browser fetches with nothing the page knows, names the
 configured one, in the icon's address with a checksum of the picture, so that another theme
