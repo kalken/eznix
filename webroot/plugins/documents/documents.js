@@ -249,7 +249,7 @@ async function showMarkdownMenu(event) {
   const btn = event.currentTarget;
   const rect = btn.getBoundingClientRect();
   const anchor = {
-    clientX: rect.left, clientY: rect.bottom,   // touching the button: no gap, as on macOS
+    clientX: rect.left, clientY: rect.bottom + 2,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
   try {

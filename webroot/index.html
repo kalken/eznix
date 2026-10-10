@@ -565,8 +565,11 @@ function _positionMenuAboveAnchor(menu, anchorRect) {
   // bottom padding *after* that row, so anchoring the row itself still let the container's edge
   // (background and all) extend past the anchor's top, into the button's own space -- exactly
   // the "menu covers the button" bug this replaces.
-  let y = anchorRect.top - rect.height;
-  if (y < 0) y = anchorRect.bottom; // not enough room above — fall back to below, touching it too
+  // Two pixels between the two: the user's choice after trying none, one, four, and the six macOS
+  // itself leaves between a pull-down button and its menu (measured from a screenshot of
+  // Finder), which was too much here.
+  let y = anchorRect.top - rect.height - 2;
+  if (y < 0) y = anchorRect.bottom + 2; // not enough room above — fall back to below, same gap
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
 }

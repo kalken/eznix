@@ -689,8 +689,9 @@ function _buildButtonMenuItems(entries) {
 function showButtonMenu(event, idxs) {
   const btn = event.currentTarget;
   const btnRect = btn.getBoundingClientRect();
-  // Anchored to the button itself, so the menu touches it with no gap, the way a menu hangs
-  // from its button on macOS, which the user asked for. It was anchored to the top of the
+  // Anchored to the button itself, so the menu sits right at it (two pixels apart, see
+  // _positionMenuAboveAnchor()), the way a menu hangs from its button on macOS, which the
+  // user asked for. It was anchored to the top of the
   // bar the button is in (.terminal-header is a few pixels taller than the button), which
   // left that much of the bar showing between the two.
   const rect = btnRect;
