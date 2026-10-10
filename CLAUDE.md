@@ -38,8 +38,9 @@ sleep 2; curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/p
 http://127.0.0.1:9690, password `eznix`. eznix starts its own terminal there (port 9691), so
 restarting the server restarts the shell too.
 
-To fill in suggestions, run in its terminal (there is a "Suggestions" button for it):
-`python3 PATH-TO-THIS-CHECKOUT/bin/eznix-autocomplete.py --flake . --output ../state/autocomplete`
+To fill in suggestions, press Autocomplete in the header: run from a checkout it types
+`python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the
+terminal (`_autocomplete_command()`).
 
 Nothing tests the page's own scripts. Without `node`, a Mac can still parse them, and run a
 function lifted out of them: `osascript -l JavaScript file.js` (wrap a script in
@@ -271,8 +272,15 @@ under home-manager, `sudo -u` in the activation on macOS, where the keychain par
 password dialog a rebuild in a real terminal can show. Read the comments there before
 touching it; each oddity was found on a real machine.
 
-Suggestions are never generated automatically and no button for it is added: it is the
-`eznix-autocomplete` command, run by the user.
+Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
+the user. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
+which only types that command into the terminal (it is part of `terminal-panel/`, so there is
+none without a terminal); before that the templates carried it as one of their buttons.
+Its icon turns while the generator runs: the generator leaves `.generating`, with its
+process number, where the suggestions go, and the ping says whether that process is there
+(`_autocomplete_running()`). Whether the suggestions are *behind* the flake is not shown: a
+checksum of `flake.nix` and `flake.lock` was built for it and dropped the same day, since it
+misses a module added in any other file, and the user chose a button that is always active.
 
 ## Not verified
 

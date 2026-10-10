@@ -137,7 +137,7 @@ button at the top is the whole flake instead; see [plugins](#plugins).
 - **Each template comes with** these buttons: List Generations (the earlier versions of the
   system you can go back to), Create Generation (rebuilds and switches to what you saved),
   Clear Generations (deletes the earlier ones and frees the disk space; there is no going
-  back to them afterwards), Update Flake and Generate Autocomplete.
+  back to them afterwards) and Update Flake.
 
 ## Adding it to a flake you already have
 
@@ -242,18 +242,16 @@ Save icon on it is greyed until there is something to save. Buttons with the sam
 ## Suggestions
 
 The option and package suggestions are generated from your own flake, so they match exactly
-what your configuration can set. Generate them from the terminal:
+what your configuration can set. The **Autocomplete** button at the top generates them: it
+runs this in the terminal, where you can follow it:
 
 ```sh
 eznix-autocomplete
 ```
 
-The open page picks the new data up by itself. Run it again after updating the flake. It is
-worth a button:
-
-```json
-{ "label": "Generate Autocomplete", "command": "eznix-autocomplete" }
-```
+The open page picks the new data up by itself. Press it again after updating the flake. The
+button's icon turns while the suggestions are being generated, and the button is only there
+when eznix has a terminal.
 
 The command the modules install already knows your flake. It is also a package of its own,
 usable on any flake: `eznix-autocomplete --flake DIR --output DIR` (`--type nixos`, `darwin` or

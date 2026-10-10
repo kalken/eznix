@@ -2,6 +2,7 @@
 """Generate options.json, packages.json, and kernels.json from a NixOS or nix-darwin flake."""
 
 import argparse
+import atexit
 import getpass
 import json
 import os
@@ -49,6 +50,21 @@ def failed(name, why):
     configuration. The run as a whole then exits with an error."""
     FAILED.append(name)
     print(f"{RED}Failed: {why} — {name} left as it was (rerun with -v for details){NC}", file=sys.stderr)
+
+
+def mark_running():
+    """Leaves `.generating`, holding this process's number, in the output folder for as long as
+    this runs. The editor looks for it (_autocomplete_running() in eznix.py) and spins the icon
+    of its Autocomplete button meanwhile, wherever the run was started from. Taken away again
+    on the way out, also after an error or Ctrl-C; a run that is killed leaves it, which is why
+    the editor asks whether that process still exists."""
+    marker = Path(OUTPUT_DIR, ".generating")
+    try:
+        marker.write_text(f"{os.getpid()}\n")
+        os.chmod(marker, 0o664)
+    except OSError:
+        return          # someone else's stale marker we may not replace: only the icon is off
+    atexit.register(lambda: marker.unlink(missing_ok=True))
 
 
 def write_json(name, data):
@@ -501,6 +517,7 @@ def main():
     VERBOSE = args.verbose
     OUTPUT_DIR = args.output
     Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+    mark_running()
 
     # -i implies nested for the listed sets; --nested enables full auto-detection
     no_nested = not args.nested and not args.include

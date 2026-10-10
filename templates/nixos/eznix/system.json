@@ -38,10 +38,6 @@
         {
           "label": "Update Flake",
           "command": "sudo nix flake update --flake /etc/nixos"
-        },
-        {
-          "label": "Generate Autocomplete",
-          "command": "eznix-autocomplete"
         }
       ]
     }

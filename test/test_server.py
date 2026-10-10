@@ -254,6 +254,21 @@ def main():
                   and b.request('/terminal-panel/terminal.js')[0] == 200)
             check('the terminal runs, and is the one the editor expects', ping['terminal_stale'] is False, ping)
 
+            # What eznix-autocomplete leaves while it runs: a file holding its process number.
+            running = lambda: b.json('/api/v1/ping')[1]['autocomplete_running']
+            marker = f'{tmp}/state/autocomplete/.generating'
+            os.makedirs(os.path.dirname(marker), exist_ok=True)
+            check('no generator at work: the ping says so', ping['autocomplete_running'] is False, ping)
+            with open(marker, 'w') as f:
+                f.write(f'{os.getpid()}\n')
+            check('one at work is reported', running() is True)
+            gone = subprocess.Popen([sys.executable, '-c', 'pass'])
+            gone.wait()
+            with open(marker, 'w') as f:
+                f.write(f'{gone.pid}\n')
+            check('and one that was killed and left its mark behind is not', running() is False)
+            os.remove(marker)
+
             check('the terminal opens for the page itself, and for a script', [b.terminal(BASE), b.terminal()] == [101, 101])
             check('not for another page: another port of this host, another site, none',
                   [b.terminal(o) for o in (f'http://127.0.0.1:{PORT + 2}', 'https://evil.example', 'null')] == [403] * 3)

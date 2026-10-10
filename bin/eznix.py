@@ -80,6 +80,7 @@ import json
 import os
 import re
 import secrets
+import shlex
 import shutil
 import signal
 import socket
@@ -963,6 +964,20 @@ def _plugin_file(folder, rel):
     return path if inside and os.path.isfile(path) else None
 
 
+def _autocomplete_command():
+    """What the header's Autocomplete button types into the terminal (terminal.js). Installed
+    by a module, that is the `eznix-autocomplete` on PATH, which the module has already told the
+    flake and where the suggestions go (autocompleteCommand in nix/options.nix). Run from a
+    checkout there is no such command, and the generator lies beside this file: it is called
+    there, with the two things spelled out. (`nix run` has neither: the package holds only the
+    editor, so the button's command is not found there, as the one in the templates was not.)"""
+    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eznix-autocomplete.py')
+    if not os.path.isfile(script):
+        return 'eznix-autocomplete'
+    return ' '.join(shlex.quote(a) for a in
+                    (sys.executable, script, '--flake', FLAKE_DIR, '--output', AUTOCOMPLETE_DIR))
+
+
 def _render_index():
     """index.html with every %%EZNIX_...%% setting filled in, except the page checksum itself
     (which is computed from this -- see _compute_page_hash()). Everything used here is fixed
@@ -977,7 +992,8 @@ def _render_index():
     # block this is embedded into.
     config = {name: p['config'] for name, p in PLUGINS.items()}
     if TERMINALS:
-        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS}
+        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS,
+                              'autocomplete': _autocomplete_command()}
     plugin_config = json.dumps(config).replace('</', '<\\/')
     return (open(os.path.join(WEBROOT, 'index.html')).read()
         .replace('%%EZNIX_PLUGIN_STYLES%%', plugin['styles'])
@@ -1083,14 +1099,32 @@ def _autocomplete_stamp():
     return stamp
 
 
+def _autocomplete_running():
+    """Whether eznix-autocomplete is at work on the suggestions right now: it leaves a file with
+    its process number there while it runs (mark_running() in eznix-autocomplete.py). Whoever
+    started it, from the page's button or by hand. The number is checked because a run that
+    was killed leaves the file behind; a process of another user answers with "not permitted",
+    which still means it is there. The page spins its Autocomplete button's icon on this."""
+    d = AUTOCOMPLETE_DIR or os.path.join(WEBROOT, 'autocomplete')
+    try:
+        with open(os.path.join(d, '.generating')) as f:
+            os.kill(int(f.read().strip()), 0)
+        return True
+    except PermissionError:
+        return True
+    except (OSError, ValueError):
+        return False
+
+
 def _ping_payload(user=None):
     """GET /api/v1/ping's whole response, polled by initRestartWatcher() (index.html): the
-    page checksum (see _compute_page_hash()), the autocomplete stamp, and what the terminal
-    restart notice compares."""
+    page checksum (see _compute_page_hash()), the autocomplete stamp, whether the suggestions
+    are being generated just now, and what the terminal restart notice compares."""
     return {
         'page': PAGE_HASH,
         'theme': THEME,
         'autocomplete_stamp': _autocomplete_stamp(),
+        'autocomplete_running': _autocomplete_running(),
         'terminal_stale': _terminal_stale(_terminal_for(user)),
     }
 

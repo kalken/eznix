@@ -167,3 +167,10 @@
 }
 .term-restart-popup:hover { background: var(--bg3); }
 .term-restart-popup.hidden { display: none; }
+
+/* The header's Autocomplete button (terminal.js): first of the group, in front of System,
+   whichever of the two is added first. */
+#autocomplete-btn { order: -1; }
+/* Its icon turns while the suggestions are being generated. */
+@keyframes autocomplete-spin { to { transform: rotate(360deg); } }
+#autocomplete-btn.is-running svg { animation: autocomplete-spin 1.2s linear infinite; }

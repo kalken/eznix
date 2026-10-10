@@ -38,10 +38,6 @@
         {
           "label": "Update Flake",
           "command": "nix flake update --flake ~/.config/home-manager"
-        },
-        {
-          "label": "Generate Autocomplete",
-          "command": "eznix-autocomplete"
         }
       ]
     }

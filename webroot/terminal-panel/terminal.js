@@ -682,6 +682,46 @@ function _runInTerminal(btn) {
 }
 
 // ── What the page tells the terminal ───────────────────────────────────────────
+// The header's Autocomplete button: generates the suggestions, by typing the generator's
+// command into the terminal like any button of the bar below, so its progress and its errors
+// are there to read. It was a button every template put in that bar ("Generate Autocomplete");
+// the user wanted it at the top, in front of System (the `order` in terminal.css). It is here
+// and not in the page because it needs the terminal, and what it types comes from the server
+// (_autocomplete_command() in eznix.py), which knows where the generator is. Not in install
+// mode, where the ordinary buttons are off as well. Its icon turns while the generator
+// runs (.is-running): the generator leaves a mark where the suggestions go, and every ping
+// says whether one is at work (autocomplete_running, _autocomplete_running() in eznix.py), so
+// it turns too for a run started by hand or from another tab. A click starts it turning at
+// once and keeps it so for a while whatever the pings say, since the terminal has to open and
+// the command to start before there is a mark to find. Telling whether the suggestions are
+// *behind* the flake was built first (a checksum of flake.nix and flake.lock, the icon greyed
+// when it matched) and dropped the same day: it could not see a module added in another file,
+// and the user preferred a button that is simply always there over one that is sometimes wrong.
+// While it turns the button cannot be pressed, so a run is not started twice. The icon is two
+// arrows in a circle (Lucide's "refresh-cw"), the user's choice; the header's two reload
+// buttons have one arrow each.
+let _autocompleteClickedAt = 0;
+const _AUTOCOMPLETE_GRACE_MS = 20000;
+function _spinAutocomplete(running) {
+  const btn = document.getElementById('autocomplete-btn');
+  if (!btn) return;
+  const busy = running || Date.now() - _autocompleteClickedAt < _AUTOCOMPLETE_GRACE_MS;
+  btn.classList.toggle('is-running', busy);
+  btn.disabled = busy;
+}
+if (!INSTALL_MODE && _TERM_CONFIG.autocomplete) {
+  eznix.addButton('header', {
+    id: 'autocomplete-btn',
+    tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
+    html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>Autocomplete',
+    onclick: () => {
+      _autocompleteClickedAt = Date.now();
+      _spinAutocomplete(true);
+      _runInTerminal({ command: _TERM_CONFIG.autocomplete });
+    },
+  });
+}
+
 eznix.on('init', () => {
   initTerminalAutoHide();
   if (INSTALL_MODE) {
@@ -716,6 +756,7 @@ eznix.on('theme', () => {
 // The terminal is a separate process that isn't restarted along with the server, so its
 // hashes are tracked on every ping, whatever else that ping says.
 eznix.on('ping', data => {
+  _spinAutocomplete(data.autocomplete_running === true);
   _terminalStale = data.terminal_stale === true;
   _updateTermRestartPopup();
 });

@@ -44,7 +44,7 @@ usual password (on other Linux: the password you chose above).
 
 ## Use
 
-1. Press **Generate Autocomplete** at the bottom once, and wait for it to finish. eznix can then
+1. Press **Autocomplete** at the top once, and wait for it to finish. eznix can then
    suggest settings and programs as you type.
 2. Change what you want. To add a setting, type its name in the field that says
    "Add option path…".
