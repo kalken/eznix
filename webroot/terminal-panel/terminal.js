@@ -689,15 +689,11 @@ function _buildButtonMenuItems(entries) {
 function showButtonMenu(event, idxs) {
   const btn = event.currentTarget;
   const btnRect = btn.getBoundingClientRect();
-  // Anchored to the enclosing bar's own top, not the button's -- .terminal-header is taller
-  // than the 26px button in it (--term-bar in terminal.css), so the bar
-  // has some space of its own above the button that the menu should sit flush against
-  // instead of stopping short at the button's own (lower) top edge. Horizontal position still
-  // comes from the button itself (left/right), just the vertical reference point changes.
-  const barRect = btn.closest('.terminal-header')?.getBoundingClientRect();
-  const rect = barRect
-    ? { left: btnRect.left, right: btnRect.right, top: barRect.top, bottom: barRect.bottom }
-    : btnRect;
+  // Anchored to the button itself, so the menu touches it with no gap, the way a menu hangs
+  // from its button on macOS, which the user asked for. It was anchored to the top of the
+  // bar the button is in (.terminal-header is a few pixels taller than the button), which
+  // left that much of the bar showing between the two.
+  const rect = btnRect;
   const anchor = {
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };

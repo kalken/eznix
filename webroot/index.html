@@ -566,7 +566,7 @@ function _positionMenuAboveAnchor(menu, anchorRect) {
   // (background and all) extend past the anchor's top, into the button's own space -- exactly
   // the "menu covers the button" bug this replaces.
   let y = anchorRect.top - rect.height;
-  if (y < 0) y = anchorRect.bottom + 4; // not enough room above — fall back to below, same gap
+  if (y < 0) y = anchorRect.bottom; // not enough room above — fall back to below, touching it too
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
 }

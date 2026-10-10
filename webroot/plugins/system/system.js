@@ -153,7 +153,7 @@ async function showSystemMenu(event) {
   const btn = event.currentTarget;
   const rect = btn.getBoundingClientRect();
   const anchor = {
-    clientX: rect.left, clientY: rect.bottom + 4,
+    clientX: rect.left, clientY: rect.bottom,   // touching the button: no gap, as on macOS
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
   // Export, Import, Backup, then the backups to restore: the order the user asked for (a
