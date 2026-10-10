@@ -2211,6 +2211,8 @@ function makeDraggable(el, key, parentPath, handle) {
       if (!under) return;
 
       if (canMoveToFile) {
+        // Held over a folder, its files come up in the second row, to be dropped on.
+        if (_peekFolder(under)) return;
         const tab = under.closest('#tab-bar .tab[data-file]');
         if (tab && tab.dataset.file !== activeFile) {
           tab.classList.add('tab-drop-target');
@@ -2252,6 +2254,7 @@ function makeDraggable(el, key, parentPath, handle) {
         el.classList.remove('is-dragging');
       }
       dragState = null;
+      _endPeekFolder();
     };
 
     document.addEventListener('mousemove', onMove);
@@ -4496,14 +4499,84 @@ function _cfgPath() {
   return _cfgPathFor(activeFile);
 }
 
-// Every file gets its own tab — root-level files on the first row, then one row per top-level
-// folder, labeled with that folder's name, so nested files stay visible without opening
-// anything. A folder with no files yet (created via "+ folder") still gets its own (empty) row,
-// since `folders` is tracked independently of `files`. Tab labels drop the folder prefix and
-// the ".json" suffix (both are redundant: the folder is already the row's label, and every tab
-// is a .json file) — hover a tab to see its full relative path. Click switches to a file,
-// double-click renames it in place, dragging it onto another folder's row (or back onto the
-// root row) moves it there, and right-click offers Delete.
+// Two rows, however many folders there are. The first holds the top-level folders and then the
+// root-level files; the second holds the files of one folder (`viewFolder`), normally the one
+// the open file is in. It was one labelled row per folder until 2026-10: with three folders
+// that was a bar seven lines tall, which the user did not like. A folder with no files yet
+// still gets its tab, since `folders` is tracked independently of `files`. Tab labels drop the
+// folder prefix and the ".json" suffix (both are redundant: the folder is highlighted in the
+// row above, and every tab is a .json file). Click switches to a file, double-click renames it
+// in place, dragging it onto a folder's tab (or onto the first row, for the root) moves it
+// there, and right-click offers Delete.
+//
+// What the second row shows follows the open file: renderFileSelector() resets `viewFolder`
+// whenever `activeFile` is another than last time, so no place that changes the open file has
+// to know about it. Two things show another folder than the open file's: clicking a folder
+// that is empty, and a drag held over a folder's tab (_peekFolder()). The second exists
+// because a setting can be dragged onto another file's tab to move it there (makeDraggable()),
+// and that tab is only on screen while its folder is the one shown.
+let viewFolder = '';
+let _viewFolderFor;      // the activeFile `viewFolder` was last taken from
+let _peekingFolder = false;
+const _lastFileIn = {};  // folder -> the file last open in it, which a click on the folder reopens
+
+function _topFolder(name) {
+  const slash = name ? name.indexOf('/') : -1;
+  return slash === -1 ? '' : name.slice(0, slash);
+}
+
+// During a drag: shows the files of the folder whose tab is under the pointer. True when the
+// bar was rebuilt for it, which leaves `under` (and every tab) detached: look again.
+function _peekFolder(under) {
+  const tab = under && under.closest && under.closest('#tab-bar .tab-folder');
+  if (!tab || tab.dataset.folder === viewFolder) return false;
+  viewFolder = tab.dataset.folder;
+  _peekingFolder = true;
+  renderFileSelector();
+  return true;
+}
+function _endPeekFolder() {
+  if (!_peekingFolder) return;
+  _peekingFolder = false;
+  viewFolder = _topFolder(activeFile);
+  renderFileSelector();
+}
+
+function _folderMenuItems(folder) {
+  const folderDisabled = _isDisabledFolderSegment(folder);
+  return [
+    { label: 'New file here', onclick: () => createFile(folder) },
+    { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
+    { label: 'Export', onclick: () => exportFolder(folder) },
+    { separator: true },
+    { label: 'Delete folder', danger: true, onclick: () => deleteFolder(folder) },
+  ];
+}
+
+// A folder's tab in the first row. `inside` is the files in it.
+function _makeFolderTab(folder, inside) {
+  const tab = document.createElement('div');
+  tab.className = 'btn tab tab-folder' + (folder === viewFolder ? ' active' : '')
+    + (_isDisabledFolderSegment(folder) ? ' is-disabled' : '');
+  tab.tabIndex = 0;
+  tab.dataset.folder = folder;
+  _wireHoverTooltip(tab, 'Click for its files, drop a file here to move it in, right-click for options');
+  tab.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+  const label = document.createElement('span');
+  label.textContent = _folderLabel(folder);
+  tab.appendChild(label);
+  // A click opens a file, so the folder highlighted is always the one the open file is in: the
+  // file last open there, or its first. Only an empty folder is shown without opening anything.
+  tab.addEventListener('click', () => {
+    if (tab.querySelector('input')) return;
+    const last = _lastFileIn[folder];
+    const open = inside.includes(last) ? last : inside.slice().sort()[0];
+    if (open && open !== activeFile) switchFile(open);
+    else { viewFolder = folder; renderFileSelector(); }
+  });
+  tab.oncontextmenu = e => showContextMenu(e, _folderMenuItems(folder));
+  return tab;
+}
 function _tabLabel(name) {
   let base = name.slice(name.lastIndexOf('/') + 1);
   if (base.endsWith('.json.disabled')) base = base.slice(0, -'.json.disabled'.length);
@@ -4613,14 +4686,25 @@ function _makeTab(name) {
 
       document.querySelectorAll('.tab-move-target').forEach(x => x.classList.remove('tab-move-target'));
       ghost.style.display = 'none';
-      const under = document.elementFromPoint(e.clientX, e.clientY);
+      let under = document.elementFromPoint(e.clientX, e.clientY);
+      if (_peekFolder(under)) {
+        under = document.elementFromPoint(e.clientX, e.clientY);
+        const again = document.querySelector('#tab-bar .tab[data-file="' + CSS.escape(name) + '"]');
+        if (again) again.classList.add('is-dragging');
+      }
       ghost.style.display = '';
       target = null;
       if (under) {
-        const group = under.closest('.tab-folder-group');
-        if (group) {
-          target = group.dataset.folder;
-          group.classList.add('tab-move-target');
+        // A folder's tab, or the row of that folder's files; anywhere else in the first row is
+        // the root. (The folder tabs are inside the first row, so they are asked first.)
+        const folderTab = under.closest('.tab-folder');
+        const filesRow = under.closest('.tab-row-files');
+        if (folderTab) {
+          target = folderTab.dataset.folder;
+          folderTab.classList.add('tab-move-target');
+        } else if (filesRow && filesRow.dataset.folder) {
+          target = filesRow.dataset.folder;
+          filesRow.classList.add('tab-move-target');
         } else {
           const rootRow = under.closest('.tab-row-root');
           if (rootRow) { target = ''; rootRow.classList.add('tab-move-target'); }
@@ -4634,6 +4718,7 @@ function _makeTab(name) {
       document.querySelectorAll('.tab-move-target').forEach(x => x.classList.remove('tab-move-target'));
       if (ghost) ghost.remove();
       tab.classList.remove('is-dragging');
+      _endPeekFolder();
       if (dragging && target !== null) {
         const base = name.slice(name.lastIndexOf('/') + 1);
         const newName = target ? target + '/' + base : base;
@@ -4718,12 +4803,12 @@ function _startTabRename(name) {
 // Unlike a file (which exists purely in memory until Save), a bare folder has no config data to
 // stage — creating it calls /api/v1/folder/create immediately on commit, same as a real mkdir.
 function _startFolderRename(name) {
-  const group = document.querySelector('.tab-folder-group[data-folder="' + CSS.escape(name) + '"]');
-  if (!group) return;
-  const label = group.querySelector('.tab-folder-label');
+  const tab = document.querySelector('.tab-folder[data-folder="' + CSS.escape(name) + '"]');
+  if (!tab) return;
+  const label = tab.querySelector('span');
   const input = document.createElement('input');
   input.type = 'text';
-  input.className = 'tab-folder-label-input';
+  input.className = 'tab-rename-input';
   input.value = name;
   label.replaceWith(input);
   _autosizeInput(input);
@@ -4753,6 +4838,7 @@ function _startFolderRename(name) {
     folders.sort();
     pendingFsOps.push({ type: 'create-folder', folder: raw });
     folderExists.add(raw);
+    viewFolder = raw;
     renderFileSelector();
     _pushHistory();
     _updateDirty();
@@ -4786,46 +4872,46 @@ function renderFileSelector() {
   const topFolders = new Set(Object.keys(filesByFolder));
   folders.forEach(f => topFolders.add(f.split('/')[0]));
 
+  if (activeFile !== _viewFolderFor) { _viewFolderFor = activeFile; viewFolder = _topFolder(activeFile); }
+  if (viewFolder && !topFolders.has(viewFolder)) viewFolder = _topFolder(activeFile);
+  if (activeFile) _lastFileIn[_topFolder(activeFile)] = activeFile;
+
   const rootRow = document.createElement('div');
   rootRow.className = 'tab-row tab-row-root';
   _wireHoverTooltip(rootRow, 'Right-click for New file / New folder');
+  Array.from(topFolders).sort().forEach(folder =>
+    rootRow.appendChild(_makeFolderTab(folder, filesByFolder[folder] || [])));
+  if (topFolders.size && rootFiles.length) {
+    const sep = document.createElement('div');
+    sep.className = 'tab-row-sep';
+    rootRow.appendChild(sep);
+  }
   rootFiles.sort().forEach(name => rootRow.appendChild(_makeTab(name)));
   bar.appendChild(rootRow);
 
-  Array.from(topFolders).sort().forEach(folder => {
-    const folderDisabled = _isDisabledFolderSegment(folder);
-    const group = document.createElement('div');
-    group.className = 'tab-folder-group';
-    group.dataset.folder = folder;
-    // The dim/strike styling goes on the label alone, not the whole group — every tab inside
-    // already carries its own .is-disabled (via _isFileDisabled() walking ancestor segments),
-    // and opacity compounds visually across nested elements, so marking the group too would
-    // double-dim its tabs.
-    const label = document.createElement('div');
-    label.className = 'tab-folder-label' + (folderDisabled ? ' is-disabled' : '');
-    label.textContent = _folderLabel(folder);
-    group.appendChild(label);
+  // No folders, no second row: a flat set of files stays one line. With folders the row is
+  // always there, empty when the open file is in none, so the bar keeps its height while
+  // switching (the hint is what holds an empty row to a tab's height).
+  if (topFolders.size) {
+    const inside = (filesByFolder[viewFolder] || []).slice().sort();
     const row = document.createElement('div');
-    row.className = 'tab-row';
-    (filesByFolder[folder] || []).slice().sort().forEach(name => row.appendChild(_makeTab(name)));
-    group.appendChild(row);
-    // Bound to the whole group (label + row), not just the label, so right-clicking blank
-    // space in an otherwise-empty folder still offers these — individual tabs inside `row`
-    // have their own contextmenu handler and stop propagation before it gets here.
-    group.oncontextmenu = e => {
-      showContextMenu(e, [
-        { label: 'New file here', onclick: () => createFile(folder) },
-        { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
-        { label: 'Export', onclick: () => exportFolder(folder) },
-        { separator: true },
-        { label: 'Delete folder', danger: true, onclick: () => deleteFolder(folder) },
-      ]);
-    };
-    bar.appendChild(group);
-  });
+    row.className = 'tab-row tab-row-files';
+    row.dataset.folder = viewFolder;
+    inside.forEach(name => row.appendChild(_makeTab(name)));
+    if (!inside.length) {
+      const hint = document.createElement('div');
+      hint.className = 'tab-row-hint';
+      hint.textContent = viewFolder ? 'No files here yet. Right-click to add one.' : '\u00a0';
+      row.appendChild(hint);
+    }
+    // The blank part of the row answers for its folder; a tab in it has its own menu and
+    // stops the event before it gets here.
+    if (viewFolder) row.oncontextmenu = e => showContextMenu(e, _folderMenuItems(viewFolder));
+    bar.appendChild(row);
+  }
 
-  // Right-click anywhere else in the tab bar (blank space in the root row, or below every
-  // group) offers to create something new; a tab's own contextmenu stops propagation before
+  // Right-click anywhere else in the tab bar (blank space in the first row, or in a second row
+  // that shows no folder) offers to create something new; a tab's own contextmenu stops propagation before
   // reaching here, so this only ever fires on genuinely empty space.
   bar.oncontextmenu = e => {
     showContextMenu(e, [
@@ -4896,6 +4982,7 @@ async function createFolder() {
   let name = 'new-folder', n = 1;
   while (folders.includes(name)) { name = `new-folder-${n}`; n++; }
   folders.push(name);
+  viewFolder = name;
   renderFileSelector();
   _startFolderRename(name);
 }

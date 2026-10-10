@@ -90,23 +90,20 @@ body {
 }
 .tab-bar-actions { display: flex; align-items: center; gap: 8px; padding: 8px 18px 8px 0; flex-shrink: 0; }
 .tab-row { display: flex; align-items: center; gap: 6px; overflow-x: auto; }
-.tab-folder-group { display: flex; flex-direction: column; gap: 3px; border-radius: var(--radius-sm); }
-.tab-folder-label {
-  color: var(--text3); font-size: 11px; text-transform: uppercase; letter-spacing: .04em;
-  white-space: nowrap;
-}
+/* The first row: folders, a divider, the root files. The second: the files of one folder. */
+.tab-row-sep { width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); flex-shrink: 0; }
+.tab-folder svg { flex-shrink: 0; opacity: .7; }
+/* Stands in an empty second row, sized as a tab so the bar keeps its height. */
+.tab-row-hint { padding: 5px 0; border: 1px solid transparent; font-size: 12px; color: var(--text3); white-space: nowrap; }
 .tab { white-space: nowrap; }
 .btn.tab.active { background: var(--tab-active-bg); border-color: var(--tab-active-border); color: var(--tab-active-text); }
 /* Dropping a dragged file tab here moves it into this folder (or to the root) */
 .tab-move-target { outline: 2px dashed var(--accent2); background: var(--selected-bg); }
-.tab-rename-input, .tab-folder-label-input {
+.tab-rename-input {
   background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
   border-radius: var(--radius-sm); font-family: var(--font); outline: none;
 }
 .tab-rename-input { font-size: 12px; padding: 1px 4px; }
-.tab-folder-label-input {
-  font-size: 11px; text-transform: uppercase; letter-spacing: .04em; padding: 1px 4px;
-}
 .key-rename-input {
   background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
   border-radius: var(--radius-sm); font: inherit; outline: none; padding: 0 3px;
@@ -466,7 +463,7 @@ body {
 .is-disabled > .field-key .key-label,
 .is-disabled > .section-header .section-key-text { text-decoration: line-through; }
 /* Disabled files/folders (tab bar) — see _isFileDisabled()/_isDisabledFolderSegment() */
-.tab.is-disabled span, .tab-folder-label.is-disabled { text-decoration: line-through; }
+.tab.is-disabled span { text-decoration: line-through; }
 /* The active file itself being disabled (not just its tab) — purely visual, unlike .is-disabled
    above: a disabled file stays fully editable/saveable, so no pointer-events/strikethrough here. */
 .editor-area.file-disabled { opacity: 0.45; }

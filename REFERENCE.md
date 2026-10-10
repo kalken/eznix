@@ -82,7 +82,10 @@ Everything else is further down: [each system in detail](#adding-it-to-a-flake-y
 ## How the configuration is stored
 
 eznix edits `*.json` files in one folder inside your flake (`<flake>/eznix` by default). Each
-file is a tab in the editor; subfolders group them. Import the folder once from your
+file is a tab in the editor. With subfolders the tabs are two rows: the folders and the files
+beside them on top, and under it the files of the folder you are in. Drag a file onto a
+folder to move it there, and a setting onto another file's tab to move it to that file; held
+over a folder, the drag brings up that folder's files to drop on. Import the folder once from your
 configuration, through the function eznix's flake provides:
 
 ```nix
