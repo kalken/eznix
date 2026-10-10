@@ -23,6 +23,14 @@ You need Nix. NixOS has it. On a Mac or another Linux, install it first, with ei
 [official installer](https://nixos.org/download); both work. Then copy the lines for your
 system into a terminal.
 
+The lines below work in one folder: `/etc/nixos` on NixOS, `~/.config/nix-darwin` on a Mac,
+`~/.config/home-manager` on other Linux. If that folder already exists, make a copy of it
+first. On NixOS it always exists:
+
+```sh
+sudo cp -a /etc/nixos /etc/nixos.backup
+```
+
 **NixOS** (your `configuration.nix` is kept as it is)
 
 ```sh
