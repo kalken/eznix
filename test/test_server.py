@@ -141,6 +141,12 @@ def main():
             check('one that is not on disk is not', b.json('/api/v1/file/backup?file=nope.json', b'', 'POST')[0] == 400
                   and kept() == 2)
 
+            # Disabling is a rename on disk; the backups are the file's all the same.
+            rename = lambda a, z: b.json('/api/v1/file/rename', json.dumps({'from': a, 'to': z}).encode(), 'POST')[0]
+            check('a disabled file keeps its backups', rename('a.json', 'a.json.disabled') == 200
+                  and len(b.json('/api/v1/backups?file=a.json.disabled')[1]['backups']) == 2)
+            check('and has them still when enabled again', rename('a.json.disabled', 'a.json') == 200 and kept() == 2)
+
             # A folder is switched off by its name, which json2nix.nix leaves out ("X.disabled").
             os.makedirs(f'{tmp}/flake/eznix/web')
             with open(f'{tmp}/flake/eznix/web/w.json', 'w') as f:
@@ -150,8 +156,13 @@ def main():
             check('a folder is disabled by renaming it, and its files are still listed',
                   folder('disable', 'web') == 200 and os.path.isdir(f'{tmp}/flake/eznix/web.disabled')
                   and 'web.disabled/w.json' in listed()['files'], listed())
+            b.request('/api/v1/file/save?file=web.disabled/w.json', b'{"a": 1}')
+            b.json('/api/v1/file/backup?file=web.disabled/w.json', b'', 'POST')
+            in_folder = lambda name: len(b.json(f'/api/v1/backups?file={name}')[1]['backups'])
+            check('a file backed up inside a disabled folder has its backups there', in_folder('web.disabled/w.json') >= 1)
             check('and enabled again', folder('enable', 'web.disabled') == 200
                   and 'web/w.json' in listed()['files'], listed())
+            check('and the same ones once the folder is enabled', in_folder('web/w.json') >= 1)
             os.rename(f'{tmp}/flake/eznix/web', f'{tmp}/flake/eznix/.web.disabled')
             check('one disabled the old way, with a dot in front, is still listed and can be enabled',
                   '.web.disabled/w.json' in listed()['files'] and folder('enable', '.web.disabled') == 200

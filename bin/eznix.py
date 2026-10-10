@@ -618,8 +618,15 @@ def _clear_login_failures(ip):
 
 def _flatten_stem(rel):
     """Turn a CONFIG_DIR-relative path like 'services/nginx.json' into a flat, collision-safe
-    backup stem ('services--nginx') so BACKUP_DIR itself never needs subdirectories."""
-    return os.path.splitext(rel)[0].replace(os.sep, '--').replace('/', '--')
+    backup stem ('services--nginx') so BACKUP_DIR itself never needs subdirectories.
+
+    By the name the file has when it is in use: disabling it ('nginx.json.disabled'), or the
+    folder it is in ('services.disabled'), is a rename on disk, and its backups have to be
+    the same ones before and after. They were not until 2026-10: a disabled file showed none."""
+    parts = rel.replace(os.sep, '/').split('/')
+    folders = [_enabled_folder_name(p) if _is_disabled_folder_name(p) else p for p in parts[:-1]]
+    name = parts[-1][:-len('.disabled')] if parts[-1].endswith('.disabled') else parts[-1]
+    return '--'.join(folders + [os.path.splitext(name)[0]])
 
 
 def backup_config(path):
