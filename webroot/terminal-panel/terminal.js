@@ -504,6 +504,7 @@ function getAllButtons() {
   return [...staticSurviving, ...perFile];
 }
 
+let _buttonsShown = null;   // the buttons the bar was last built from, as JSON: see renderButtons()
 function renderButtons() {
   // Rebuilds the whole button bar below, which can shift/invalidate the indices any currently
   // open button dropdown was built from (getAllButtons() re-runs fresh each render) — close it
@@ -512,9 +513,24 @@ function renderButtons() {
   const container = document.getElementById('terminal-cmd-btns');
   const installContainer = document.getElementById('terminal-cmd-btns-install');
   if (!container || !installContainer) return;
+  const buttons = getAllButtons();
+  // The bar is only rebuilt when its buttons are other ones than it shows. This runs after
+  // every edit, and an edit is often finished by the very click that presses a button here:
+  // typing in a field and then clicking Rebuild commits the field as the pointer goes down
+  // (its `change`, on losing focus), which re-renders the page. Rebuilt at that moment, the
+  // button under the pointer was replaced by a new one before the pointer came up again, and
+  // a click that starts on one element and ends on another reaches neither: the first press
+  // did nothing and the user had to press twice. It showed once save_first buttons could be
+  // pressed with unsaved changes; before, they were unavailable until Save had been pressed.
+  const shown = JSON.stringify(buttons);
+  if (shown === _buttonsShown) {
+    const dirty = isAnyDirty();
+    document.querySelectorAll('.term-run-btn[data-save-first]').forEach(b => _markSaveFirst(b, dirty));
+    return;
+  }
+  _buttonsShown = shown;
   container.innerHTML = '';
   installContainer.innerHTML = '';
-  const buttons = getAllButtons();
   // Each entry keeps its index into the *full* buttons list — runButton()/showButtonMenu() both
   // index into that same full list, so splitting into two rows here doesn't need to change
   // either of them.
@@ -558,8 +574,8 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
     _wireHoverTooltip(b, disabledTitle || btn.command);
     if (btn.save_first) {
       b.dataset.saveFirst = '1';
-      b.dataset.label = b.textContent;
       b.dataset.command = disabledTitle || btn.command;
+      b.insertAdjacentHTML('afterbegin', _SAVE_MARK);
       _markSaveFirst(b, isAnyDirty());
     }
     b.onclick = () => runButton(idx);
@@ -572,9 +588,10 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
 // nothing to save, and clear, with a tooltip saying so, while a click will save. Only a mark:
 // the name and the colours stay (see runButton() for the louder shapes that were tried).
 const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+// Only a class and the tooltip change here, never what is inside the button: this runs on every
+// edit, also the one a press on the button itself finishes (see renderButtons()), and a
+// press that began on an icon since replaced would not count as a click.
 function _markSaveFirst(b, dirty) {
-  b.textContent = b.dataset.label;
-  b.insertAdjacentHTML('afterbegin', _SAVE_MARK);
   b.classList.toggle('will-save', dirty);
   b.dataset.tooltip = dirty ? 'Saves your changes first, then runs: ' + b.dataset.command : b.dataset.command;
 }

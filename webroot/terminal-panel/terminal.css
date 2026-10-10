@@ -77,7 +77,7 @@
 .term-run-btn { white-space: nowrap; height: 26px; }
 /* On a save_first button, always: greyed until there is something to save (.will-save). See
    _markSaveFirst() in terminal.js. */
-.term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; }
+.term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; pointer-events: none; }
 .term-run-btn.will-save .term-save-mark { opacity: 1; }
 /* The size/hide icons (quarter/half/full/toggle) used to be a smaller .btn-sm variant, which
    visibly mismatched .term-run-btn (the command buttons sharing the same .terminal-header bar)
