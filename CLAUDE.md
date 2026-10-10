@@ -53,14 +53,21 @@ anything that happens in the page.
 
 ## Documentation
 
-When a change adds, removes or changes what a user sees or sets, update `REFERENCE.md` too
+When a change adds, removes or changes what a user sees or sets, update `README.md` too
 (features and usage, for users), not only this file (how the code is put together, for the
 next session). `example/eznix.example.toml` lists every setting.
 
-`README.md` is kept short on purpose, for people who don't know Nix: what it is, three
-blocks of lines to copy for installing, four steps for using it, a pointer to
-`REFERENCE.md`. The user asked for that twice ("for people who dont know much", "its too
-much text"). Don't grow it: new material goes in `REFERENCE.md`.
+`README.md` is the one document for users, laid out like the user's other repositories
+(ezconf, ezinstall): the name and a line on what it is, `## ✨ Features` as a short list,
+`## 🚀 Quick Start`, then a section per topic with an emoji in its heading, `## 📋 Options`
+and `## 📝 Notes` near the end, and a closing line in italics. Quick Start is what it takes
+to get eznix installed and running, for people who don't know Nix: three blocks of lines to
+copy and three steps for using it. Keep that part short ("for people who dont know much",
+"its too much text"): nobody should have to read far to get going. New material goes in the
+sections after it. A link to a section has the emoji's place as a hyphen (`#-https`), and
+the emoji in a linked heading must be a single character with no variation selector, or the
+anchor gets an invisible character in it. It was two files for a day, a short `README.md`
+and a `REFERENCE.md` (2026-10-09/10); the user did not like having two and asked for one.
 
 Most of the *why* lives in comments next to the code it explains, on purpose: many of them
 record an approach that was tried and reverted, and what broke. Read them before changing the
@@ -264,7 +271,7 @@ given, and settable for localhost. With no `cert`/`key`, eznix makes a local CA 
 certificate in the state folder (`generateCert`, now internal to `options.nix`). It was an
 option called `generateCert` until 2026-10-09; the user found "enable HTTPS" the natural
 name, and the old one is kept as a renamed option in each module. Nothing installs the CA
-into browsers or the keychain unless `trustCert` is set; the reference gives the command.
+into browsers or the keychain unless `trustCert` is set; the README gives the command.
 
 With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
 `_redirect_to_https()`): the first byte of a connection says which it is. The TLS handshake
