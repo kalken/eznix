@@ -410,8 +410,8 @@ Built in: `nixos`, `dark`, `gruvbox`, `osx-dark`, `osx-light`, and `osx`, which 
 light or dark appearance of the system the browser runs on.
 
 The tab's icon is the logo in the theme's colours. So is the icon of the page installed as
-an app, in the colours of the theme set as `theme`; after changing that, the browser may
-keep the old icon until the app is installed again.
+an app, in the colours of the theme set as `theme`; after changing that, the browser
+fetches the new icon by itself, and it shows once the app has been closed and opened again.
 
 ### Your own themes
 

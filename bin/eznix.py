@@ -884,9 +884,11 @@ def _theme_vars(theme):
     return found
 
 
-def _logo_colours(theme):
-    """The logo's two colours in a theme (--logo-1 and --logo-2, see THEMES.md), with every
-    var() in them followed to a value: an image has no stylesheet to look them up in."""
+def _icon_colours(theme):
+    """The two colours of the icon in a theme: the colour of a section's name and that of the
+    header and tab bar (--section-title-color and --bg2), which the user chose over the logo's
+    own pair (--logo-1 and --logo-2, still what the page draws its logo in). Every var() in
+    them is followed to a value: an image has no stylesheet to look them up in."""
     found = _theme_vars(theme)
 
     def value(text, depth=0):
@@ -894,8 +896,7 @@ def _logo_colours(theme):
             v = found.get(m.group(1), m.group(2))
             return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
         return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
-    return tuple(value(found.get(logo) or 'var(%s)' % accent)
-                 for logo, accent in (('--logo-1', '--accent2'), ('--logo-2', '--accent')))
+    return tuple(value('var(%s)' % name) for name in ('--section-title-color', '--bg2'))
 
 
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
@@ -926,7 +927,7 @@ def _favicon_svg(theme):
     automatic theme gets both of its pairs, the dark one behind a media query; where the icon
     is turned into a picture once (an installed app) that comes out as the light one."""
     def rules(name):
-        return '.a{fill:%s}.b{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _logo_colours(name))
+        return '.a{fill:%s}.b{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _icon_colours(name))
     if theme in AUTO_THEMES:
         light, dark = AUTO_THEMES[theme]
         css = rules(light) + '@media (prefers-color-scheme:dark){' + rules(dark) + '}'
