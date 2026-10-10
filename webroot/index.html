@@ -4,10 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>eznix (%%EZNIX_HOSTNAME%%)</title>
-<!-- favicon.svg/manifest.json are written into WEBROOT at build time (see
-     nix/packages.nix), same convention as VERSION -- absent (plain 404s, no icon
-     shown) on a bare `python3 eznix.py` git checkout with no Nix build. -->
-<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<!-- The logo in the theme's colours, drawn by the server (_favicon_svg() in eznix.py). This is
+     the configured theme's; _loadTheme() asks for the one chosen in this browser. -->
+<link rel="icon" type="image/svg+xml" href="favicon.svg" id="favicon-link">
 <!-- manifest.json (see webroot/manifest.json) is what lets a Chromium-based browser's own native
      "Install page as app" (README's tip) show the correct icon -- a plain <link rel="icon">
      favicon isn't enough for that installed-app icon resolution on its own, confirmed by a real
@@ -48,6 +47,7 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
     after.parentNode.insertBefore(l, after.nextSibling);
     after = l;
   }
+  document.getElementById('favicon-link').href = 'favicon.svg?theme=' + t;
 })();
 </script>
 <link rel="stylesheet" href="style.css">
@@ -231,6 +231,15 @@ function _loadTheme(name) {
   }
   // Plugins that read colours back out of the page (the terminal) do it once both sheets are in.
   Promise.all(pending).then(() => eznix.emit('theme'));
+  _loadIcon(name);
+}
+// The tab's icon is the logo in the theme's two colours. The icon of the page installed as an
+// app is not reached from here: the browser takes that from the manifest, so it is in the
+// configured theme's colours whatever is chosen in this browser.
+function _loadIcon(name) {
+  const link = document.getElementById('favicon-link');
+  const href = 'favicon.svg?theme=' + name;
+  if (link && link.getAttribute('href') !== href) link.href = href;
 }
 function _markActiveTheme(name) {
   document.querySelectorAll('.theme-swatch').forEach(b =>

@@ -147,6 +147,14 @@ data is left out of it (it changes while the server runs) and has its own stamp 
 Polling, not `EventSource`: one reconnecting after a restart wiped Chromium's cookies for the
 origin.
 
+**The icon is drawn by the server** (`_favicon_svg()`, `/favicon.svg?theme=NAME`): the logo
+in a theme's `--logo-1` and `--logo-2`, read out of the theme's stylesheet with every `var()`
+followed, since an image has no stylesheet. It was nixpkgs' snowflake, copied in at build
+time, so a checkout had none. The page asks for the theme chosen in that browser
+(`_loadIcon()`); the manifest, which a browser fetches with nothing the page knows, names the
+configured one, in the icon's address so that another theme is another manifest. The logo's
+geometry is therefore in two places, there and in `terminal-panel/terminal.js`.
+
 **Sessions**: a random token per login in the `eznix_session` cookie, stored hashed in
 `<state>/sessions.json`, so a restart of the server logs nobody out. How long the cookie
 lasts is set under `[session.cookies]` (`session.cookies.*` in the modules). `days` unset, which is the default the user chose, it has no lifetime and

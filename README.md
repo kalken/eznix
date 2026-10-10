@@ -409,6 +409,10 @@ Pick one with the swatches in the status bar; `theme` sets what a browser starts
 Built in: `nixos`, `dark`, `gruvbox`, `osx-dark`, `osx-light`, and `osx`, which follows the
 light or dark appearance of the system the browser runs on.
 
+The tab's icon is the logo in the theme's colours. So is the icon of the page installed as
+an app, in the colours of the theme set as `theme`; after changing that, the browser may
+keep the old icon until the app is installed again.
+
 ### Your own themes
 
 A theme is one CSS file of variables, and only needs the ones it changes:

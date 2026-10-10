@@ -162,6 +162,16 @@ def main():
             _, ping = b.json('/api/v1/ping')
             check('the page was built with the checksum the ping reports', f"'{ping['page']}'" in page)
 
+            # The icon is public (the login page shows it) and drawn per theme.
+            icon = lambda q='': anon.request('/favicon.svg' + q)[1].decode()
+            check('the icon is the logo in the theme\'s two colours',
+                  '#5277c3' in icon('?theme=nixos') and '#7ebae4' in icon('?theme=nixos')
+                  and '#d65d0e' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=dark'))
+            check('an unknown theme gets the configured one', icon('?theme=../x') == icon())
+            manifest = json.loads(anon.request('/manifest.json')[1])
+            check('the manifest names the icon with the configured theme',
+                  manifest['icons'][0]['src'].startswith('favicon.svg?theme='), manifest)
+
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
             check('a file saves', b.request('/api/v1/file/save?file=a.json', b'{"a": 2}')[0] == 200
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 2})

@@ -865,6 +865,74 @@ def _theme_links(theme):
     return (link % custom['base'] + '\n' if custom else '') + link % theme
 
 
+
+def _theme_vars(theme):
+    """What a theme's stylesheet sets: variable -> value as written. A user theme is its own
+    file over its base, as in the page."""
+    custom = CUSTOM_THEMES.get(theme)
+    paths = [os.path.join(WEBROOT, 'theme-%s.css' % (custom['base'] if custom else theme))]
+    if custom:
+        paths.append(custom['path'])
+    found = {}
+    for path in paths:
+        try:
+            with open(path, encoding='utf-8', errors='replace') as f:
+                css = re.sub(r'/\*.*?\*/', '', f.read(), flags=re.S)
+        except OSError:
+            continue
+        found.update(re.findall(r'(--[A-Za-z0-9_-]+)\s*:\s*([^;{}]+?)\s*;', css))
+    return found
+
+
+def _logo_colours(theme):
+    """The logo's two colours in a theme (--logo-1 and --logo-2, see THEMES.md), with every
+    var() in them followed to a value: an image has no stylesheet to look them up in."""
+    found = _theme_vars(theme)
+
+    def value(text, depth=0):
+        def one(m):
+            v = found.get(m.group(1), m.group(2))
+            return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
+        return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
+    return tuple(value(found.get(logo) or 'var(%s)' % accent)
+                 for logo, accent in (('--logo-1', '--accent2'), ('--logo-2', '--accent')))
+
+
+# The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
+# the same geometry as _nixosLogoSvg() in terminal-panel/terminal.js, where the comment says
+# how it was pared down. Twice, because that one is drawn by the page, in the page's
+# stylesheet, and this one is a file a browser fetches by itself.
+_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 501.56251 501.56249">
+<style>%s</style>
+<g transform="translate(-156.41121,933.30685)">
+<g transform="matrix(0.99994059,0,0,0.99994059,-0.06321798,33.188377)">
+<defs><path id="p" d="m 309.54892,-710.38827 122.19683,211.67512 -56.15706,0.5268 -32.6236,-56.8692 -32.85645,56.5653 -27.90237,-0.011 -14.29086,-24.6896 46.81047,-80.4901 -33.22946,-57.8257 z"/></defs>
+<use class="a" href="#p"/>
+<use class="b" href="#p" transform="rotate(60,407.11155,-715.78724)"/>
+<use class="b" href="#p" transform="rotate(-60,407.31177,-715.70016)"/>
+<use class="b" href="#p" transform="rotate(180,407.41868,-715.7565)"/>
+<use class="a" href="#p" transform="rotate(120,407.33916,-716.08356)"/>
+<use class="a" href="#p" transform="rotate(-120,407.28823,-715.86995)"/>
+</g>
+</g>
+</svg>
+"""
+
+
+def _favicon_svg(theme):
+    """The icon of the tab, and of the page installed as an app, in a theme's colours. An
+    automatic theme gets both of its pairs, the dark one behind a media query; where the icon
+    is turned into a picture once (an installed app) that comes out as the light one."""
+    def rules(name):
+        return '.a{fill:%s}.b{fill:%s}' % tuple(c.replace('<', '').replace('&', '') for c in _logo_colours(name))
+    if theme in AUTO_THEMES:
+        light, dark = AUTO_THEMES[theme]
+        css = rules(light) + '@media (prefers-color-scheme:dark){' + rules(dark) + '}'
+    else:
+        css = rules(theme)
+    return _LOGO_SVG % css
+
+
 class PluginError(Exception):
     """Raised by a plugin's handler to answer with an error: PluginError(400, 'why')."""
     def __init__(self, status, message):
@@ -1675,6 +1743,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_static_gzip(parsed.path.lstrip('/'), custom and custom['path']); return
         if parsed.path == '/manifest.json':
             self._serve_manifest(); return
+        if parsed.path == '/favicon.svg':
+            self._serve_favicon(parsed.query); return
         if parsed.path in self._PUBLIC_PATHS:
             super().do_GET()
             return
@@ -1844,9 +1914,29 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         except (OSError, ValueError):
             self.send_error(404); return
         manifest['name'] = manifest['short_name'] = f'eznix ({HOSTNAME})'
+        # The theme is in the icon's address so that another theme is another manifest: an
+        # installed app keeps the icon it was installed with until the browser sees a change.
+        for icon in manifest.get('icons') or []:
+            if icon.get('src') == 'favicon.svg':
+                icon['src'] += '?theme=' + THEME
         data = json.dumps(manifest).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/manifest+json')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_favicon(self, query):
+        """The logo in a theme's colours (_favicon_svg()): ?theme=NAME, which is how the page asks
+        for the theme chosen in that browser, or the configured one. The manifest's icon and
+        the login page can only get the configured one: the first is fetched without anything
+        the page knows, the second has no choice of theme."""
+        theme = (parse_qs(query).get('theme') or [''])[0]
+        if theme not in BUILTIN_THEMES and theme not in AUTO_THEMES and theme not in CUSTOM_THEMES:
+            theme = THEME
+        data = _favicon_svg(theme).encode()
+        self.send_response(200)
+        self.send_header('Content-Type', 'image/svg+xml')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)

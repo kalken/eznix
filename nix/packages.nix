@@ -43,8 +43,6 @@ rec {
       # Run by hand (nix run), eznix starts its own terminal and looks for it next to itself.
       ln -s ${eznix-terminal}/share/eznix-terminal/eznix-terminal.py $out/share/eznix/eznix-terminal.py
       echo -n "${version}" > $out/share/eznix/webroot/VERSION
-      cp ${pkgs.nixos-icons}/share/icons/hicolor/scalable/apps/nix-snowflake.svg \
-        $out/share/eznix/webroot/favicon.svg
       makeWrapper ${python}/bin/python3 $out/bin/eznix --add-flags $out/share/eznix/eznix.py
     '';
   };

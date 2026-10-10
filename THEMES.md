@@ -120,6 +120,10 @@ The NixOS logo (it turns while the terminal reconnects) is drawn in two colours,
 arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, `dark` two greys, the
 others their two accents. A theme that sets neither gets `--accent2` and `--accent`.
 
+The tab's icon is the same logo in the same two colours, and so is the icon of the page
+installed as an app. That one is in the colours of the theme set as `theme`, not of one
+picked with the swatches: the browser fetches it by itself and keeps it.
+
 ## Spacing
 
 The "Editor layout" block is the same in every built-in theme, on purpose:
