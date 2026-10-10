@@ -2070,6 +2070,13 @@ class _Server(http.server.ThreadingHTTPServer):
     The handshake is done here, in the connection's own thread, and not by wrapping the
     listening socket as before: there it happened inside accept(), where one client that
     connected and then said nothing held up everybody else."""
+
+    # How many connections may wait to be accepted. Python's default is 5, and a browser
+    # loading the page opens more than that at once: the surplus was dropped and retried, and
+    # the kernel logged "Possible SYN flooding on port ...:9090. Sending cookies." each time
+    # the queue first overflowed after a start, which the user found on a machine's console
+    # (a Raspberry Pi, where accepting is slowest). It was never an attack.
+    request_queue_size = 128
     tls = None
 
     def finish_request(self, request, client_address):
