@@ -901,8 +901,10 @@ def _logo_colours(theme):
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
 # the same geometry as _nixosLogoSvg() in terminal-panel/terminal.js, where the comment says
 # how it was pared down. Twice, because that one is drawn by the page, in the page's
-# stylesheet, and this one is a file a browser fetches by itself.
-_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 501.56251 501.56249">
+# stylesheet, and this one is a file a browser fetches by itself. It has a width and a height
+# because an image with only a viewBox has no size of its own, and a browser making an app's
+# icon out of it has nothing to draw it at.
+_LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 501.56251 501.56249">
 <style>%s</style>
 <g transform="translate(-156.41121,933.30685)">
 <g transform="matrix(0.99994059,0,0,0.99994059,-0.06321798,33.188377)">
