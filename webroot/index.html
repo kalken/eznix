@@ -4518,8 +4518,13 @@ async function _fileMenuItems(name) {
   items.push({ label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) });
   items.push({ label: 'Export', onclick: () => exportFile(name) });
   items.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
-  // This file's own backups (was the header Restore button's "File" submenu, back when it
-  // covered both scopes; the whole system's backups are in the system plugin's menu).
+  items.push({ separator: true });
+  items.push({ label: 'Clear', onclick: () => clearFile(name) });
+  items.push({ label: 'Delete', danger: true, onclick: () => deleteFile(name) });
+  // This file's own backups, last and as lines of this menu under a heading, the way the
+  // system plugin's menu lists the whole system's: a submenu of a "Restore" entry until
+  // 2026-10, changed to match once that one had been. There are never many: the newest
+  // `backups` (5 unless set) are kept of each file.
   // Explicitly this file, not activeFile: right-clicking a tab that isn't the active one should
   // restore into *that* file, not silently overwrite whatever's currently open.
   if (BACKUP_ENABLED) {
@@ -4527,20 +4532,15 @@ async function _fileMenuItems(name) {
     try {
       const res = await apiFetch('/backups?file=' + encodeURIComponent(name));
       if (res.ok) fileBackups = (await res.json()).backups || [];
-    } catch (err) { /* falls through to the empty-state item below */ }
-    items.push({
-      label: 'Restore',
-      items: fileBackups.length
-        ? fileBackups.map(b => ({
-            label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
-            onclick: () => loadBackup(b.name, name),
-          }))
-        : [{ label: 'No backups yet — one is made on every save.', disabled: true }],
-    });
+    } catch (err) { /* falls through to the empty-state heading below */ }
+    items.push({ separator: true });
+    items.push({ label: fileBackups.length ? 'Restore' : 'Restore: no backups yet', disabled: true });
+    fileBackups.forEach(b => items.push({
+      label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
+      title: 'Bring this version back into the file; nothing is written until you save',
+      onclick: () => loadBackup(b.name, name),
+    }));
   }
-  items.push({ separator: true });
-  items.push({ label: 'Clear', onclick: () => clearFile(name) });
-  items.push({ label: 'Delete', danger: true, onclick: () => deleteFile(name) });
   return items;
 }
 
