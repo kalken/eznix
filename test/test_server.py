@@ -164,9 +164,9 @@ def main():
 
             # The icon is public (the login page shows it) and drawn per theme.
             icon = lambda q='': anon.request('/favicon.svg' + q)[1].decode()
-            check('the icon is the logo in a theme\'s section and header colours',
-                  '#4a9edd' in icon('?theme=nixos') and '#0d1a2e' in icon('?theme=nixos')
-                  and '#d79921' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=dark'))
+            check('the icon is the logo in a theme\'s two colours on the header\'s',
+                  all(c in icon('?theme=nixos') for c in ('#5277c3', '#7ebae4', '#0d1a2e'))
+                  and '#d65d0e' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=dark'))
             check('an unknown theme gets the configured one', icon('?theme=../x') == icon())
             manifest = json.loads(anon.request('/manifest.json')[1])
             check('the manifest names the icon with the configured theme',

@@ -885,11 +885,13 @@ def _theme_vars(theme):
 
 
 def _icon_colours(theme):
-    """The colours of the icon in a theme: the logo's two are the colour of a section's name and
-    that of the header and tab bar (--section-title-color and --bg2), which the user chose
-    over the logo's own pair (--logo-1 and --logo-2, still what the page draws its logo in),
-    and behind it is the editor's page (--editor-bg). Every var() in them is followed to a
-    value: an image has no stylesheet to look them up in."""
+    """The colours of the icon in a theme: the logo's own two (--logo-1 and --logo-2, see
+    THEMES.md), and behind it the fill of the header (--bg2), which is where the page shows
+    the same logo, on the Autocomplete button. So the icon is what is seen in the page, and a
+    theme's pair, chosen to be read on that fill, is read on it here. For a day the two were
+    a section's name and the header's fill on the editor's page, and every other arm all but
+    vanished. Every var() in them is followed to a value: an image has no stylesheet to look
+    them up in."""
     found = _theme_vars(theme)
 
     def value(text, depth=0):
@@ -897,7 +899,8 @@ def _icon_colours(theme):
             v = found.get(m.group(1), m.group(2))
             return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
         return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
-    return tuple(value('var(%s)' % name) for name in ('--section-title-color', '--bg2', '--editor-bg'))
+    return (value(found.get('--logo-1') or 'var(--accent2)'), value(found.get('--logo-2') or 'var(--accent)'),
+            value('var(--bg2)'))
 
 
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
@@ -906,7 +909,7 @@ def _icon_colours(theme):
 # stylesheet, and this one is a file a browser fetches by itself. It has a width and a height
 # because an image with only a viewBox has no size of its own, and a browser making an app's
 # icon out of it has nothing to draw it at. The logo is on a rounded square in the colour of
-# the editor's page, at 72% of it, so that it reads the same on a light and a dark tab strip.
+# the header, at 72% of it, so that it reads the same on a light and a dark tab strip.
 _LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 501.56251 501.56249">
 <style>%s</style>
 <rect class="g" width="100%%" height="100%%" rx="22%%"/>
