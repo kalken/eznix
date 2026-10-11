@@ -80,7 +80,7 @@
   --row-height:     24px;  /* minimum height of an option row */
   --page-margin:    20px;  /* around the top-level blocks, on every side */
   --section-gap:    16px;  /* between top-level blocks */
-  --card-gap:       8px;   /* around a bordered sub-section */
+  --card-gap:       4px;   /* above and below a box in a section; with the 4px a row has round its text, 8px from any line of text to what is above it */
   --nested-section-gap: 0px; /* below a section nested inside a sub-section */
   --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
   --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */

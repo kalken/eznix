@@ -2609,9 +2609,19 @@ function _setValuePlaceholders(root) {
   }
 }
 
+// Options that follow each other are put in one element, a .field-group: a run of rows is one
+// block on the page (one strip of values, one box between two sub-sections), and since
+// 2026-10-11 it is one in the document too, so its spacing is the block's own (style.css)
+// and not something each row has to work out from its neighbours. A section ends the run.
+// Not at the root of a file, where each option is a card of its own. Whatever the functions
+// below add is looked at afterwards, since a disabled entry can come out as either kind.
+// Nothing that moves or finds rows goes by their place among siblings (drags go by
+// data-drag-parent and data-drag-key), so the extra element is invisible to all of that.
 function renderObj(container, obj, path) {
+  let group = null;
   for (const [k, v] of Object.entries(obj)) {
     const childPath = [...path, k];
+    const before = container.lastElementChild;
     if (isDisabled(v)) {
       renderDisabled(container, k, v, childPath);
     } else if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
@@ -2620,6 +2630,17 @@ function renderObj(container, obj, path) {
       renderArrayField(container, k, v, childPath);
     } else {
       renderField(container, k, v, childPath);
+    }
+    if (!path.length) continue;
+    for (let el = before ? before.nextElementSibling : container.firstElementChild, next; el; el = next) {
+      next = el.nextElementSibling;
+      if (!el.classList.contains('field-row')) { group = null; continue; }
+      if (!group) {
+        group = document.createElement('div');
+        group.className = 'field-group';
+        container.insertBefore(group, el);
+      }
+      group.appendChild(el);
     }
   }
 }
@@ -3110,7 +3131,30 @@ function renderArrayField(container, key, arr, path) {
         arr.push(isObjArray ? {} : '');
       }
     }
+    _markFreshItem(path, arr, arr.length - 1);
     renderAll();
+    // The cursor goes into what was just added, its first text field: one adds an item to fill
+    // it in, and from an empty list's "Add item…" there was nothing focused at all afterwards.
+    const added = [...document.querySelectorAll('.field-row[data-path="' + CSS.escape(path.join('.')) + '"] > .field-value > :is(.array-obj-item, .array-item)')].pop();
+    const box = added && added.querySelector('input[type=text], input[type=number], textarea');
+    if (box) box.focus();
+  }
+
+  // An empty list says "Add item…" where the first item would be, in the tone of a
+  // placeholder, and a click on it adds that item: the words of the "Add value…" and "Add
+  // package…" the other kinds of list have there. ("List is empty", "[]" and "No items" were
+  // tried on 2026-10-11; they say the list is empty, which the look says already, and not
+  // that a click does something.) It showed
+  // nothing at all, a blank cell, and the first item could only be added from the row's menu
+  // (the user, 2026-10-11: "if i press ... an empty list, shouldnt it create the first object
+  // for me?"). addItem() makes the same item the menu's Add item does: an object with its
+  // required options for a list of objects, an empty value otherwise.
+  if (!arr.length && !isPkgArrayPath(path) && !enumOpts) {
+    const hint = document.createElement('div');
+    hint.className = 'list-empty';
+    hint.textContent = 'Add item…';
+    hint.onclick = addItem;
+    valEl.appendChild(hint);
   }
 
   row.oncontextmenu = e => {
@@ -3558,6 +3602,69 @@ function _focusListItem(path, arr, index) {
   box.setSelectionRange(box.value.length, box.value.length);
 }
 
+// The list item "Add item" has just made, while it is still as it was made. Left like that, it
+// is taken away again: an object with its required options unfilled is not something Nix
+// accepts, and nobody means to keep one (the user: "if i go away from a list object without
+// typing a value it should be removed"). "Left" is a click or the cursor going anywhere
+// outside it; "as it was made" is by comparison with what it held then, since a new object
+// may start with a switch or a number in it and so is not simply empty. Only this one item:
+// an empty object that was in the file already may be meant (every option of it can have a
+// default) and is never removed for having been clicked through.
+// It was tried first as the item's own focusout, which missed an item with no text field to
+// have the cursor in, and one whose required options are not all text.
+// A plain value's item is the same: an empty line added to a list of texts and left empty goes
+// too (it was only the objects at first, and an empty text item stayed behind with the
+// cursor's place still drawn in it, which the user took for the cursor not having left).
+let _freshItem = null;   // { path, arr, index, len, as, at, el }, el being the item's element (renderArray())
+function _markFreshItem(path, arr, index) {
+  _freshItem = { path, arr, index, len: arr.length, as: JSON.stringify(arr[index]), at: Date.now(), el: null };
+}
+function _leftFreshItem(target) {
+  const f = _freshItem;
+  if (!f || !target || !target.isConnected || Date.now() - f.at < 300) return;
+  if ((f.el && f.el.contains(target)) || target.closest('.context-menu')) return;
+  _freshItem = null;
+  if (getAtPath(config, f.path) !== f.arr || f.arr.length !== f.len || JSON.stringify(f.arr[f.index]) !== f.as) return;
+  _dropListItem(f.path, f.arr, f.index);
+}
+// After the click or the move of the cursor has done what it does: taking the item away
+// rebuilds the editor, and a click must not lose the thing it was on its way to.
+document.addEventListener('mouseup', e => setTimeout(() => _leftFreshItem(e.target), 0), true);
+document.addEventListener('focusin', e => setTimeout(() => _leftFreshItem(e.target), 0), true);
+
+// Takes item `i` out of the list at `path` and draws the editor again, with the cursor back in
+// the field it was in, if it was in one: the editor is rebuilt from scratch on every change, so
+// the field the user has just clicked or tabbed into is otherwise gone the moment they get there.
+function _dropListItem(path, arr, i) {
+  const act = document.activeElement;
+  const row = act && act.closest ? act.closest('#editor-area .field-row[data-path]') : null;
+  let at = null;
+  if (row) {
+    let p = row.dataset.path;
+    const prefix = path.join('.') + '.';
+    if (p.startsWith(prefix)) {
+      const rest = p.slice(prefix.length), n = parseInt(rest, 10);
+      if (String(n) === rest.split('.')[0] && n > i) p = prefix + (n - 1) + rest.slice(String(n).length);
+    }
+    at = { path: p, index: [...row.querySelectorAll('input, textarea')].indexOf(act) };
+  }
+  arr.splice(i, 1);
+  renderAll();
+  if (!at) return;
+  const again = document.querySelector('#editor-area .field-row[data-path="' + CSS.escape(at.path) + '"]');
+  const box = again && again.querySelectorAll('input, textarea')[Math.max(0, at.index)];
+  if (box) box.focus();
+}
+
+// Is there nothing in this list item: every option of it an empty text, null, an empty list,
+// or a group of such? A switch or a number counts as something, set to whatever.
+function _isBlankItem(v) {
+  if (v === '' || v === null || v === undefined) return true;
+  if (Array.isArray(v)) return v.length === 0;
+  if (typeof v === 'object') return !isExprPkg(v) && !isDisabled(v) && Object.values(v).every(_isBlankItem);
+  return false;
+}
+
 function renderArray(container, arr, path) {
   arr.forEach((v, i) => {
     const itemPath = [...path, i];
@@ -3576,6 +3683,28 @@ function renderArray(container, arr, path) {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
         showContextMenu(e, [...items, ..._commonMenuItems(itemPath)]);
       };
+      // Backspace in a text field that is already empty takes the whole item away when there
+      // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list
+      // of plain values: what the "Add item…" of an empty list made is unmade the same way
+      // it would be anywhere one types (the user's wish, 2026-10-11). An item with anything
+      // set in it is left alone, and so is a name being renamed.
+      wrap.addEventListener('keydown', e => {
+        const t = e.target;
+        if (e.isComposing || e.key !== 'Backspace' || !t.matches('input[type=text], input[type=number], textarea')) return;
+        if (t.value !== '' || t.classList.contains('key-rename-input') || !_isBlankItem(getAtPath(config, itemPath))) return;
+        e.preventDefault();
+        e.stopPropagation();
+        arr.splice(i, 1);
+        renderAll();
+      });
+      if (_freshItem && _freshItem.arr === arr && _freshItem.index === i) _freshItem.el = wrap;
+      // The only item of a list goes the moment the last thing in it is deleted, and the list
+      // says "Add item…" again, without a click elsewhere or another Backspace first (the user:
+      // "the object should disappear right away"). Only the only one: emptying one item among
+      // several is usually the start of typing something else into it.
+      wrap.addEventListener('input', () => {
+        if (arr.length === 1 && arr[0] === v && _isBlankItem(v)) _dropListItem(path, arr, 0);
+      });
       container.appendChild(wrap);
       makeDraggable(wrap, String(i), path);
       return;
@@ -3597,24 +3726,29 @@ function renderArray(container, arr, path) {
     } else {
       editor = document.createElement('input');
       editor.type = 'text'; editor.value = strVal;
-      editor.addEventListener('input', () => setAtPath(config, itemPath, isExpr ? { _expr: editor.value } : editor.value));
+      editor.addEventListener('input', () => {
+        setAtPath(config, itemPath, isExpr ? { _expr: editor.value } : editor.value);
+        // As with an object (above): the only item, emptied, is gone at once.
+        if (editor.value === '' && arr.length === 1) _dropListItem(path, arr, 0);
+      });
       // Enter makes a new item under this one, and Backspace in an item that is already empty
       // takes it away, as in any list one types into: the user's idea, to spare the right-click
-      // for "Add item". Only here, for one-line values; an item that is a group of settings
-      // has no such keys (what an empty one is, and what a new one needs, is not obvious
-      // there). The last item stays even when empty, or there would be nothing left to type in.
+      // for "Add item". An item that is a group of settings has Backspace too (above), but
+      // not Enter: what a new one needs is not obvious there. The last item goes like any
+      // other since 2026-10-11: an empty list has its "Add item…" to start again from.
       editor.addEventListener('keydown', e => {
         if (e.isComposing) return;
         if (e.key === 'Enter') {
           e.preventDefault();
           arr.splice(i + 1, 0, '');
+          _markFreshItem(path, arr, i + 1);
           renderAll();
           _focusListItem(path, arr, i + 1);
-        } else if (e.key === 'Backspace' && editor.value === '' && arr.length > 1) {
+        } else if (e.key === 'Backspace' && editor.value === '') {
           e.preventDefault();
           arr.splice(i, 1);
           renderAll();
-          _focusListItem(path, arr, Math.max(0, i - 1));
+          if (arr.length) _focusListItem(path, arr, Math.max(0, i - 1));
         }
       });
     }
@@ -3633,6 +3767,7 @@ function renderArray(container, arr, path) {
       showContextMenu(e, items);
     };
     item.appendChild(editor);
+    if (_freshItem && _freshItem.arr === arr && _freshItem.index === i) _freshItem.el = item;
     container.appendChild(item);
   });
 }

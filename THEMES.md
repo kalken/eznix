@@ -140,11 +140,16 @@ The "Editor layout" block is the same in every built-in theme, on purpose:
 |---|---|---|
 | `--page-margin` | 20px | around the cards, on every side |
 | `--section-gap` | 16px | between two top-level cards |
-| `--card-gap` | 12px | around a bordered sub-section |
 | `--block-pad` | 10px | inside a card, at the sides |
+| `--row-height` | 24px | a row: one line of text with 4px above and below it |
+| `--card-gap` | 4px | above and below a box inside a card (a sub-section, or a run of plain options), each of which has a line along its top |
+| `--indent-step` | 2ch | per level of nesting |
+| `--nested-section-gap` | 0px | below a foldable section, in addition to its rows |
 
-These follow the figures Apple has published for window margins and for spacing between and
-inside groups. A theme that is only about colour should leave the whole block alone; change it
+Inside a card everything is rows, one after the other; the only other space is a box's padding
+at a divider line. With the values above, any line of text is 8px from what is above it, text
+or line. The margins and the gap between cards follow the figures Apple has published for
+window margins and for spacing between groups. A theme that is only about colour should leave the whole block alone; change it
 in all of them or none.
 
 Corner radii are the same in every built-in theme too — `--radius` 8px (cards, panels, popups),

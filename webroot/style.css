@@ -350,7 +350,7 @@ body {
    (see _setNestDepths()) with a narrower key column of their own. */
 .array-obj-fields { --key-width: var(--list-key-width); }
 /* The heading of a top-level section lines up with the content of the cards beneath it. */
-.section.nest-top > .section-header { padding: 0 var(--block-pad) var(--card-gap); }
+.section.nest-top > .section-header { padding: 0 var(--block-pad) calc(var(--card-gap) + 4px); }
 /* Section names by depth: a top-level one reads as a title, a sub-section gets the full accent,
    and anything deeper keeps .section-key's own dimmed tone. */
 .section.nest-top > .section-header .section-key { color: var(--section-title-color); font-size: var(--section-title-size); }
@@ -370,25 +370,26 @@ body {
   border-radius: var(--radius);
   box-shadow: 0 0 0 1px var(--card-border), 0 0 var(--panel-shadow-size) var(--panel-shadow);
 }
-.section.nest-top { padding: 8px 0; }
+/* Nothing below: its last box's padding is the room above the card's bottom edge. */
+.section.nest-top { padding: 8px 0 0; }
 .field-row.nest-root { padding-top: 8px; padding-bottom: 8px; margin-bottom: var(--section-gap); }
 .field-row.nest-root:last-child { margin-bottom: 0; }
 /* Not part of a strip of rows any more, so its value cell keeps all four corners. */
 .field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
 /* A second-level section is only set off by a plain line above it, across the frame it sits
    in: the frame's hairline colour, without the shadow. */
-/* One rule for the space round a sub-section: the themes' --card-gap (8px) between it and
-   whatever is next to it, above or below, be that another sub-section or a plain option of
-   the top-level section. The line is the sub-section's top edge, so it has the gap above it;
-   its name follows 8px under the line (4px here and the 4px a row's text has above it); and
-   the sub-section has no padding at its bottom, the gap after it being that space. Above the
-   first one the top-level name's own padding is the gap, below the last one the card's.
-   This is the rule the stylesheet began the day with, 2026-10-11. In between, the gap was
-   taken out and the space put back case by case (padding below a sub-section, a margin
-   under a plain option), each time for the one place the user had pointed at, until the
-   user asked whether one rule could cover everything. */
-.section.nest-card { padding: 4px var(--block-pad) 0; border-top: 1px solid var(--panel-hairline); }
-* + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
+/* What is in a top-level section is a stack of boxes, each with a line along its top and the
+   same padding above and below (the themes' --card-gap): a sub-section is one box, and so is
+   a run of plain options standing between sub-sections or at either end. The space is the
+   box's own and nothing looks at what is next to it; inside a box every line of text is a
+   row, one after the other with nothing between. So a line always has the same room under
+   it, a box always ends with the same room, and it makes no difference what follows what.
+   (The user's question after a day, 2026-10-11, of gaps placed by what stood beside what,
+   each fixed for the one spot pointed at: "isnt it better to draw all subsections in a
+   container and have the spacing on that?") Both are elements: a sub-section is its
+   .section, a run of options a .field-group (renderObj() in index.html). */
+.section.nest-card { padding: var(--card-gap) var(--block-pad); border-top: 1px solid var(--panel-hairline); }
+.section.nest-top > .section-body > .field-group { padding: var(--card-gap) 0; border-top: 1px solid var(--panel-hairline); }
 /* Every section from the third level down (.nest-arrow) can be folded away, and starts out
    folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
    pointing right while the section is hidden and down while it's shown. The arrow is part of
@@ -414,11 +415,12 @@ body {
 /* Every line of the outline is then the same distance from the next, a row (--row-height, 24px
    in the themes), with its text 4px from the top of its row whatever it is: a heading, an
    option's name (its padding-top, above) or the text of a text value (1px border and 3px
-   padding, in a value cell that has no padding of its own). Until 2026-10-11 a row was 28px,
-   a value cell had 2px above and below, a name stood 6px down and a heading was centred in
-   its row, so the lines were unevenly far apart: a heading under an option was further from
-   it than an option under a heading (the user: "large space between ezrouter.enabled and
-   ezrouter.wan"). */
+   padding, in a value cell that has no padding of its own). So there are 8px between any two
+   lines of text, and with the themes' --card-gap of 4px also between a divider line and the
+   text on either side. (4px between everything, with rows of 20px, was tried on 2026-10-11
+   and taken back at once.) Until that day a row was 28px, a value cell had 2px above and
+   below, a name stood 6px down and a heading was centred in its row, so the lines were
+   unevenly far apart. */
 .section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
 .section.nest-arrow.collapsed > .section-header .section-toggle::before { content: '▸'; }
 .section.collapsed > .section-body { display: none; }
@@ -457,7 +459,7 @@ body {
    an option does from the section it is in (it was twice the side padding, 20px). The rows
    inside add nothing of their own on either side, or it would count twice. */
 .field-row.nest .array-obj-item { padding: 4px 4px 4px var(--indent-step); }
-.array-obj-fields > .field-row.nest-loose { padding-left: 0; padding-right: 0; }
+.array-obj-fields > .field-group > .field-row.nest-loose { padding-left: 0; padding-right: 0; }
 /* The same space between the items and the value cell holding them on all four sides: the
    theme's --list-item-gap. For an hour on 2026-10-11 it was that only at the sides and 2px
    above and below, to make lists of objects lower, and the last object then sat almost on
@@ -836,6 +838,10 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 
 /* ── Null value display ── */
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
+/* What an empty list shows in place of its first item (renderArrayField()): the placeholder's
+   colour, on the line and at the left edge where a value's text is. */
+.list-empty { color: var(--text3); font-size: 12px; padding: 4px 7px; cursor: pointer; }
+.list-empty:hover { color: var(--text2); }
 
 /* ── Invalid input state ── */
 .input-error { border-color: var(--red) !important; }
