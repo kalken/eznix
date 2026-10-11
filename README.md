@@ -325,7 +325,7 @@ Nothing in eznix is root, so a command that needs it asks through `sudo`. How mu
 up to your sudo setup:
 
 - **Ask every time** (the default). sudo asks for your password in the terminal and remembers
-  it for a few minutes.
+  it for 5 minutes.
 - **Allow the rebuild without a password**, on NixOS:
 
   ```nix
@@ -364,10 +364,17 @@ security.sudo.extraConfig = "Defaults:alice timestamp_timeout=30";
 `-1` in place of the number asks once and not again while that terminal lives. It counts per
 terminal, so a shell opened another way, over SSH for one, is not loosened by it.
 
-To never be asked for the rebuild itself, see
+To never be asked at all, on NixOS, for everyone in the group `wheel`:
+
+```nix
+security.sudo.wheelNeedsPassword = false;
+```
+
+To never be asked for the rebuild only, see
 [Running commands as root](#-running-commands-as-root) above (on macOS the command there is
-`/run/current-system/sw/bin/darwin-rebuild`). Both make the machine easier to take over for
-anyone who gets to your eznix login, so they suit a machine only you can reach.
+`/run/current-system/sw/bin/darwin-rebuild`). All of these make the machine easier to take
+over for anyone who gets to your eznix login, and the first one makes that login root
+outright, so they suit a machine only you can reach.
 
 ## 🔌 Plugins
 
