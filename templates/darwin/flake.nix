@@ -2,9 +2,12 @@
   description = "This Mac, configured in eznix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    # The current stable release, and nix-darwin's branch for it: the two go together. For
+    # newer packages sooner, with more changes between rebuilds, the rolling pair is
+    # "github:NixOS/nixpkgs/nixpkgs-unstable" and "github:nix-darwin/nix-darwin/master".
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-26.05-darwin";
     nix-darwin = {
-      url = "github:nix-darwin/nix-darwin/master";
+      url = "github:nix-darwin/nix-darwin/nix-darwin-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     eznix = {

@@ -189,7 +189,9 @@ viewBox, nothing had happened, though whether the size was why is not known.
 nothing said a browser chooses, and Brave took the profile's colour, which the user asked to
 be rid of (2026-10-11). The page reads the colour off what it has drawn at its top, so it
 follows the theme chosen in that browser, a user's own included; the manifest has the
-configured theme's, for before the page is in. Not seen in an installed app by anyone yet.
+configured theme's, for before the page is in. Seen by the user that day in the app installed
+in Brave on a Mac ("it works!"); not said: whether it took a restart of the app, and how it
+looks with an automatic theme.
 
 **Sessions**: a random token per login in the `eznix_session` cookie, stored hashed in
 `<state>/sessions.json`, so a restart of the server logs nobody out. How long a login lasts
@@ -275,7 +277,16 @@ name out of the flake, so every rebuild command in them carries `#default`. The 
 imports the installer's `configuration.nix` and adds eznix beside it: starting from an empty
 JSON file would drop the boot loader and the user's account. The macOS one sets `nix.enable = false`: the user runs
 Determinate Nix, under which nix-darwin aborts activation unless that is set, and it is
-harmless with the official installer. The one thing to fill in is
+harmless with the official installer. All three build on the stable release, `26.05` at
+the time (nixpkgs and, where there is one, the branch of nix-darwin or home-manager that goes
+with it), with the rolling ones named in a comment for whoever wants them, and so does
+eznix's own `flake.nix`: the user's choice on 2026-10-12, after a test install showed the
+Quick Start taking a fresh 26.05 machine to 26.11 ("go against stable", "people who are more
+advanced" can change it). The number is in each `templates/*/flake.nix`, in `flake.nix` and
+in the README's first-switch commands for the Mac and other Linux, and has to be raised by
+hand when a release comes out, in May and November. There is no `flake.lock` in the
+repository, also by the user's choice ("i dont want to update the lock-file manually"), so
+`nix flake init -t` prints a harmless "not writing modified lock file". The one thing to fill in is
 `YOUR-USER-NAME`; an assertion in `options.nix` catches it left in. They name
 `github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
 checkout, `--override-input eznix path:.`.
@@ -519,9 +530,18 @@ what nobody went through.
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
   `.gitignore` untouched), but the user has not tried writing the flake through the editor,
   and no system import has been done there.
-- The `darwin` and `nixos` templates on a machine that had nothing. (`home` was: on a fresh
-  Debian 13 VM, `nix flake init -t`, the name filled in, the password file, the first
-  switch, and it worked first time.)
+- The `darwin` template on a machine that had nothing. (`home` was: on a fresh Debian 13 VM,
+  `nix flake init -t`, the name filled in, the password file, the first switch, and it worked
+  first time. `nixos` was on 2026-10-12, by a report the user brought: a VM installed from the
+  NixOS 26.05 minimal ISO, the README's Quick Start typed as written at commit `f644f75`, all
+  of it without an error; login with the system password in the VM's Firefox, the generator
+  (27,578 options in 11 s), a save and a rebuild after it. In that test the buttons and the
+  terminal in the page were not clicked, the commands behind them were run over SSH and the
+  save went through the API, and the machine was not rebooted into the new generation. The
+  template's `nixos-unstable` took the 26.05 install to 26.11 on the first rebuild, which is
+  why the templates name the stable release since. With that, each of the three was
+  evaluated against 26.05 on a Mac with the checkout's eznix, down to the system's or the
+  generation's derivation; none was built or installed that way.)
 - System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
   there uses a password file).
 - home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator

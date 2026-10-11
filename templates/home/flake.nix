@@ -2,9 +2,12 @@
   description = "My home, configured in eznix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # The current stable release, and home-manager's branch for it: the two go together. For
+    # newer packages sooner, with more changes between rebuilds, the rolling pair is
+    # "github:NixOS/nixpkgs/nixos-unstable" and "github:nix-community/home-manager".
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     eznix = {

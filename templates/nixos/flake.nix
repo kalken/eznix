@@ -2,7 +2,9 @@
   description = "This machine, configured in eznix";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # The current stable release. For newer packages sooner, with more changes between
+    # rebuilds, the rolling one is "github:NixOS/nixpkgs/nixos-unstable".
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     eznix = {
       url = "github:kalken/eznix";
       inputs.nixpkgs.follows = "nixpkgs";

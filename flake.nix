@@ -2,7 +2,9 @@
   description = "eznix — Nix configuration editor for NixOS, nix-darwin and home-manager";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # The current stable release, as in the templates. Only what `nix run github:kalken/eznix`
+    # and the checks here are built with: a flake that uses eznix makes this follow its own.
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   };
 
   outputs = { self, nixpkgs }:

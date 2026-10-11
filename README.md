@@ -46,7 +46,7 @@ sudo nixos-rebuild switch --flake "/etc/nixos#default"
 mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
 nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#darwin
 sed -i '' "s/YOUR-USER-NAME/$USER/" eznix/system.json
-sudo nix --extra-experimental-features 'nix-command flakes' run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
+sudo nix --extra-experimental-features 'nix-command flakes' run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$HOME/.config/nix-darwin#default"
 ```
 
 **Other Linux**
@@ -56,7 +56,7 @@ mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
 nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#home
 sed -i "s/YOUR-USER-NAME/$USER/g" eznix/home.json
 echo "a-password-of-your-own" > ~/.config/eznix-password && chmod 600 ~/.config/eznix-password
-nix --extra-experimental-features 'nix-command flakes' run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
+nix --extra-experimental-features 'nix-command flakes' run home-manager/release-26.05 -- switch --flake "$HOME/.config/home-manager#default"
 ```
 
 The last line takes a few minutes the first time. When it is done, open
@@ -74,6 +74,9 @@ Then, in the page:
 
 Nothing on your computer changes until that last step. The button at the top left saves
 without rebuilding.
+
+The `flake.nix` you got builds on the current stable release, 26.05. If you would rather
+have the newest packages, the comment at its top names what to put there instead.
 
 ## ⚡ For those who know Nix
 
@@ -135,7 +138,7 @@ file with eznix switched on. Put your user name in that file before the last com
 # macOS
 mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
 nix flake init -t github:kalken/eznix#darwin
-sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
+sudo nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$HOME/.config/nix-darwin#default"
 
 # NixOS (keeps your configuration.nix)
 cd /etc/nixos
@@ -145,7 +148,7 @@ sudo nixos-rebuild switch --flake "/etc/nixos#default"
 # Another Linux (home-manager; also put a password in ~/.config/eznix-password)
 mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
 nix flake init -t github:kalken/eznix#home
-nix run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
+nix run home-manager/release-26.05 -- switch --flake "$HOME/.config/home-manager#default"
 ```
 
 ## 📑 How the configuration is stored
@@ -525,8 +528,7 @@ The common ones, the same in all three modules:
 | `theme`, `themes` | | see [Themes](#-themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#-plugins) |
 | `enableHttps`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#-https) |
-| `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does |
-| `debug` | `false` | log every request, and what took long; the log is otherwise starts, logins and errors |
+| `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
