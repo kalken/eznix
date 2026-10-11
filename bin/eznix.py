@@ -2325,10 +2325,9 @@ def main():
     EXCLUDE = [e for e in (str(x).replace('\\', '/').strip('/') for x in cfg.get('exclude', [])) if e]
     STATE_DIR  = path(args.state_dir or cfg.get('state_dir') or STATE_DIR)
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
-    try:
-        os.makedirs(CONFIG_DIR, exist_ok=True)
-    except OSError as e:
-        sys.exit(f'eznix: {CONFIG_DIR}: {e}')
+    # CONFIG_DIR is not made here: started against a flake, eznix changes nothing in it until
+    # something is saved, and the first save makes the folder. It was made at start until
+    # 2026-10-11, which left an empty `eznix` folder in any flake eznix was merely tried on.
     AUTOCOMPLETE_DIR = path(cfg.get('autocomplete_dir') or os.path.join(STATE_DIR, 'autocomplete'))
     WEBROOT = path(args.webroot or cfg.get('webroot') or next(
         (d for d in (os.path.join(HERE, 'webroot'), os.path.join(HERE, '..', 'webroot'))
