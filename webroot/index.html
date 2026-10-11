@@ -213,7 +213,7 @@ networking.hostName = "myhost";</pre>
 //   eznix.on(event, fn) / eznix.emit(event, ...args)
 //     'init'   the page is starting up, nothing loaded yet: wire up controls
 //     'ready'  files are loaded, just before the first render
-//     'render' after every full re-render (any edit)
+//     'render' after every full re-render, and after every edit typed into a field
 //     'dirty'  (dirty) whenever "are there unsaved changes" has been re-checked
 //     'theme'  a theme's stylesheets have finished loading
 //     'ping'   (data) every answer to the periodic GET /api/v1/ping
@@ -3217,8 +3217,10 @@ function parseEnumOptions(nixType) {
 // clips anything positioned past its own edge -- so one opened near the bottom was cut off at
 // the terminal panel instead of showing over it. position: fixed takes a popup out of that
 // clipping (nothing between it and <body> has a transform/filter that would re-contain it),
-// placed from its anchor's on-screen rect: below it by default, above when there's more room
-// there, and capped to the room available so it never runs off-screen either way.
+// placed from its anchor's on-screen rect: always below it, and no taller than the room there
+// is down to the window's edge, where it scrolls. It used to open above its anchor when there
+// was more room there; the user wants it below whatever fits ("it shouldnt care about that",
+// 2026-10-11), so that a list is always found in the same place.
 // Fixed means it no longer scrolls along with its anchor, so every popup placed this way is
 // tracked in _floatedPopups and re-placed on any scroll/resize while it's still open (a hidden
 // or removed one just drops out of the set there -- none of the many places that hide one need
@@ -3232,17 +3234,10 @@ function _placeFloatedPopup(popup, anchor) {
   popup.style.maxHeight = '';
   popup.style.top = '0px'; popup.style.bottom = 'auto'; popup.style.left = '0px';
   const cap = parseFloat(getComputedStyle(popup).maxHeight) || Infinity;
-  const height = popup.offsetHeight, width = popup.offsetWidth;
+  const width = popup.offsetWidth;
   const below = window.innerHeight - r.bottom - gap - margin;
-  const above = r.top - gap - margin;
-  if (height <= below || below >= above) {
-    popup.style.top = (r.bottom + gap) + 'px';
-    popup.style.maxHeight = Math.max(60, Math.min(cap, below)) + 'px';
-  } else {
-    popup.style.top = 'auto';
-    popup.style.bottom = (window.innerHeight - r.top + gap) + 'px';
-    popup.style.maxHeight = Math.max(60, Math.min(cap, above)) + 'px';
-  }
+  popup.style.top = (r.bottom + gap) + 'px';
+  popup.style.maxHeight = Math.max(60, Math.min(cap, below)) + 'px';
   popup.style.left = Math.max(margin, Math.min(r.left, window.innerWidth - margin - width)) + 'px';
 }
 function _floatPopup(popup, anchor) {
@@ -3579,17 +3574,15 @@ function renderField(container, key, val, path) {
 
 // ── Array rendering ───────────────────────────────────────────────────────────
 // Is this list one of packages, to be shown as chips with the package search under it?
-// Asked of the option's own type where the suggestions know the option: "list of package"
-// (also "list of (package or ...)"), whatever it is called -- home-manager's home.packages
-// was missing when this went by name alone. The names stay for when there are no suggestions
-// yet, and for options whose type says less than they hold.
+// Asked of the option's own type and of nothing else: "list of package" (also "list of
+// (package or ...)"), whatever it is called. Until 2026-10-11 a few names counted too
+// (systemPackages, extraPackages, extraPlugins, users.users.*.packages, home.packages), for
+// when there are no suggestions yet. Counted in the user's suggestions that day, the type found
+// every real one (210 on NixOS, 10 on nix-darwin) and the names only added mistakes: 15
+// options on NixOS that are a list of paths, a set or a function (services.plex.extraPlugins,
+// services.nginx.lua.extraPackages). So before the suggestions are generated a package list
+// is a plain list, which has no package names to offer anyway.
 function isPkgArrayPath(path) {
-  const last = path[path.length - 1];
-  const PKG_PATHS = new Set(['systemPackages', 'extraPackages', 'extraPlugins']);
-  if (PKG_PATHS.has(last)) return true;
-  // users.users.<name>.packages, home.packages
-  if (last === 'packages' && path.length >= 4 && path[0] === 'users' && path[1] === 'users') return true;
-  if (path.length === 2 && path[0] === 'home' && last === 'packages') return true;
   const opt = path.every(p => typeof p === 'string') ? findOption(path) : null;
   return !!opt && /^list of \(?package\b/.test(opt.type || '');
 }
@@ -5951,14 +5944,17 @@ async function _start() {
   // either. _pushHistory() stays on 'change' (blur-commit) only, on purpose: a full snapshot per
   // keystroke would flood undo with one entry per character and re-serialize every file's
   // content that often, so it still only records once a field edit is actually "done".
-  document.getElementById('editor-area').addEventListener('input', e => {
-    const row = e.target.closest('[data-path]');
-    if (row && row.dataset.path.startsWith('services.eznix.buttons')) eznix.emit('render');
+  // 'render' on every edit, wherever it is: whoever draws something from the files (the
+  // terminal's buttons, which compare before they rebuild anything) decides for itself whether
+  // the edit concerns it. The page used to say so only for rows under services.eznix.buttons,
+  // an option of one feature named here, which missed that feature's menus and any other
+  // place its settings can be written.
+  document.getElementById('editor-area').addEventListener('input', () => {
+    eznix.emit('render');
     _updateDirty();
   });
-  document.getElementById('editor-area').addEventListener('change', e => {
-    const row = e.target.closest('[data-path]');
-    if (row && row.dataset.path.startsWith('services.eznix.buttons')) eznix.emit('render');
+  document.getElementById('editor-area').addEventListener('change', () => {
+    eznix.emit('render');
     _pushHistory();
     _updateDirty();
   });

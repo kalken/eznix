@@ -106,6 +106,15 @@ runs as root, and there is no compatibility with ezconf's configuration.
 
 ## Design decisions worth knowing
 
+**General solutions, never special cases.** The user's rule for all of eznix, said again on
+2026-10-11: the editor handles data it cannot know in advance (any option of any module, any
+name, any nesting, any theme), and most of it is never looked at by anyone. So a fix is made
+for the kind of thing, not for the one that was on screen: no code that names an option, a
+section, a file or a theme, and no branch per kind of row where one rule can cover them all
+(take what differs from the element itself, as the rename field inherits its font and colour
+from the name it covers). If a fix only works for the case in the report, it is not done.
+"The suggestions are parsed by their form" below is the same rule applied to one area.
+
 **Nothing is root.** The editor is reachable from a browser, so it runs unprivileged
 everywhere; a rebuild goes through `sudo` in the terminal. On NixOS the two things an
 unprivileged service can't do are given to it narrowly: a setuid helper that only checks a
