@@ -199,7 +199,7 @@ def main():
             check('the icon is the logo in a theme\'s two colours, with nothing behind it',
                   all(c in icon('?theme=nixos') for c in ('#5277c3', '#7ebae4'))
                   and '#0d1a2e' not in icon('?theme=nixos') and '<rect' not in icon('?theme=nixos')
-                  and '#d65d0e' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=dark'))
+                  and '#d65d0e' in icon('?theme=gruvbox') and 'var(' not in icon('?theme=osx-dark'))
             check('the filled icon has the header\'s fill behind the logo',
                   '#0d1a2e' in icon('?theme=nixos&filled=1') and '<rect' in icon('?theme=nixos&filled=1'))
             check('an unknown theme gets the configured one', icon('?theme=../x') == icon())

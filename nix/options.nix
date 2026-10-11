@@ -316,9 +316,9 @@ in
 
     theme = mkOption {
       # The ones that ship, as choices in the editor, or any other name: one of your own.
-      type        = types.either (types.enum [ "nixos" "dark" "gruvbox" "osx" "osx-dark" "osx-light" ]) types.str;
+      type        = types.either (types.enum [ "nixos" "gruvbox" "osx" "osx-dark" "osx-light" "breeze" "breeze-dark" "breeze-light" "gnome" "gnome-dark" "gnome-light" ]) types.str;
       default     = defaults.theme;
-      description = "The theme a browser starts with: nixos, dark, gruvbox, osx-dark, osx-light, osx (light or dark, following the system the browser runs on), or one of your own from themes.";
+      description = "The theme a browser starts with: nixos, gruvbox, osx, breeze or gnome (each of those three light or dark, following the system the browser runs on; osx-dark, osx-light and so on for one of the two regardless), or one of your own from themes.";
     };
     themes = mkOption {
       type        = types.attrsOf types.path;

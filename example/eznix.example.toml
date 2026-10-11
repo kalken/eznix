@@ -43,7 +43,9 @@ terminal_auto_hide     = true         # hide the open panel on a click outside i
 terminal_end_on_logout = true
 # terminal_restart = ["systemctl", "--user", "restart", "eznix-terminal.service"]   # {user}, {uid} are filled in
 
-theme    = "nixos"                    # nixos, dark, gruvbox, osx-dark, osx-light, osx; "osx" on macOS
+theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, which follow the
+                                      # system (osx-dark, osx-light and so on for one of the
+                                      # two regardless); "osx" on macOS
 # themes_dir = "/path/to/themes"      # your own, <name>.css each
 sections = "collapsed"                # or "expanded"
 # debug  = true                       # log what is only worth knowing while looking into

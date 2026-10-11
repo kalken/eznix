@@ -9,9 +9,11 @@ One CSS file with a single `:root` block of variables. Nothing else: no selector
 `webroot/style.css` holds every rule and only ever refers to those variables, so a theme can
 change colours, fonts, corner radii and spacing, and nothing structural.
 
-The built-in themes are `webroot/theme-<name>.css`: `nixos`, `dark`, `gruvbox`, `osx-dark`,
-`osx-light`. (`osx` is not a file: it stands for whichever of the two `osx-*` themes matches the
-light or dark appearance of the system the browser runs on.) Any of them is a complete list of the variables there are, grouped under the same
+The built-in themes are `webroot/theme-<name>.css`: `nixos`, `gruvbox`, `osx-dark`,
+`osx-light`, `breeze-dark`, `breeze-light`, `gnome-dark`, `gnome-light`. (`osx`, `breeze` and
+`gnome` are not files: each stands for
+whichever of its two themes matches the light or dark appearance of the system the browser
+runs on.) Any of them is a complete list of the variables there are, grouped under the same
 headings in the same order.
 
 ## Choosing colours
@@ -32,7 +34,7 @@ Nothing in this group should introduce a new hue. If a border or a hover shade l
 different colour from the surface it sits on, it's off the ramp.
 
 **2. At most one accent.** One hue for links, focus rings and, if wanted, the filled controls.
-It is optional: `dark` and both `osx-*` themes have none and use greys from the ramp instead.
+It is optional: both `osx-*` themes have none and use greys from the ramp instead.
 Two accents compete; there is no second one to set.
 
 **3. Four signal colours, one job each.** These are the only saturated colours a neutral theme
@@ -50,8 +52,7 @@ thing they are for.
 
 So a new theme is roughly ten decisions: the ramp's hue, its darkest and lightest ends and the
 steps between, the text colour, an accent or none, and four signals. As a check, both `osx-*`
-themes use about twenty distinct greys and five other colours for the whole interface, and
-`dark` gets by with twelve greys and four.
+themes use about twenty distinct greys and five other colours for the whole interface.
 
 The terminal is the exception — it has sixteen colours of its own, because programs running in
 it expect them (see "Terminal" below).
@@ -104,7 +105,7 @@ targets, the flash on a newly added option. The filled controls have their own v
 `--toggle-on-bg`, `--btn-primary-bg`, `--selected-bg`, `--select-option-hover` — so they can
 follow the accent or not.
 
-- A theme can be entirely neutral: `dark` and both `osx-*` themes use greys for all of these.
+- A theme can be entirely neutral: both `osx-*` themes use greys for all of these.
 - A toggle's knob (`--toggle-on-knob`) is white, or the palette's lightest neutral — not the
   accent — whatever the toggle itself is filled with.
 - If the primary button is filled with the accent, check its label (`--btn-primary-text`)
@@ -117,7 +118,7 @@ follow the accent or not.
 ## The logo
 
 The NixOS logo (it turns while the terminal reconnects) is drawn in two colours, every other
-arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, `dark` two greys, the
+arm: `--logo-1` and `--logo-2`. `nixos` uses the logo's own two blues, the
 others their two accents. A theme that sets neither gets `--accent2` and `--accent`.
 
 The tab's icon is the same logo in the same two colours, with nothing behind it. So
@@ -170,6 +171,9 @@ maintain — but a swatch painted with some other colour will sort into the wron
 2. `bin/eznix.py`: add the name to `BUILTIN_THEMES`.
 3. `webroot/index.html`: add it to `_THEMES`, and add its swatch button to `.theme-switcher`.
 4. `webroot/style.css`: add its `.theme-swatch-<name>` colours.
+   (A light and dark pair gets one dot between them instead, for the name that follows the
+   system: add that name to `_AUTO_THEMES` there and to `AUTO_THEMES` in `eznix.py`, as `osx`,
+   `breeze` and `gnome` are.)
 5. `nix/options.nix`: add it to the `theme` option's description.
 6. `README.md` and `example/eznix.example.toml`: add it where the themes are listed.
 

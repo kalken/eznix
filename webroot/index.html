@@ -30,9 +30,9 @@ const _CUSTOM_THEMES = %%EZNIX_CUSTOM_THEMES%%;
 // the browser runs on is set to its light or its dark appearance: name -> [light, dark]. It
 // follows a change while the page is open (macOS switching at sunset, say) -- see the listener
 // next to setTheme().
-const _AUTO_THEMES = { osx: ['osx-light', 'osx-dark'] };
+const _AUTO_THEMES = { osx: ['osx-light', 'osx-dark'], breeze: ['breeze-light', 'breeze-dark'], gnome: ['gnome-light', 'gnome-dark'] };
 const _darkQuery = window.matchMedia('(prefers-color-scheme: dark)');
-const _THEMES = ['nixos', 'dark', 'osx-light', 'gruvbox', 'osx-dark', ...Object.keys(_AUTO_THEMES), ...Object.keys(_CUSTOM_THEMES)];
+const _THEMES = ['nixos', 'osx-light', 'gruvbox', 'osx-dark', 'breeze-light', 'breeze-dark', 'gnome-light', 'gnome-dark', ...Object.keys(_AUTO_THEMES), ...Object.keys(_CUSTOM_THEMES)];
 // The theme that was chosen (what's stored, and which swatch is marked)...
 function _currentTheme() {
   const t = localStorage.getItem('eznix-theme');
@@ -147,13 +147,17 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
   <span id="status-info"></span>
   <div class="statusbar-right">
     <span id="status-version" data-tooltip="eznix version"></span>
+    <!-- One dot per theme, and one for each pair of a light and a dark theme (osx, breeze),
+         which follows the system the browser runs on. The two of a pair had dots of their own
+         until 2026-10-11, nine in all once Breeze was added (GNOME came the same day, and the
+         plain `dark` theme went); the user wanted one per family.
+         They are still themes by name (`theme = "osx-light"`), only without a dot. -->
     <span class="theme-switcher">
-      <button class="theme-swatch theme-swatch-dark"  data-theme="dark" onclick="setTheme('dark')"  data-tooltip="Dark theme"></button>
       <button class="theme-swatch theme-swatch-nixos" data-theme="nixos" onclick="setTheme('nixos')" data-tooltip="NixOS theme"></button>
-      <button class="theme-swatch theme-swatch-osx-dark" data-theme="osx-dark" onclick="setTheme('osx-dark')" data-tooltip="OS X Dark theme"></button>
       <button class="theme-swatch theme-swatch-gruvbox" data-theme="gruvbox" onclick="setTheme('gruvbox')" data-tooltip="Gruvbox theme"></button>
       <button class="theme-swatch theme-swatch-osx" data-theme="osx" onclick="setTheme('osx')" data-tooltip="OS X theme: light or dark, following the system"></button>
-      <button class="theme-swatch theme-swatch-osx-light" data-theme="osx-light" onclick="setTheme('osx-light')" data-tooltip="OS X Light theme"></button>
+      <button class="theme-swatch theme-swatch-breeze" data-theme="breeze" onclick="setTheme('breeze')" data-tooltip="Breeze theme: light or dark, following the system"></button>
+      <button class="theme-swatch theme-swatch-gnome" data-theme="gnome" onclick="setTheme('gnome')" data-tooltip="GNOME theme: light or dark, following the system"></button>
     </span>
   </div>
 </div>

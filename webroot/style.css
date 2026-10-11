@@ -505,13 +505,12 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .theme-swatch { width: 12px; height: 12px; border-radius: 50%; cursor: pointer; border: 2px solid transparent; padding: 0; flex-shrink: 0; transition: outline .15s; }
 .theme-swatch.active { outline: 2px solid var(--accent); outline-offset: 1px; }
 .theme-swatch-nixos { background: #060e1a; border-color: #2a3a54; }
-.theme-swatch-dark  { background: #0a0a0a; border-color: #444444; }
-.theme-swatch-osx-light { background: #ececec; border-color: #8e8e93; }
 .theme-swatch-gruvbox { background: #282828; border-color: #d79921; }
-/* Half dark, half light: the automatic one. The plain colour underneath is what it's sorted by
-   (see _applyInitialTheme()), which puts it between the dark themes and the light one. */
+/* Half dark, half light: a pair of themes that follows the system. The plain colour underneath
+   is what it's sorted by (see _applyInitialTheme()), which puts these after the dark themes. */
 .theme-swatch-osx { background: #858585 linear-gradient(90deg, #1e1e1e 50%, #ececec 50%); border-color: #8e8e93; }
-.theme-swatch-osx-dark { background: #1e1e1e; border-color: #8e8e93; }
+.theme-swatch-breeze { background: #828384 linear-gradient(90deg, #141618 50%, #eff0f1 50%); border-color: #3daee9; }
+.theme-swatch-gnome { background: #8b8b8d linear-gradient(90deg, #1d1d20 50%, #fafafb 50%); border-color: #3584e4; }
 .theme-swatch-custom { background: #808080; border-color: #b0b0b0; } /* a user theme: overridden inline from its own colours */
 
 /* ── Modal ── */

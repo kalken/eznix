@@ -14,7 +14,7 @@ framework: just Python and a browser.
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself
 - Back up, restore, export and import the whole flake, and read its `.md` files beside the editor
-- Five themes (NixOS blue, dark, gruvbox, OS X Dark, OS X Light), or your own
+- Themes: NixOS blue, gruvbox, and OS X, KDE Breeze and GNOME, each light or dark with the system; or your own
 
 ## 🚀 Quick Start
 
@@ -418,8 +418,11 @@ Nobody outside eznix depends on the plugin interface yet, so it may still change
 ## 🎨 Themes
 
 Pick one with the swatches in the status bar; `theme` sets what a browser starts with.
-Built in: `nixos`, `dark`, `gruvbox`, `osx-dark`, `osx-light`, and `osx`, which follows the
-light or dark appearance of the system the browser runs on.
+A pair of a light and a dark theme has one swatch, which follows the system; to have one of
+the two regardless, name it in `theme`.
+Built in: `nixos`, `gruvbox`, and three that follow the light or dark appearance of the system
+the browser runs on: `osx`, `breeze` (KDE Plasma's colours) and `gnome` (Adwaita). Each of
+those is a pair, `osx-dark` and `osx-light` and so on.
 
 The colours are the theme's and nothing else's: Dark Reader is told to leave the page alone,
 and so is a browser's own forced dark mode. Other extensions that restyle pages can't be

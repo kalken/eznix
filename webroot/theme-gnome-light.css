@@ -1,0 +1,130 @@
+/* GNOME Light — Adwaita's light style: a near-white page with white cards, the GNOME blue as
+   the accent. The counterpart of theme-gnome-dark.css. */
+:root {
+  /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
+     and a browser that darkens light pages by force leaves the page alone. */
+  --color-scheme: only light;
+  /* ── Base palette ── */
+  --bg:   #fafafb;
+  --bg2:  #ebebed;
+  --bg3:  #e0e0e3;
+  --bg4:  #d3d3d7;
+  --text:  #333338;
+  --text2: #5e5e66;
+  --text3: color-mix(in srgb, #333338 45%, #fafafb);
+  --accent:  #1c71d8;
+  --accent2: #3584e4;
+  /* The NixOS logo, every other arm: the two Adwaita blues. */
+  --logo-1: var(--accent2);
+  --logo-2: var(--accent);
+  --green:  #1b8553;
+  --green2: #26a269;
+  --red:    #c01c28;
+  --purple: #9141ac;
+
+  /* ── Typography & shape ── */
+  --font: 'Adwaita Mono', 'Source Code Pro', ui-monospace, Menlo, monospace;
+  --radius:       8px;
+  --radius-sm:    5px;
+  --input-radius: 6px;
+  --term-padding: 4px;
+
+  /* ── Borders ── */
+  --border:  #dcdcdf;
+  --border2: #c8c8cc;
+  --input-border: #cfcfd3;
+  --select-option-bg:    #ffffff;
+  --select-option-color: #333338;
+  --select-option-hover: #ebebed;
+  --popup-bg: #ffffff; /* dialogs and tooltips */
+  /* ── Button states ── */
+  --btn-primary-bg:     #3584e4;
+  --btn-primary-border: #3584e4;
+  --btn-primary-hover:  #1c71d8;
+  --btn-primary-text:   #ffffff;
+
+  /* ── Selection / highlight ── */
+  --selected-bg:   color-mix(in srgb, #3584e4 25%, #ffffff);
+  --toggle-on-bg:  #3584e4;
+  --toggle-on-knob:   #ffffff;
+  --toggle-on-border: #3584e4;
+  --input-focus-border: var(--accent2);
+
+  /* ── Section keys / active tab ── */
+  --section-key-color: var(--text2);
+  --tab-active-bg:     #d3d3d7;
+  --tab-active-border: var(--border2);
+  --tab-active-text:   var(--text);
+
+  /* ── Semantic badges ── */
+  --required-bg:   color-mix(in srgb, #c01c28 10%, #ffffff);
+  --required-text: var(--red);
+  --error-bg:      color-mix(in srgb, #c01c28 8%, #ffffff);
+  --success-bg:    color-mix(in srgb, #1b8553 12%, #ffffff);
+  --success-border: color-mix(in srgb, #1b8553 40%, #ffffff);
+
+  /* ── Nix expression fields ── */
+  --expr-border: #dcdcdf;
+
+  /* ── Editor fields ── */
+  --field-bg: rgb(0 0 0 / 4%);
+  --editor-bg: var(--bg);  /* the editor page */
+  --card-bg:   #ffffff; /* the filled block of a top-level section */
+
+  /* ── Editor layout ── */
+  --key-width:      300px; /* key column; every value starts right after it */
+  --list-key-width: 160px; /* key column inside an object that is a list item */
+  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --row-height:     28px;  /* minimum height of an option row */
+  --page-margin:    20px;  /* around the top-level blocks, on every side */
+  --section-gap:    16px;  /* between top-level blocks */
+  --card-gap:       12px;   /* around a bordered sub-section */
+  --nested-section-gap: 10px; /* below a section nested inside a sub-section */
+  --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
+  --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */
+  --section-title-size: 13px; /* top-level section name */
+  --panel-shadow-size:  6px;  /* blur of the soft shadow beside a panel edge */
+
+  /* ── Editor colours ── */
+  --section-title-color:    var(--section-key-color); /* top-level section name */
+  --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
+  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --danger-text:    #ffffff; /* text on a red (destructive) menu item */
+
+  /* ── Misc UI ── */
+  --statusbar-bg:   var(--bg2);
+  --dirty-color:    #9c6e03;
+  --wildcard-bg:    #f3f3f5;
+  --wildcard-hover: #e6e6e9;
+  --shadow:         rgb(0 0 0 / 14%);
+  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
+  --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
+  --overlay:        #00000055;
+  --scrollbar:      #c0c0c5;
+  --scrollbar-hover: #a0a0a6;
+
+  /* ── Terminal theme ── */
+  --term-bg:             var(--editor-bg);
+  --term-fg:             #1e1e1e;
+  --term-cursor:         #1e1e1e;
+  --term-cursor-style:          bar;
+  --term-cursor-inactive-style: none;
+  --term-cursor-blink:          0;
+  --term-selection:      #b5d1f5;
+  --term-black:          #241f31;
+  --term-red:            #c01c28;
+  --term-green:          #26a269;
+  --term-yellow:         #9c6e03;
+  --term-blue:           #1c71d8;
+  --term-magenta:        #9141ac;
+  --term-cyan:           #0b8ea8;
+  --term-white:          #77767b;
+  --term-bright-black:   #5e5c64;
+  --term-bright-red:     #ed333b;
+  --term-bright-green:   #2ec27e;
+  --term-bright-yellow:  #c88800;
+  --term-bright-blue:    #3584e4;
+  --term-bright-magenta: #c061cb;
+  --term-bright-cyan:    #0ab9dc;
+  --term-bright-white:   #c0bfbc;
+}

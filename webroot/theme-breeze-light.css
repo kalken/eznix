@@ -1,0 +1,130 @@
+/* Breeze Light — KDE Plasma's light colour scheme: its window grey with white views, the
+   Plasma blue as the accent. The counterpart of theme-breeze-dark.css. */
+:root {
+  /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
+     and a browser that darkens light pages by force leaves the page alone. */
+  --color-scheme: only light;
+  /* ── Base palette ── */
+  --bg:   #eff0f1;
+  --bg2:  #dee0e2;
+  --bg3:  #d3d6d9;
+  --bg4:  #c4c8cc;
+  --text:  #232629;
+  --text2: #535b63;
+  --text3: color-mix(in srgb, #232629 45%, #eff0f1);
+  --accent:  #2980b9;
+  --accent2: #3daee9;
+  /* The NixOS logo, every other arm: the two Breeze blues. */
+  --logo-1: var(--accent2);
+  --logo-2: var(--accent);
+  --green:  #1e8e4e;
+  --green2: #197a43;
+  --red:    #c7303f;
+  --purple: #8e44ad;
+
+  /* ── Typography & shape ── */
+  --font: Hack, 'Noto Sans Mono', ui-monospace, Menlo, monospace;
+  --radius:       8px;
+  --radius-sm:    5px;
+  --input-radius: 6px;
+  --term-padding: 4px;
+
+  /* ── Borders ── */
+  --border:  #cfd3d7;
+  --border2: #b8bdc2;
+  --input-border: #c4c9cd;
+  --select-option-bg:    #ffffff;
+  --select-option-color: #232629;
+  --select-option-hover: #e3e5e7;
+  --popup-bg: #ffffff; /* dialogs and tooltips */
+  /* ── Button states ── */
+  --btn-primary-bg:     #2980b9;
+  --btn-primary-border: #2980b9;
+  --btn-primary-hover:  #3498db;
+  --btn-primary-text:   #ffffff;
+
+  /* ── Selection / highlight ── */
+  --selected-bg:   color-mix(in srgb, #3daee9 30%, #ffffff);
+  --toggle-on-bg:  #3daee9;
+  --toggle-on-knob:   #ffffff;
+  --toggle-on-border: #3daee9;
+  --input-focus-border: var(--accent2);
+
+  /* ── Section keys / active tab ── */
+  --section-key-color: var(--text2);
+  --tab-active-bg:     #fcfcfc;
+  --tab-active-border: #3daee9;
+  --tab-active-text:   var(--text);
+
+  /* ── Semantic badges ── */
+  --required-bg:   color-mix(in srgb, #c7303f 10%, #ffffff);
+  --required-text: var(--red);
+  --error-bg:      color-mix(in srgb, #c7303f 8%, #ffffff);
+  --success-bg:    color-mix(in srgb, #1e8e4e 12%, #ffffff);
+  --success-border: color-mix(in srgb, #1e8e4e 40%, #ffffff);
+
+  /* ── Nix expression fields ── */
+  --expr-border: #cfd3d7;
+
+  /* ── Editor fields ── */
+  --field-bg: rgb(0 0 0 / 4%);
+  --editor-bg: var(--bg);  /* the editor page */
+  --card-bg:   #ffffff; /* the filled block of a top-level section */
+
+  /* ── Editor layout ── */
+  --key-width:      300px; /* key column; every value starts right after it */
+  --list-key-width: 160px; /* key column inside an object that is a list item */
+  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --row-height:     28px;  /* minimum height of an option row */
+  --page-margin:    20px;  /* around the top-level blocks, on every side */
+  --section-gap:    16px;  /* between top-level blocks */
+  --card-gap:       12px;   /* around a bordered sub-section */
+  --nested-section-gap: 10px; /* below a section nested inside a sub-section */
+  --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
+  --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */
+  --section-title-size: 13px; /* top-level section name */
+  --panel-shadow-size:  6px;  /* blur of the soft shadow beside a panel edge */
+
+  /* ── Editor colours ── */
+  --section-title-color:    var(--section-key-color); /* top-level section name */
+  --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
+  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --danger-text:    #ffffff; /* text on a red (destructive) menu item */
+
+  /* ── Misc UI ── */
+  --statusbar-bg:   var(--bg2);
+  --dirty-color:    #c35c00;
+  --wildcard-bg:    #f7f7f7;
+  --wildcard-hover: #e9eaeb;
+  --shadow:         rgb(0 0 0 / 14%);
+  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
+  --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
+  --overlay:        #00000055;
+  --scrollbar:      #b8bdc2;
+  --scrollbar-hover: #9aa0a6;
+
+  /* ── Terminal theme ── */
+  --term-bg:             var(--editor-bg);
+  --term-fg:             #232627;
+  --term-cursor:         #232627;
+  --term-cursor-style:          bar;
+  --term-cursor-inactive-style: none;
+  --term-cursor-blink:          0;
+  --term-selection:      #b3dcf3;
+  --term-black:          #232627;
+  --term-red:            #c0392b;
+  --term-green:          #1e8e4e;
+  --term-yellow:         #b06d00;
+  --term-blue:           #2980b9;
+  --term-magenta:        #8e44ad;
+  --term-cyan:           #16a085;
+  --term-white:          #7f8c8d;
+  --term-bright-black:   #5c6269;
+  --term-bright-red:     #da4453;
+  --term-bright-green:   #27ae60;
+  --term-bright-yellow:  #f67400;
+  --term-bright-blue:    #3daee9;
+  --term-bright-magenta: #9b59b6;
+  --term-bright-cyan:    #1abc9c;
+  --term-bright-white:   #bdc3c7;
+}

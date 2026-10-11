@@ -174,10 +174,11 @@ def _debug(what):
 
 DEFAULT_THEME    = 'osx' if sys.platform == 'darwin' else 'nixos'
 THEME            = DEFAULT_THEME
-BUILTIN_THEMES   = ('nixos', 'dark', 'osx-light', 'gruvbox', 'osx-dark')
+BUILTIN_THEMES   = ('nixos', 'osx-light', 'gruvbox', 'osx-dark', 'breeze-light', 'breeze-dark', 'gnome-light', 'gnome-dark')
 # Not a stylesheet but a choice between two, by the browser's system appearance: name ->
 # (light, dark). The page resolves it; the login page gets both, each behind a media query.
-AUTO_THEMES      = {'osx': ('osx-light', 'osx-dark')}
+AUTO_THEMES      = {'osx': ('osx-light', 'osx-dark'), 'breeze': ('breeze-light', 'breeze-dark'),
+                    'gnome': ('gnome-light', 'gnome-dark')}
 THEMES_DIR       = None          # folder of user themes, <name>.css each
 CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_custom_themes()
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
@@ -2444,8 +2445,13 @@ def main():
     CUSTOM_THEMES = _scan_custom_themes(THEMES_DIR)
     THEME = cfg.get('theme') or DEFAULT_THEME
     if THEME not in BUILTIN_THEMES and THEME not in AUTO_THEMES and THEME not in CUSTOM_THEMES:
-        sys.exit(f'eznix: theme "{THEME}" is neither built in '
-                 f'({", ".join(BUILTIN_THEMES + tuple(AUTO_THEMES))}) nor a <name>.css in themes_dir')
+        # Said, and not a reason to stay down: a theme can go (`dark` did, on 2026-10-11, while
+        # a machine of the user's had it set), and an editor that won't start over its colours
+        # can't be used to set another. It was an exit until then.
+        print(f'eznix: theme "{THEME}" is neither built in '
+              f'({", ".join(BUILTIN_THEMES + tuple(AUTO_THEMES))}) nor a <name>.css in themes_dir: '
+              f'using "{DEFAULT_THEME}"', file=sys.stderr)
+        THEME = DEFAULT_THEME
     EZNIX_MODE = cfg.get('mode') or None
     if EZNIX_MODE not in (None, 'install'):
         sys.exit(f'eznix: mode = "{EZNIX_MODE}": the only mode is "install"')
