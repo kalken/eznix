@@ -178,6 +178,28 @@ def main():
                   ['filled=1' in i['src'] for i in manifest['icons']] == [False, True]
                   and manifest['icons'][1]['purpose'] == 'maskable', manifest)
 
+            # The page and its files are kept by the browser, which asks each time whether its
+            # copy, named by the checksum it came with, is still the one.
+            def fetch(path, etag=None):
+                req = urllib.request.Request(BASE + path, headers={'If-None-Match': etag} if etag else {})
+                try:
+                    with b.opener.open(req, timeout=10) as r:
+                        return r.status, r.headers, r.read()
+                except urllib.error.HTTPError as e:
+                    return e.code, e.headers, e.read()
+            for path in ('/', '/style.css', '/plugins/system/system.js'):
+                status, headers, body = fetch(path)
+                etag = headers.get('ETag')
+                check(f'{path} comes with a checksum and is to be asked about each time',
+                      status == 200 and etag and body and headers.get('Cache-Control') == 'private, no-cache',
+                      dict(headers))
+                again = fetch(path, etag)
+                check('and is not sent again to a browser that has it',
+                      again[0] == 304 and not again[2] and again[1].get('ETag') == etag, again[0])
+                check('but is to one that has another', fetch(path, '"0000000000000000"')[0] == 200)
+            check('an answer of the API is still never kept',
+                  fetch('/api/v1/files')[1].get('Cache-Control') == 'no-store')
+
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
             whole = b.json('/api/v1/files?content=1')[1]
             check('and come with their text when asked, only then',

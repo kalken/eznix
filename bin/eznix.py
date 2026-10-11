@@ -186,6 +186,11 @@ _LOGIN_LOCK      = threading.Lock()
 PAGE_HASH        = ''            # checksum of everything the page is made of, set in main()
 EZNIX_VERSION    = 'dev'
 _STATIC_GZIP_CACHE = {}
+_AUTOCOMPLETE_GZIP_CACHE = {}   # path -> (mtime, compressed): see _serve_autocomplete()
+
+def _etag(data):
+    """A file's checksum as an ETag: see _unchanged()."""
+    return '"' + hashlib.sha256(data).hexdigest()[:16] + '"'
 
 
 def load_toml(path):
@@ -1320,7 +1325,9 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         # would then treat genuinely new content as unchanged. Disable caching outright instead.
         # /autocomplete/* opts out of this (see _serve_autocomplete()): those files live in a
         # real writable directory and get a genuinely fresh mtime every time eznix-autocomplete
-        # regenerates them, so Last-Modified-based caching is trustworthy there.
+        # regenerates them, so Last-Modified-based caching is trustworthy there. The page, its
+        # stylesheets and its scripts opt out too, with a checksum in place of the date
+        # (_unchanged()). What is left with no-store is every answer of the API.
         if not getattr(self, '_no_default_cache_control', False):
             self.send_header('Cache-Control', 'no-store')
         super().end_headers()
@@ -1870,7 +1877,13 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self.send_error(404); return
         gzipped = 'gzip' in self.headers.get('Accept-Encoding', '')
         if gzipped:
-            data = gzip.compress(data)
+            # Kept until the generator writes the file again: compressing the package names
+            # is the slowest thing the server does for a page, and it was done anew for
+            # every browser that did not have them yet.
+            kept = _AUTOCOMPLETE_GZIP_CACHE.get(path)
+            if not kept or kept[0] != mtime:
+                kept = _AUTOCOMPLETE_GZIP_CACHE[path] = (mtime, gzip.compress(data))
+            data = kept[1]
         self._no_default_cache_control = True
         self.send_response(200)
         self.send_header('Content-Type', 'application/json')
@@ -1959,11 +1972,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
     def _serve_static_gzip(self, rel_path, abs_path=None):
         """Gzip-capable serving for a handful of sizeable static WEBROOT files (style.css,
         theme-*.css, plugin files) that don't go through SimpleHTTPRequestHandler's own static
-        serving, which has no compression at all. Cache-Control stays no-store (see
-        end_headers()) — these files really can change across a restart, unlike /autocomplete/*'s
-        genuinely-fresh mtimes, so no attempt at conditional-GET caching here, just compression.
-        _STATIC_GZIP_CACHE holds both encodings per path, built on first request. abs_path
-        serves that file instead of WEBROOT/rel_path — a user theme or a plugin's file."""
+        serving, which has no compression at all. A browser keeps them and asks each time
+        whether its copy is still the one (_unchanged()).
+        _STATIC_GZIP_CACHE holds both encodings per path and the checksum, built on first
+        request. abs_path serves that file instead of WEBROOT/rel_path — a user theme or a
+        plugin's file."""
         path = abs_path or os.path.join(WEBROOT, rel_path)
         cached = _STATIC_GZIP_CACHE.get(path)
         if cached is None:
@@ -1972,9 +1985,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     raw = f.read()
             except OSError:
                 self.send_error(404); return
-            cached = (raw, gzip.compress(raw))
+            cached = (raw, gzip.compress(raw), _etag(raw))
             _STATIC_GZIP_CACHE[path] = cached
-        raw, gzipped_data = cached
+        raw, gzipped_data, etag = cached
+        if self._unchanged(etag):
+            return
         use_gzip = 'gzip' in self.headers.get('Accept-Encoding', '')
         data = gzipped_data if use_gzip else raw
         self.send_response(200)
@@ -1982,8 +1997,35 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         if use_gzip:
             self.send_header('Content-Encoding', 'gzip')
         self.send_header('Content-Length', str(len(data)))
+        self._send_validator(etag)
         self.end_headers()
         self.wfile.write(data)
+
+    # The page, its stylesheets and its scripts are kept by the browser and checked on every
+    # load: `no-cache` means "ask before using your copy", and the ETag is a checksum of the
+    # file, so the answer is a 304 with nothing in it for as long as the file is the same one,
+    # also across a restart or a rebuild that did not change it, and the file itself the moment
+    # it is another. Everything was `no-store` before (see end_headers()), since a date can't
+    # tell two builds apart in the Nix store, and a start downloaded all of it again, about
+    # 300KB compressed. Not the address-with-a-checksum way of caching, which would spare the
+    # question too: a copy would then be used without asking, and the user wanted to be sure
+    # that whatever an update changes arrives.
+    def _send_validator(self, etag):
+        self._no_default_cache_control = True
+        self.send_header('Cache-Control', 'private, no-cache')
+        self.send_header('ETag', etag)
+        self.send_header('Vary', 'Accept-Encoding')
+
+    def _unchanged(self, etag, cookie=None):
+        """Answers 304 and returns True if the browser's copy is the file with this checksum."""
+        if etag not in [t.strip() for t in self.headers.get('If-None-Match', '').split(',')]:
+            return False
+        self.send_response(304)
+        self._send_validator(etag)
+        if cookie:
+            self.send_header('Set-Cookie', cookie)
+        self.end_headers()
+        return True
 
     def _serve_index(self):
         try:
@@ -1992,9 +2034,12 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             cached = _STATIC_GZIP_CACHE.get('__index__')
             if cached is None:
                 raw = _render_index().replace('%%EZNIX_PAGE_HASH%%', PAGE_HASH).encode('utf-8')
-                cached = (raw, gzip.compress(raw))
+                cached = (raw, gzip.compress(raw), _etag(raw))
                 _STATIC_GZIP_CACHE['__index__'] = cached
-            raw, gzipped_data = cached
+            raw, gzipped_data, etag = cached
+            _cookie = _renew_session(self.headers)
+            if self._unchanged(etag, _cookie):
+                return
             use_gzip = 'gzip' in self.headers.get('Accept-Encoding', '')
             data = gzipped_data if use_gzip else raw
             self.send_response(200)
@@ -2002,7 +2047,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             if use_gzip:
                 self.send_header('Content-Encoding', 'gzip')
             self.send_header('Content-Length', str(len(data)))
-            _cookie = _renew_session(self.headers)
+            self._send_validator(etag)
             if _cookie:
                 self.send_header('Set-Cookie', _cookie)
             self.end_headers()
