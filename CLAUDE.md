@@ -206,6 +206,16 @@ way is a plugin calling `api.login(check, user)`; the shipped `password` plugin 
 configured password. System login is on when `users` is set or no plugin brought a login, and
 eznix refuses to start if nobody could log in.
 
+**The login page** (`webroot/login.html`, filled in by `_read_login_page()`) is the logo over
+a centred "eznix (hostname)", two fields that say what they are for when empty, and the
+button, as the user shaped it on 2026-10-11. The fields are the one place not in the theme's
+font: Chromium shows a saved login, while it is only offered, in its own `sans-serif` at
+13.33px and nothing overrides that, so the fields have that font to begin with (the comment
+there has what was tried). The name is never filled in by eznix, also when only one user can
+log in: the user preferred the empty field. Choosing a saved login puts the cursor on Sign
+in, and Tab goes round the two fields and the button. Seen by the user in Brave, Chrome and
+Firefox that day ("looks good in firefox and chrome").
+
 **eznix installs nothing in the folder it edits.** `json2nix.nix` used to be copied there as
 `default.nix` (`imports = [ ./eznix ]`); the user chose the function instead
 (`lib.jsonDir DIR`, or `{ dir, exclude }`), so the folder can be one with a `default.nix` and
