@@ -3814,10 +3814,9 @@ function renderEnumArray(container, arr, path, enumOpts) {
 // every file's config, `fileSaved` (so dirty-tracking comes out correct after landing on an
 // older point — e.g. undoing back to before a save should show that file dirty again), and
 // `pendingFsOps`/`folderExists` (so undoing a delete also un-queues the disk delete it queued,
-// not just resurrecting the tab). This can't undo something a Save has already actually applied
-// to disk — undoing back across a completed delete resurrects the file locally, but can't make
-// the server forget it was ever removed, the same as any editor's undo vs. an already-committed
-// change elsewhere.
+// not just resurrecting the tab). Undo never changes the disk: going back across a Save brings
+// the earlier state back as unsaved changes, for the next Save to write (a deleted file's tab
+// returns, and Save puts the file back) — see _rebaseHistoryOnDisk().
 let globalHistory = [];      // ordered list of snapshots, oldest first
 let globalHistoryIndex = -1; // index of the snapshot matching current live state
 let _skipHistory = false;    // guards the _pushHistory() call inside renderAll() while undo/redo
@@ -3931,6 +3930,63 @@ function _syncFileSavedToHistory(name, value) {
     }
   }
   if (changed) _schedulePersistHistory();
+}
+
+// After a Save, every other point in the undo stack is told what is on disk now: what it holds
+// as saved (`fileSaved`, `folderExists`), and what a Save pressed there would have to do
+// (`pendingFsOps`). Each had only what was true when it was taken, so going back past a saved
+// delete brought the file's tab back with Save grey (the user's report, 2026-10-11): that point
+// still believed the file was on disk, unchanged. And the point just before the Save still had
+// the delete queued, for a file no longer there, which the server refuses.
+//
+// A file a point has and the disk does not is simply unsaved there, and Save writes it; one on
+// disk that the point does not have gets a queued delete. A folder disabled or enabled since is
+// renamed back. No folder is ever queued for deletion here, since that removes everything in
+// it, also what eznix shows no tab for: a folder the point did not have stays, as an empty tab.
+// Points that come out equal to their neighbour (the one before a Save and the one after it)
+// are made one, or an undo would do nothing visible.
+function _rebaseHistoryOnDisk() {
+  const cur = globalHistory[globalHistoryIndex];
+  if (!cur) return;
+  const under = (path, folder) => path.startsWith(folder + '/');
+  for (const snap of globalHistory) {
+    if (snap === cur) continue;
+    let disk = { ...fileSaved };
+    let diskFolders = Array.from(folderExists);
+    const ops = [];
+    const wanted = f => snap.folders.some(n => n === f || under(n, f)) || snap.files.some(n => under(n, f));
+    const onDisk = f => diskFolders.some(n => n === f || under(n, f)) || Object.keys(disk).some(n => under(n, f));
+    for (const d of diskFolders.slice()) {
+      if (d.includes('/') || wanted(d)) continue;
+      const disabled = _isDisabledFolderSegment(d);
+      const other = disabled ? _folderLabel(d) : d + '.disabled';
+      if (!wanted(other) || onDisk(other)) continue;
+      ops.push({ type: disabled ? 'enable-folder' : 'disable-folder', folder: d });
+      const remap = n => (n === d ? other : (under(n, d) ? other + n.slice(d.length) : n));
+      diskFolders = diskFolders.map(remap);
+      disk = Object.fromEntries(Object.entries(disk).map(([k, v]) => [remap(k), v]));
+    }
+    const names = Object.keys(disk);
+    names.filter(f => !snap.files.includes(f)).forEach(f => ops.push({ type: 'delete-file', path: f }));
+    const created = snap.folders.filter(f => !onDisk(f)).sort();
+    created.forEach(f => ops.push({ type: 'create-folder', folder: f }));
+    const kept = diskFolders.filter(f => !wanted(f));
+    if (kept.length) snap.folders = snap.folders.concat(kept).sort();
+    snap.fileSaved = {};
+    names.filter(f => snap.files.includes(f)).forEach(f => { snap.fileSaved[f] = disk[f]; });
+    snap.folderExists = diskFolders.concat(created);
+    snap.pendingFsOps = ops;
+    snap._key = _snapshotCompareKey(snap);
+  }
+  const stack = [];
+  for (const snap of globalHistory) {
+    const last = stack[stack.length - 1];
+    if (last && last._key === snap._key) { if (snap === cur) stack[stack.length - 1] = snap; }
+    else stack.push(snap);
+  }
+  globalHistory = stack;
+  globalHistoryIndex = stack.indexOf(cur);
+  _schedulePersistHistory();
 }
 
 function isAnyDirty() {
@@ -5521,6 +5577,7 @@ async function saveToServer() {
   }));
   const failed = dirty.filter((f, i) => results[i].status === 'rejected');
   renderAll();
+  _rebaseHistoryOnDisk();
   if (failed.length) {
     setStatus('Save failed for: ' + failed.join(', '), 6000, 'err');
   } else {
