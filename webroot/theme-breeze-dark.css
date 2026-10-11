@@ -1,21 +1,22 @@
-/* Breeze Dark — KDE Plasma's dark colour scheme, with each colour where Plasma has it: the
-   header bars in its Header colour (#292c30) and the page in its Window colour (#202326).
-   The Plasma blue is the accent, the signal colours are Plasma's, and the terminal has
-   Konsole's Breeze colours. The values are read from BreezeDark.colors (breeze 6.7); the
-   first version had the same colours on the wrong surfaces, the page darkest and the
-   sections lighter, and did not look like Plasma.
-   Nothing in the editor is filled: Plasma's own settings pages put options straight on the
-   window's colour, so a section and a value cell here are that colour too, each with a line
-   around it (the user's wish on seeing an earlier version beside System Settings). */
+/* Breeze Dark — KDE Plasma's dark colour scheme, laid out after a screenshot of its System
+   Settings that the user sent (2026-10-11), with the colours measured in it. Two of Plasma's
+   greys are used, as the user settled it: the page is its View colour (#141618, the dark
+   background of its sidebar and lists in the screenshot), and everything on it is its Header and Button colour (#292c30): the bars and
+   panels, the buttons, and a section, which is always the colour of the bars. A value strip
+   is the page's colour again, set into its section, and has Plasma's frame line around it
+   (about #4c4e51 in the screenshot), as a section has. The open file's tab is filled with the Plasma blue like the selected
+   entry of Plasma's sidebar. Signal colours are the scheme's, the terminal has Konsole's
+   Breeze colours; the scheme's values are from BreezeDark.colors (breeze 6.7). Three earlier
+   layouts of the same colours were tried and did not look right. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
-  --bg:   #202326;
+  --bg:   #141618;
   --bg2:  #292c30;
-  --bg3:  #31363b;
-  --bg4:  #3b4045;
+  --bg3:  #292c30;
+  --bg4:  #35393e;
   --text:  #fcfcfc;
   --text2: #a1a9b1;
   --text3: color-mix(in srgb, #a1a9b1 70%, #202326);
@@ -37,9 +38,9 @@
   --term-padding: 4px;
 
   /* ── Borders ── */
-  --border:  #35383c;
-  --border2: #45484c;
-  --input-border: #45484c;
+  --border:  #474c51;
+  --border2: #535659;
+  --input-border: #535659;
   --select-option-bg:    #292c30;
   --select-option-color: #fcfcfc;
   --select-option-hover: color-mix(in srgb, #3daee9 25%, #292c30);
@@ -59,9 +60,9 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #202326;
+  --tab-active-bg:     #3daee9;
   --tab-active-border: #3daee9;
-  --tab-active-text:   var(--text);
+  --tab-active-text:   #fcfcfc;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #da4453 16%, #202326);
@@ -71,19 +72,19 @@
   --success-border: color-mix(in srgb, #27ae60 35%, #202326);
 
   /* ── Nix expression fields ── */
-  --expr-border: #35383c;
+  --expr-border: #474c51;
 
   /* ── Editor fields ── */
   --field-bg: rgb(255 255 255 / 5%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--editor-bg); /* a top-level section: the page's own colour, told apart by its line */
-  --card-border:  var(--border2); /* the line around that block */
-  --value-border: var(--border); /* the line around an option's value cell; transparent: none */
+  --card-bg:   var(--bg2); /* a top-level section: always the colour of the bars */
+  --card-border:  var(--border); /* the line around that block */
+  --value-border: #4c4e51; /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
   --list-key-width: 160px; /* key column inside an object that is a list item */
-  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --indent-step:    1ch;   /* indent per nesting level (1ch = one letter) */
   --row-height:     28px;  /* minimum height of an option row */
   --page-margin:    20px;  /* around the top-level blocks, on every side */
   --section-gap:    16px;  /* between top-level blocks */
@@ -97,14 +98,14 @@
   /* ── Editor colours ── */
   --section-title-color:    var(--section-key-color); /* top-level section name */
   --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
-  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --value-bg:       var(--editor-bg); /* value strip: the page's colour, set into the section, with its line */
   --danger-text:    #ffffff; /* text on a red (destructive) menu item */
 
   /* ── Misc UI ── */
   --statusbar-bg:   var(--bg2);
   --dirty-color:    #f67400;
   --wildcard-bg:    #292c30;
-  --wildcard-hover: #31363b;
+  --wildcard-hover: #35393e;
   --shadow:         rgb(0 0 0 / 45%);
   --panel-hairline: var(--border); /* 1px line along a panel edge */
   --panel-shadow:   transparent; /* small soft shadow a panel casts beside that line */

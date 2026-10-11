@@ -1,16 +1,18 @@
-/* Breeze Light — KDE Plasma's light colour scheme: the header bars in its Header colour
-   (#dee0e2) and the page in its Window colour (#eff0f1). The counterpart of
-   theme-breeze-dark.css, with sections and value cells drawn as lines and not filled, as
-   there; the values are read from BreezeLight.colors (breeze 6.7). */
+/* Breeze Light — KDE Plasma's light colour scheme, laid out like theme-breeze-dark.css (see
+   there): the page in the scheme's View colour (white), the bars and a section
+   in its Header colour (#dee0e2), a value strip in the page's colour, with a frame line
+   around the last two. The values
+   are from BreezeLight.colors (breeze 6.7); unlike the dark one it has not been held against
+   a screenshot. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: only light;
   /* ── Base palette ── */
-  --bg:   #eff0f1;
+  --bg:   #ffffff;
   --bg2:  #dee0e2;
-  --bg3:  #d3d6d9;
-  --bg4:  #c4c8cc;
+  --bg3:  #e3e5e7;
+  --bg4:  #d3d6d9;
   --text:  #232629;
   --text2: #535b63;
   --text3: color-mix(in srgb, #232629 45%, #eff0f1);
@@ -32,9 +34,9 @@
   --term-padding: 4px;
 
   /* ── Borders ── */
-  --border:  #cfd3d7;
-  --border2: #b8bdc2;
-  --input-border: #c4c9cd;
+  --border:  #c8ccd0;
+  --border2: #b3b8bd;
+  --input-border: #b3b8bd;
   --select-option-bg:    #ffffff;
   --select-option-color: #232629;
   --select-option-hover: #e3e5e7;
@@ -54,9 +56,9 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
-  --tab-active-bg:     #eff0f1;
+  --tab-active-bg:     #3daee9;
   --tab-active-border: #3daee9;
-  --tab-active-text:   var(--text);
+  --tab-active-text:   #ffffff;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #c7303f 10%, #ffffff);
@@ -66,19 +68,19 @@
   --success-border: color-mix(in srgb, #1e8e4e 40%, #ffffff);
 
   /* ── Nix expression fields ── */
-  --expr-border: #cfd3d7;
+  --expr-border: #c8ccd0;
 
   /* ── Editor fields ── */
   --field-bg: rgb(0 0 0 / 4%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--editor-bg); /* a top-level section: the page's own colour, told apart by its line */
-  --card-border:  var(--border2); /* the line around that block */
-  --value-border: var(--border); /* the line around an option's value cell; transparent: none */
+  --card-bg:   var(--bg2); /* a top-level section: always the colour of the bars */
+  --card-border:  var(--border); /* the line around that block */
+  --value-border: var(--border2); /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
   --list-key-width: 160px; /* key column inside an object that is a list item */
-  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
+  --indent-step:    1ch;   /* indent per nesting level (1ch = one letter) */
   --row-height:     28px;  /* minimum height of an option row */
   --page-margin:    20px;  /* around the top-level blocks, on every side */
   --section-gap:    16px;  /* between top-level blocks */
@@ -92,7 +94,7 @@
   /* ── Editor colours ── */
   --section-title-color:    var(--section-key-color); /* top-level section name */
   --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
-  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
+  --value-bg:       var(--editor-bg); /* value strip: the page's colour, set into the section, with its line */
   --danger-text:    #ffffff; /* text on a red (destructive) menu item */
 
   /* ── Misc UI ── */

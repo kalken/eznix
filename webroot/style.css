@@ -336,6 +336,27 @@ body {
 }
 .field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; --value-line-top: transparent; }
 .field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; --value-line-bottom: transparent; }
+.field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 4px; }
+/* A text value's own text sits 1px border + 3px/6px padding inside its box, itself 2px down
+   inside the value cell. A toggle (7px from the left, here) is offset by the same amount, so
+   every kind of value starts on one vertical line. The key was offset to match too (6px from
+   the top), which put a key on the text line of its value; it is 4px since 2026-10-11, the
+   user's number, and so stands 2px higher than that line. */
+.field-row.nest .toggle-wrap { padding-left: 7px; }
+/* Object items inside an array sit in the value column already, so they restart at depth 0
+   (see _setNestDepths()) with a narrower key column of their own. */
+.array-obj-fields { --key-width: var(--list-key-width); }
+/* The heading of a top-level section lines up with the content of the cards beneath it. */
+.section.nest-top > .section-header { padding: 0 var(--block-pad) var(--card-gap); }
+/* Section names by depth: a top-level one reads as a title, a sub-section gets the full accent,
+   and anything deeper keeps .section-key's own dimmed tone. */
+.section.nest-top > .section-header .section-key { color: var(--section-title-color); font-size: var(--section-title-size); }
+.section.nest-card > .section-header .section-key { color: var(--section-key-color); }
+/* .file-card is the wrapper renderEditor() puts around everything in the file. It used to be a
+   filled, outlined block of its own with the sections framed inside it; now it's only spacing
+   (--page-margin, the same on every side), and each top-level section is its own card straight
+   on the page (see below). */
+.file-card { padding: calc(var(--page-margin) - 10px) calc(var(--page-margin) - 12px); } /* less .editor-area's own padding */
 .file-card:empty { display: none; }
 .file-card > .section:last-child { margin-bottom: 0; }
 /* Everything at the top level of the file is a card -- a section, or an option set at the root
@@ -353,7 +374,7 @@ body {
 .field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
 /* A second-level section is only set off by a plain line above it, across the frame it sits
    in: the frame's hairline colour, without the shadow. */
-.section.nest-card { padding: 10px var(--block-pad) 8px; border-top: 1px solid var(--panel-hairline); }
+.section.nest-card { padding: 8px var(--block-pad); border-top: 1px solid var(--panel-hairline); }
 * + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
 /* Every section from the third level down (.nest-arrow) can be folded away, and starts out
    folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
@@ -387,11 +408,27 @@ body {
 .field-row.nest .pkg-items { padding: 4px 7px; }
 /* An object item is filled like a section, so its keys sit on the section colour while its own
    value cells stay the page colour -- the same split an ordinary option row has. */
-.field-row.nest .array-obj-item { background: var(--card-bg); box-shadow: inset 0 0 0 1px var(--value-border); }
-.field-row.nest .array-obj-item + .array-obj-item { margin-top: var(--list-item-gap); }
-/* ...and the same space between the items and the edges of the value cell holding them, so every
-   object item has it on all four sides. */
-.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
+.field-row.nest .array-obj-item { background: var(--card-bg); }
+/* Two objects of one list are as far apart as the last object of a list and the first of the
+   list in the next row: twice the 2px a value cell has above and below. */
+.field-row.nest .array-obj-item + .array-obj-item { margin-top: 4px; }
+/* An object in a list is a small block of its own, in the section's colour, with that colour
+   showing all round its values: its options' value cells stand in from its top, bottom and
+   right edge. Two other ways were tried on 2026-10-11 and taken back by the user the same
+   day: the value cells reaching the item's edges, and then no line round the item at all,
+   which left only the block behind the names coloured ("i want it to look more like this so
+   there is actually a visible color around each list object", with a picture of how it was).
+   The values stand in by the same 4px above, below and on the right (the user's rule; the
+   right had more); on the left the names stand in by the side padding everything has. The
+   rows inside add nothing on the right, or the values would stand in twice. */
+.field-row.nest .array-obj-item { padding: 4px 4px 4px var(--block-pad); }
+.array-obj-fields > .field-row.nest-loose { padding-right: 0; }
+/* The space between the items and the sides of the value cell holding them is the theme's
+   (--list-item-gap). Above and below it is only what every value cell has (2px), and 4px from
+   one item to the next: it was the theme's gap on all four sides, with 4px more inside each
+   item, and a list of objects with one option each took nearly twice the height of an
+   ordinary row ("much higher than they have to be", the user, 2026-10-11). */
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: 2px var(--list-item-gap); }
 /* A section's whole heading line and an option's whole key column start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
@@ -500,7 +537,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* Half dark, half light: a pair of themes that follows the system. The plain colour underneath
    is what it's sorted by (see _applyInitialTheme()), which puts these after the dark themes. */
 .theme-swatch-osx { background: #858585 linear-gradient(90deg, #1e1e1e 50%, #ececec 50%); border-color: #8e8e93; }
-.theme-swatch-breeze { background: #888a8c linear-gradient(90deg, #202326 50%, #eff0f1 50%); border-color: #3daee9; }
+.theme-swatch-breeze { background: #8a8b8c linear-gradient(90deg, #141618 50%, #ffffff 50%); border-color: #3daee9; }
 .theme-swatch-gnome { background: #8b8b8d linear-gradient(90deg, #1d1d20 50%, #fafafb 50%); border-color: #3584e4; }
 .theme-swatch-custom { background: #808080; border-color: #b0b0b0; } /* a user theme: overridden inline from its own colours */
 
@@ -785,16 +822,22 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 * { scrollbar-width: thin; scrollbar-color: var(--scrollbar) transparent; }
 
 /* ── Add flash animation ── */
+/* A ring just inside the edge of what was added, drawn by a layer of its own on top of
+   everything in it. It was a shadow around the outside of the element: whatever lies beside
+   or over it covered parts of that (a neighbouring row's value cell, an object in a list,
+   which clips what sticks out of it), and the ring came out in pieces ("the blinking border
+   looks incomplete", the user). Inside and on top, nothing can cover or cut it. */
 @keyframes flash-added {
-  0%   { box-shadow: 0 0 0 0px var(--accent2); }
-  15%  { box-shadow: 0 0 0 3px var(--accent2); }
-  60%  { box-shadow: 0 0 0 2px var(--accent2); }
-  100% { box-shadow: 0 0 0 0px transparent;    }
+  0%   { box-shadow: inset 0 0 0 0px var(--accent2); }
+  15%  { box-shadow: inset 0 0 0 3px var(--accent2); }
+  60%  { box-shadow: inset 0 0 0 2px var(--accent2); }
+  100% { box-shadow: inset 0 0 0 0px transparent;    }
 }
-.flash-added {
+.flash-added { position: relative; }
+.flash-added::after {
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  border-radius: inherit;
   animation: flash-added 1s ease-out;
-  position: relative;
-  z-index: 1;
 }
 
 .nixos-spinner { width: 28px; height: 28px; flex-shrink: 0; }

@@ -79,8 +79,9 @@ comes from them.
   step lighter; a light theme has a grey page and white cards.
 - **Or a line in place of the fill.** `--card-border` is the line around a card (normally
   `var(--panel-hairline)`), and `--value-border` one around a value cell (normally
-  `transparent`, which is none). The two `breeze-*` themes fill nothing: their `--card-bg` is
-  the page's colour and both lines are visible, as in KDE's settings pages.
+  `transparent`, which is none). The two `breeze-*` themes use both lines: a card there is
+  the colour of the bars, and a value strip the colour of the page (`--value-bg:
+  var(--editor-bg)`), each with its line.
 - **`--bg3` and `--bg4` are hover and raised shades**, used on buttons, list rows and inline
   code. Each has to move one step further away from `--bg2`, in the same direction (lighter in
   a dark theme, darker in a light one), or hover states disappear.
