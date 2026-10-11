@@ -43,6 +43,8 @@ body {
    so a page without plugins has no line leading its buttons. */
 .header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
 .header-actions .btn ~ .header-sep { display: block; }
+/* The same line between the two groups on the left, which is always there. */
+.header-sep-shown { display: block; }
 
 .btn {
   background: var(--bg3);
