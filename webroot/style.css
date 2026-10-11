@@ -378,11 +378,16 @@ body {
 * + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
 /* Every section from the third level down (.nest-arrow) can be folded away, and starts out
    folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
-   pointing right while the section is hidden and down while it's shown. It hangs in the indent
-   to the left of the name (out of flow), so the name itself stays exactly where it was. */
+   pointing right while the section is hidden and down while it's shown. The arrow is part of
+   the heading: it stands where the section's indent puts it, on the line of the options
+   beside the section, and is one step of indent wide, so the name follows a step further in,
+   which is where the section's own options begin. It hung to the left of the name, outside
+   the heading's flow, until 2026-10-11: the name was then at the indent and the arrow a step
+   before it, and counted from the arrow the options under the section looked a step too far
+   in ("isnt the arrow counted with the subsection? it seems the indent is 3 characters"). */
 .section-toggle { display: none; }
 .section.nest-arrow > .section-header .section-toggle {
-  display: block; position: absolute; right: 100%; padding: 0 0.5ch; cursor: pointer; user-select: none;
+  display: inline-block; width: var(--indent-step); cursor: pointer; user-select: none;
 }
 .section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
 .section.nest-arrow.collapsed > .section-header .section-toggle::before { content: '▸'; }
@@ -409,8 +414,7 @@ body {
 /* An object item is filled like a section, so its keys sit on the section colour while its own
    value cells stay the page colour -- the same split an ordinary option row has. */
 .field-row.nest .array-obj-item { background: var(--card-bg); }
-/* Two objects of one list are as far apart as the last object of a list and the first of the
-   list in the next row: twice the 2px a value cell has above and below. */
+/* Two objects of one list are 4px apart, the space an object has round its own values. */
 .field-row.nest .array-obj-item + .array-obj-item { margin-top: 4px; }
 /* An object in a list is a small block of its own, in the section's colour, with that colour
    showing all round its values: its options' value cells stand in from its top, bottom and
@@ -419,16 +423,17 @@ body {
    which left only the block behind the names coloured ("i want it to look more like this so
    there is actually a visible color around each list object", with a picture of how it was).
    The values stand in by the same 4px above, below and on the right (the user's rule; the
-   right had more); on the left the names stand in by the side padding everything has. The
-   rows inside add nothing on the right, or the values would stand in twice. */
-.field-row.nest .array-obj-item { padding: 4px 4px 4px var(--block-pad); }
-.array-obj-fields > .field-row.nest-loose { padding-right: 0; }
-/* The space between the items and the sides of the value cell holding them is the theme's
-   (--list-item-gap). Above and below it is only what every value cell has (2px), and 4px from
-   one item to the next: it was the theme's gap on all four sides, with 4px more inside each
-   item, and a list of objects with one option each took nearly twice the height of an
-   ordinary row ("much higher than they have to be", the user, 2026-10-11). */
-.field-row.nest > .field-value:has(> .array-obj-item) { padding: 2px var(--list-item-gap); }
+   right had more); on the left the names stand in by one step of indent (--indent-step), as
+   an option does from the section it is in (it was twice the side padding, 20px). The rows
+   inside add nothing of their own on either side, or it would count twice. */
+.field-row.nest .array-obj-item { padding: 4px 4px 4px var(--indent-step); }
+.array-obj-fields > .field-row.nest-loose { padding-left: 0; padding-right: 0; }
+/* The same space between the items and the value cell holding them on all four sides: the
+   theme's --list-item-gap. For an hour on 2026-10-11 it was that only at the sides and 2px
+   above and below, to make lists of objects lower, and the last object then sat almost on
+   the cell's bottom edge with visibly more room beside it (the user: "why the spacing at the
+   bottom is so small"). The lists are lower all the same, by the objects' own padding. */
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
 /* A section's whole heading line and an option's whole key column start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */

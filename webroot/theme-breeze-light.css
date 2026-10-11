@@ -80,7 +80,7 @@
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
   --list-key-width: 160px; /* key column inside an object that is a list item */
-  --indent-step:    1ch;   /* indent per nesting level (1ch = one letter) */
+  --indent-step:    2ch;   /* indent per nesting level (1ch = one letter) */
   --row-height:     28px;  /* minimum height of an option row */
   --page-margin:    20px;  /* around the top-level blocks, on every side */
   --section-gap:    16px;  /* between top-level blocks */
