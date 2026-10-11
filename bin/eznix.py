@@ -1267,7 +1267,7 @@ def _read_login_page(error=''):
         # an arbitrary username directly, with or without a picker in front of it.
         users_json = json.dumps(names)
         username_field = f'''<div class="login-suggest-wrap">
-      <input id="u" name="username" type="text" autocomplete="username" autofocus>
+      <input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username" autofocus>
       <button type="button" class="login-suggest-arrow" id="u-arrow" tabindex="-1" aria-label="Choose a username">&#9662;</button>
       <div class="login-suggest hidden" id="u-suggest"></div>
     </div>
@@ -1307,7 +1307,7 @@ def _read_login_page(error=''):
     else:
         # Exactly one user can log in, so the field comes filled in.
         _known = f' value="{html.escape(names[0])}"' if names else ''
-        username_field = f'<input id="u" name="username" type="text" autocomplete="username"{_known} autofocus>'
+        username_field = f'<input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username"{_known} autofocus>'
     ca_link = ''
     if CA_FILE and os.path.exists(CA_FILE):
         ca_link = (f'<div class="login-ca-link"><a href="/download-ca" tabindex="-1">'

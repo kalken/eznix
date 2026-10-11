@@ -24,13 +24,16 @@
     box-shadow: 0 0 0 1px var(--panel-hairline), 0 0 var(--panel-shadow-size) var(--panel-shadow);
     padding: 40px 36px; width: 100%; max-width: 360px;
   }
-  .login-card h1 { font-size: 18px; font-weight: 700; margin-bottom: 28px; color: var(--section-title-color); letter-spacing: .04em; }
-  .login-card h1 .login-host { font-weight: 400; color: var(--text2); margin-left: 6px; }
-  .login-card label { display: block; font-size: 11px; color: var(--text2); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  /* The logo is the tab's icon, favicon.svg: drawn by the server in the configured theme's
+     colours, an automatic theme's dark pair behind a media query of its own. */
+  .login-logo { display: block; width: 64px; height: 64px; margin: 0 auto 18px; }
+  .login-card h1 { font-size: 18px; font-weight: 700; margin-bottom: 28px; text-align: center; color: var(--section-title-color); letter-spacing: .04em; }
   .login-card input {
     display: block; margin-bottom: 16px; padding: 8px 11px;
-    background: var(--value-bg); border: 0; border-radius: var(--radius);
+    background: var(--value-bg); border: 0; border-radius: var(--input-radius);
   }
+  /* No labels: an empty field says what it is for, as an empty value does in the editor. */
+  .login-card input::placeholder { color: var(--text3); opacity: 1; }
   /* A field the browser has filled in from a saved login gets the browser's own pale fill, set
      in a way a page's background can't override. An inset shadow painted over it can, and the
      text colour needs restating the same way. (Firefox tints with a filter instead.) The shadow
@@ -68,7 +71,7 @@
   .login-suggest-arrow:hover { color: var(--accent); }
   .login-suggest {
     position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 10;
-    background: var(--bg2); border: 1px solid var(--border2); border-radius: 6px;
+    background: var(--popup-bg); border: 1px solid var(--border2); border-radius: var(--radius);
     max-height: 160px; overflow-y: auto; box-shadow: 0 8px 24px var(--shadow);
   }
   .login-suggest-item { padding: 7px 10px; font-size: 12px; color: var(--text); cursor: pointer; }
@@ -82,12 +85,11 @@
 </head>
 <body>
 <div class="login-card">
-  <h1>eznix <span class="login-host">%%EZNIX_HOSTNAME%%</span></h1>
+  <img class="login-logo" src="favicon.svg" alt="">
+  <h1>eznix (%%EZNIX_HOSTNAME%%)</h1>
   <form method="post" action="/login">
-    <label for="u">Username</label>
     %%EZNIX_USERNAME_FIELD%%
-    <label for="p">Password</label>
-    <input id="p" name="password" type="password" autocomplete="current-password" autofocus>
+    <input id="p" name="password" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" autofocus>
     <button type="submit" class="btn primary" tabindex="-1">Sign in</button>
   </form>
   <div class="login-error">%%EZNIX_ERROR%%</div>
