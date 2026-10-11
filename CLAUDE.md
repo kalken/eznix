@@ -310,6 +310,10 @@ load** (`_unchanged()`, `_send_validator()`): `private, no-cache` with an ETag t
 checksum of the file, so the answer is a 304 while the file is the same one and the file
 itself the moment it is another. Never the address-with-a-checksum way of caching: the user
 wanted to be sure that whatever an update changes arrives. API answers stay `no-store`.
+Answers say HTTP/1.1 for this (`protocol_version`), each still closing its connection:
+Chrome does not keep a *page* it was sent as HTTP/1.0, and fetched `/` in full on every
+load while the files beside it came back 304 (found and checked in headless Chrome,
+2026-10-11; the server's log shows the 304 for `/` now, DevTools reports it as 200).
 
 **Nothing is shown until the page is whole** (`booting` on `<html>`, taken off at the end of
 `_init()`, or after three seconds whatever happens): a browser keeps the old page on screen
@@ -433,6 +437,17 @@ misses a module added in any other file, and the user chose a button that is alw
 
 ## Not verified
 
+Run in headless Chrome on 2026-10-11, at the user's request, against throwaway flakes: going
+back past a saved rename, a saved folder disable and a saved new folder, and saving again
+(the disk came out right each time, the folder staying as described above); the two login
+limits, on a server with them shortened to 8 and 40 seconds (the page kept open stayed
+logged in, closed for longer than the first limit it came back as the login page, and left
+open past the second it went to the login page by itself); stylesheets and scripts answered
+304 on a second load, and the page itself once answers said HTTP/1.1, with saving, the
+ping and the terminal's socket working over it; the page hidden until the editor is filled; a name, its value and a
+heading each centred in a 24px row; the list behaviour.
+
+
 What has run for real, by the user's reports on 2026-10-09 and no closer than that: all three
 modules. nix-darwin on a Mac (services, system-password login, the terminal surviving
 rebuilds, HTTPS on localhost with `trustCert` and its keychain dialog, the redirect from
@@ -449,14 +464,12 @@ the header since 2026-10-10, work by the user's word that day ("the document men
 menu works"); which entries of the System menu were used was not said. The points below are
 what nobody went through.
 
-- Everything of 2026-10-11 not named as tried above: going back past a saved rename or folder
-  change (a saved delete works); the
-  login ending 15 minutes after the page is closed and a day at the latest (tests move the
-  clock; no browser was left closed); the caching and the hidden start, watched in a browser;
-  the `breeze-light` and both `gnome-*` themes against a real desktop (`breeze-dark` was held
-  against a screenshot of Plasma's settings). The slow reconnect after a rebuild on the
-  user's router has not come back since the DNS lookup at start was removed, once; its cause
-  was never proven, and `debug` is there to catch the next one.
+- From 2026-10-11, seen only on one side or not at all: the `breeze-light` and both `gnome-*`
+  themes against a real desktop (`breeze-dark` and the selection colour of both Breeze themes
+  were measured in the user's screenshots of Plasma; the GNOME surfaces were checked against
+  libadwaita's `_colors.scss`). The slow reconnect after a rebuild on the user's router has
+  not come back since the DNS lookup at start was removed, once; its cause was never proven,
+  and `debug` is there to catch the next one.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and

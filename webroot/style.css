@@ -347,7 +347,7 @@ body {
    first name 4px further from the heading above than any other two lines are apart, and the
    user preferred the even rows. (Both at once would need the strip to start right under the
    heading's text.) */
-.field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 4px; }
+.field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 5px; }
 /* A text value's own text sits 1px border + 3px padding inside its box, above and at the left.
    A toggle (8px from the left, here, as a text value's text is) and the key (4px from the top, above) are offset by the
    same amounts, so every kind of value starts on one vertical line and a key shares a text
@@ -427,11 +427,13 @@ body {
    Tried with it and taken out the same hour: an empty place for the arrow in front of every
    option beside foldable sections, which lined the names up and pushed the options much too
    far in. */
-.section.nest-card > .section-header, .section.nest-arrow > .section-header { min-height: var(--row-height); align-items: flex-start; padding-top: 4px; }
+.section.nest-card > .section-header, .section.nest-arrow > .section-header { min-height: var(--row-height); align-items: flex-start; padding-top: 5px; }
 /* Every line of the outline is then the same distance from the next, a row (--row-height, 24px
-   in the themes), with its text 4px from the top of its row whatever it is: a heading, an
-   option's name (its padding-top, above) or the text of a text value (1px border and 3px
-   padding, in a value cell that has no padding of its own). So there are 8px between any two
+   in the themes), with its text in the middle of its row whatever it is: a heading and an
+   option's name by 5px above their 14px line of text (their padding-top; 4px until it was
+   measured in a browser on 2026-10-11, which had every name a pixel higher than its value),
+   the text of a text value by its box (1px border and 3px padding round a 16px line, in a
+   value cell that has no padding of its own), a switch by being centred. So there are 8px between any two
    lines of text, and with the themes' --card-gap of 4px also between a divider line and the
    text on either side. (4px between everything, with rows of 20px, was tried on 2026-10-11
    and taken back at once.) Until that day a row was 28px, a value cell had 2px above and

@@ -1356,6 +1356,17 @@ def _pipe(src, dst):
 
 
 class StaticHandler(http.server.SimpleHTTPRequestHandler):
+    # Answers say HTTP/1.1, and every one of them closes its connection (end_headers()), as
+    # before: nothing about how connections are used has changed, only the version in the
+    # status line. Chrome does not keep a *page* it was sent as HTTP/1.0: it never asked
+    # whether its copy of `/` was still good, and got the whole page again on every load,
+    # while the stylesheets and scripts beside it, sent with the very same headers, came back
+    # 304 (seen in headless Chrome 155 on 2026-10-11, and narrowed down with a ten-line
+    # server: the version was the only thing that mattered). Keeping connections open, which
+    # 1.1 allows, is not done: some answers here have no Content-Length and are ended by
+    # the close.
+    protocol_version = 'HTTP/1.1'
+
     def translate_path(self, path):
         self.directory = WEBROOT
         return super().translate_path(path)
@@ -1371,6 +1382,9 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         # (_unchanged()). What is left with no-store is every answer of the API.
         if not getattr(self, '_no_default_cache_control', False):
             self.send_header('Cache-Control', 'no-store')
+        # See protocol_version: one request per connection. (send_error() says so itself.)
+        if not any(h.lower().startswith(b'connection:') for h in getattr(self, '_headers_buffer', [])):
+            self.send_header('Connection', 'close')
         super().end_headers()
 
     def _deny(self, error=''):
