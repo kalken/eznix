@@ -481,6 +481,10 @@ input[type=text].key-rename-input {
 .field-row.nest > .field-value:has(> .pkg-items) { gap: 2px; }
 /* Chips start on the same vertical line as every other kind of value (see .toggle-wrap). */
 .field-row.nest .pkg-items { padding: 4px 8px; }
+/* With nothing in it, it is not there at all: its padding and the gap under it otherwise made
+   an empty list of chips 10px taller than any other empty list (the user's picture of
+   homebrew.brews beside homebrew.taps). */
+.pkg-items:empty { display: none; }
 /* An object item is filled like a section, so its keys sit on the section colour while its own
    value cells stay the page colour -- the same split an ordinary option row has. */
 .field-row.nest .array-obj-item { background: var(--card-bg); }
