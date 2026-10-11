@@ -232,6 +232,30 @@ def main():
             check('an answer of the API is still never kept',
                   fetch('/api/v1/files')[1].get('Cache-Control') == 'no-store')
 
+            # A connection is used again after an answer that went well and says how long it is,
+            # and closed after anything else.
+            cookie = '; '.join(f'{c.name}={c.value}' for c in b.cookies)
+            conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
+            try:
+                seen = []
+                for path in ('/api/v1/ping', '/style.css', '/api/v1/files?content=1', '/'):
+                    conn.request('GET', path, headers={'Cookie': cookie})
+                    r = conn.getresponse(); r.read()
+                    seen.append((r.status, r.getheader('Connection'), conn.sock is not None))
+                check('one connection serves request after request', all(x == (200, None, True) for x in seen), seen)
+                conn.request('POST', '/api/v1/file/backup?file=nope.json', b'', {'Cookie': cookie, 'Origin': BASE})
+                r = conn.getresponse(); r.read()
+                check('and is closed after a POST', r.getheader('Connection') == 'close', r.getheader('Connection'))
+            finally:
+                conn.close()
+            conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
+            try:
+                conn.request('GET', '/api/v1/ping')
+                r = conn.getresponse(); r.read()
+                check('and after a refusal', r.status == 401 and r.getheader('Connection') == 'close', r.getheader('Connection'))
+            finally:
+                conn.close()
+
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
             whole = b.json('/api/v1/files?content=1')[1]
             check('and come with their text when asked, only then',

@@ -1356,16 +1356,38 @@ def _pipe(src, dst):
 
 
 class StaticHandler(http.server.SimpleHTTPRequestHandler):
-    # Answers say HTTP/1.1, and every one of them closes its connection (end_headers()), as
-    # before: nothing about how connections are used has changed, only the version in the
-    # status line. Chrome does not keep a *page* it was sent as HTTP/1.0: it never asked
-    # whether its copy of `/` was still good, and got the whole page again on every load,
-    # while the stylesheets and scripts beside it, sent with the very same headers, came back
-    # 304 (seen in headless Chrome 155 on 2026-10-11, and narrowed down with a ten-line
-    # server: the version was the only thing that mattered). Keeping connections open, which
-    # 1.1 allows, is not done: some answers here have no Content-Length and are ended by
-    # the close.
+    # Connections are kept open and used again (HTTP/1.1), where that is safe. Until
+    # 2026-10-11 every request was a connection of its own, which is what Python's server
+    # does unless told otherwise, and over HTTPS a handshake of its own: about forty of each
+    # when two tabs reload. The user's browser, on a rebuild of their router, held its
+    # requests back for most of a minute at such moments, with eznix up and idle throughout
+    # by its own log; why was never found, and could not be reproduced on one machine. Fewer
+    # connections to set up is what there was to do about it either way.
+    #
+    # Safe is decided in one place, end_headers(): a connection stays open after an answer
+    # to a GET or HEAD that went well and says how long it is (or has no body: 304, 204).
+    # Everything else closes, as before: an answer without a Content-Length (the close is
+    # what ends it), any error or refusal, and every POST, since one refused early leaves
+    # its body unread on the connection, where the next request would be read out of it.
+    # What a handler remembers about one request is put back for the next
+    # (handle_one_request()). An open connection is one waiting thread; a browser keeps six
+    # or so, and one that says nothing for `timeout` seconds is closed. The terminal's
+    # socket, which rides the same handler, takes that timeout off again (_proxy_terminal()).
+    #
+    # Answers said HTTP/1.1 a few hours before this, still closing every connection: Chrome
+    # does not keep a *page* it was sent as HTTP/1.0, and fetched `/` in full on every load
+    # while the files beside it came back 304.
     protocol_version = 'HTTP/1.1'
+    timeout = 65
+
+    def handle_one_request(self):
+        self._no_default_cache_control = False
+        self._status = 200
+        super().handle_one_request()
+
+    def send_response(self, code, message=None):
+        self._status = code
+        super().send_response(code, message)
 
     def translate_path(self, path):
         self.directory = WEBROOT
@@ -1382,8 +1404,16 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         # (_unchanged()). What is left with no-store is every answer of the API.
         if not getattr(self, '_no_default_cache_control', False):
             self.send_header('Cache-Control', 'no-store')
-        # See protocol_version: one request per connection. (send_error() says so itself.)
-        if not any(h.lower().startswith(b'connection:') for h in getattr(self, '_headers_buffer', [])):
+        # Whether the connection stays open: see protocol_version. (send_error() closes by
+        # itself, and so does whatever sent a Connection header of its own.)
+        sent = [h.lower() for h in getattr(self, '_headers_buffer', [])]
+        has = lambda name: any(h.startswith(name) for h in sent)
+        status = getattr(self, '_status', 200)
+        keep = (self.command in ('GET', 'HEAD') and status < 400
+                and (has(b'content-length:') or status in (204, 304)))
+        if not keep and not has(b'connection:'):
+            if self.command in ('GET', 'HEAD') and status < 400:
+                _debug(f'closing after {self.command} {self.path.split("?")[0]}: the answer has no Content-Length')
             self.send_header('Connection', 'close')
         super().end_headers()
 
@@ -2127,6 +2157,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         This never parses WebSocket frames -- it's a pure byte relay, so PTY resize/reattach/
         persistence/etc. in eznix-terminal.py are completely unaffected by going through it."""
         self.close_connection = True
+        # A shell can be silent for as long as it likes: not the timeout of a waiting connection.
+        self.connection.settimeout(None)
         term = _terminal_for((_session(self.headers) or {}).get('user'))
         if not term:
             self.send_error(404, 'no terminal for this login')

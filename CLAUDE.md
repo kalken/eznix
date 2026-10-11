@@ -301,16 +301,29 @@ save, undo save works"); renames and folders only as a function on made-up cases
 
 **The page starts with one request for all the files** (`/api/v1/files?content=1`, compressed)
 and asks for the suggestions at the same time (`_fetchAutocompleteData()`,
-`loadSiblingFiles()`). It was a request per file and then the suggestions. The server
-answers HTTP/1.0, a connection per request, which is what made many files slow; keep-alive
-was considered and left (the redirect to https and the terminal proxy sit in that code).
+`loadSiblingFiles()`). It was a request per file and then the suggestions, each a
+connection of its own.
+
+**Connections are kept open and used again** (`StaticHandler`: `protocol_version`, `timeout`,
+`end_headers()`), since 2026-10-11; before that every request was its own connection and,
+over HTTPS, its own handshake. One place decides: a connection stays open after an answer to
+a GET or HEAD that went well and has a `Content-Length` (or no body); it closes after a POST,
+an error or refusal, and any answer whose end is the close. A POST always closes because one
+refused early leaves its body unread, where the next request would be read out of it. What a
+handler keeps about a request is reset for the next (`handle_one_request()`); the terminal's
+socket takes the idle timeout off itself (`_proxy_terminal()`). Tested in headless Chrome,
+with and without HTTPS: a page load is 17 to 23 requests over 8 or 9 connections, saving
+works, and a terminal left silent for 75 seconds stays connected. Why it was done: on a
+rebuild of the user's router the browser held its requests back for most of a minute, with
+eznix up and idle by its own log; the cause was not found and it did not happen on one
+machine, so whether this cures it is not known.
 
 **The page, its stylesheets and its scripts are kept by the browser and checked on every
 load** (`_unchanged()`, `_send_validator()`): `private, no-cache` with an ETag that is a
 checksum of the file, so the answer is a 304 while the file is the same one and the file
 itself the moment it is another. Never the address-with-a-checksum way of caching: the user
 wanted to be sure that whatever an update changes arrives. API answers stay `no-store`.
-Answers say HTTP/1.1 for this (`protocol_version`), each still closing its connection:
+Answers say HTTP/1.1 for this (`protocol_version`):
 Chrome does not keep a *page* it was sent as HTTP/1.0, and fetched `/` in full on every
 load while the files beside it came back 304 (found and checked in headless Chrome,
 2026-10-11; the server's log shows the 304 for `/` now, DevTools reports it as 200).
@@ -467,9 +480,12 @@ what nobody went through.
 - From 2026-10-11, seen only on one side or not at all: the `breeze-light` and both `gnome-*`
   themes against a real desktop (`breeze-dark` and the selection colour of both Breeze themes
   were measured in the user's screenshots of Plasma; the GNOME surfaces were checked against
-  libadwaita's `_colors.scss`). The slow reconnect after a rebuild on the user's router has
-  not come back since the DNS lookup at start was removed, once; its cause was never proven,
-  and `debug` is there to catch the next one.
+  libadwaita's `_colors.scss`). The slow reconnect after a rebuild on the user's router came
+  back after the DNS lookup at start was removed: the server's log (with `debug`) had the
+  browser sending nothing for 46 seconds in the middle of a page load, on a connection it
+  had already opened. Connections are reused since then; whether that ends it is for the
+  router to show. The phase a stuck request is in (the browser's developer tools, Network,
+  Timing) is the evidence still missing.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
