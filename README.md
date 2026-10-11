@@ -354,12 +354,15 @@ services.eznix.session = { days = 30; renew = true; };
 
 400 days is the most a browser allows. Without `renew` the days count from the login.
 
-**`sudo` in the terminal.** By default it asks again after a few minutes. To be asked once
-per login session instead, for one user (NixOS and nix-darwin):
+**`sudo` in the terminal.** By default it asks again 5 minutes after it was last used. To
+make that longer for one user (NixOS and nix-darwin), give it a number of minutes:
 
 ```nix
-security.sudo.extraConfig = "Defaults:alice timestamp_timeout=-1";
+security.sudo.extraConfig = "Defaults:alice timestamp_timeout=30";
 ```
+
+`-1` in place of the number asks once and not again while that terminal lives. It counts per
+terminal, so a shell opened another way, over SSH for one, is not loosened by it.
 
 To never be asked for the rebuild itself, see
 [Running commands as root](#-running-commands-as-root) above (on macOS the command there is
