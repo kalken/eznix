@@ -2871,19 +2871,15 @@ function _detachForFloat(el) {
   return () => { if (next && next.parentNode === parent) parent.insertBefore(el, next); else parent.appendChild(el); };
 }
 
-// Two add-option entries for a context menu targeting `path`: `subLabel` (default "Add sub
-// option…", prefilled to add under `path`) listed first since it's the more relevant action when
-// you've right-clicked something specific, followed by a plain "Add option…" prefilled empty (a
-// root-level option) so you don't have to back out to blank editor space just to add one of those.
-// Not the second one on an object in a list (`rootToo` false, the two "Add field" callers): a
-// new option at the root of the file has nothing to do with the list item that was clicked,
-// and the user found it strange there (2026-10-11). A section's heading keeps it, so that a
-// new top-level option can be added from anywhere in a long file.
-function _addOptionMenuItems(event, path, subLabel = 'Add sub option…', rootToo = true) {
+// The add entries of a context menu for `path`: "Add entry…" where it applies, and `subLabel`
+// (default "Add sub option…"), which opens the add field prefilled to add under `path`. A plain
+// "Add option…", for the root of the file, was a third one here until 2026-10-11: the field
+// these open can be cleared to type any path, and on an object in a list the user found the
+// entry strange. It is on the editor's blank-space menu.
+function _addOptionMenuItems(event, path, subLabel = 'Add sub option…') {
   return [
     ..._entryAddMenuItems(event, path),
     { label: subLabel, onclick: () => showAddOptionMenu(event, path) },
-    ...(rootToo ? [{ label: 'Add option…', onclick: () => showAddOptionMenu(event, []) }] : []),
   ];
 }
 
@@ -2905,7 +2901,7 @@ function _listItemAddMenuItems(event, path) {
   const entry = _entryAddMenuItems(event, path);
   if (entry.length) return entry;
   if (!itemPath.length || !Array.isArray(getAtPath(config, itemPath.slice(0, -1)))) return [];
-  return _addOptionMenuItems(event, itemPath, 'Add field', false);
+  return _addOptionMenuItems(event, itemPath, 'Add field');
 }
 
 // Right-click "Add option…": rather than a separate/duplicate implementation, this temporarily
@@ -3069,6 +3065,10 @@ function renderSection(container, key, obj, path) {
     // Show/hide all is offered here as well as on the editor's own blank-space menu,
     // but only reaching this section and what's below it -- the blank-space one does the file.
     const foldAll = _foldAllMenuItems(section);
+    // No "Add option…" (a new option at the root of the file) here: "Add sub option…" opens
+    // the same field with this section's path filled in, which can be cleared to type any
+    // path, so the second entry was not needed (the user, 2026-10-11, after first moving it
+    // to a group of its own). It is on the editor's blank-space menu.
     showContextMenu(e, [...items, ..._commonMenuItems(path),
       ...(foldAll.length ? [{ separator: true }, ...foldAll] : [])]);
   };
@@ -3683,7 +3683,7 @@ function renderArray(container, arr, path) {
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         const disabled = isDisabled(getAtPath(config, itemPath));
-        const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field', false);
+        const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field');
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
         showContextMenu(e, [...items, ..._commonMenuItems(itemPath)]);
       };
