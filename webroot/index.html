@@ -5218,13 +5218,22 @@ function clearFile(name) {
 async function deleteFile(name) {
   const existsOnDisk = Object.prototype.hasOwnProperty.call(fileSaved, name);
   if (existsOnDisk) pendingFsOps.push({ type: 'delete-file', path: name });
+  // What opens instead is the tab beside it in its own folder (the next one, or the one before
+  // the last). It was the first file of all, which is in whatever folder sorts first: deleting
+  // a file threw the user out of the folder they were working in. A folder left empty stays
+  // the one shown, as an empty folder is when clicked.
+  const folder = _topFolder(name);
+  const beside = files.filter(f => _topFolder(f) === folder).sort(_byTabLabel);
+  const at = beside.indexOf(name);
+  const next = beside[at + 1] || beside[at - 1];
   files = files.filter(f => f !== name);
   delete fileConfigs[name];
   delete fileSaved[name];
   if (name === activeFile) {
     activeFile = null;
     if (files.length) {
-      await switchFile(files[0]);
+      await switchFile(next || files[0]);
+      if (!next && folder && folders.includes(folder)) { viewFolder = folder; renderFileSelector(); }
     } else {
       // Deleted the last file — zero files is a fully supported state (see the
       // .editor-empty-state message in renderEditor()), not an error to avoid.
