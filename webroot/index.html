@@ -433,9 +433,10 @@ function renameKeyAtPath(path, newKey) {
   return true;
 }
 
-// Inline-renames the key at `path`: swaps its label for a live <input>, same pattern as
-// _startTabRename/_startFolderRename. Works for a section header (.section-header) and a
-// field/array-field row (.field-key).
+// Inline-renames the key at `path` with a live <input>, as _startTabRename/_startFolderRename
+// do. Works for a section header (.section-header) and a field/array-field row (.field-key).
+// The input is put inside the name, on top of it, and not in its place: the name keeps its
+// room and nothing moves (see .key-rename-input in style.css).
 function _startKeyRename(path) {
   const pathKey = path.join('.');
   const el = document.querySelector('[data-path="' + CSS.escape(pathKey) + '"]');
@@ -447,7 +448,9 @@ function _startKeyRename(path) {
   input.type = 'text';
   input.className = 'key-rename-input';
   input.value = oldKey;
-  anchor.replaceWith(input);
+  _hideFieldTooltip();
+  anchor.classList.add('renaming');
+  anchor.appendChild(input);
   _autosizeInput(input);
   input.focus();
   input.select();
@@ -2756,6 +2759,7 @@ let _fieldTooltipTimer = null;
 function _wireTooltipAnchor(anchor, opt, typeLabel) {
   anchor.addEventListener('mouseenter', () => {
     _hideFieldTooltip();
+    if (anchor.classList.contains('renaming')) return; // the pointer is on the rename field
     _fieldTooltipTimer = setTimeout(() => { _fieldTooltipTimer = null; _showFieldTooltip(anchor, opt, typeLabel); }, 1000);
   });
   anchor.addEventListener('mouseleave', _hideFieldTooltip);

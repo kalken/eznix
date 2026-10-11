@@ -35,6 +35,12 @@ pkill -f "eznix.py --config eznix.toml"; sleep 1
 sleep 2; curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/ping   # 401 = up
 ```
 
+The `pkill` there only matches a server started with exactly that `--config`. One started
+with another file keeps the port and keeps serving the old page, the new one fails to start,
+and the 401 still comes back: on 2026-10-11 the user was told three times that a change was
+live when it was not. If in doubt, see what holds the port (`lsof -nP -iTCP:9690
+-sTCP:LISTEN`), restart that command line, and check that the served file has the change.
+
 http://127.0.0.1:9690, password `eznix`. eznix starts its own terminal there (port 9691), so
 restarting the server restarts the shell too.
 
@@ -375,6 +381,12 @@ moment it is emptied; Backspace in an empty text field of an object with nothing
 removes the object. Only what was just added is ever removed for being empty: an empty
 object that was in the file may be meant. This part was tested in headless Chrome with real
 clicks and keys, at the user's request.
+
+**A name being renamed does not move** (`_startKeyRename()`, `.key-rename-input`): the name
+stays in the page, unseen, and the field lies on top of it in the same font and colour, its
+frame a shadow. The user's wish ("i dont want it to move at all"); the field used to take the
+name's place, 22px tall in a 14px line. Measured in headless Chrome on 2026-10-11 for an
+option, both kinds of heading and a top-level title, and seen by the user ("its perfect now").
 
 ## Plugins
 

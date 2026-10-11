@@ -122,10 +122,22 @@ body {
   border-radius: var(--radius-sm); font-family: var(--font); outline: none;
 }
 .tab-rename-input { font-size: 12px; padding: 1px 4px; }
-.key-rename-input {
-  background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
-  border-radius: var(--radius-sm); font: inherit; outline: none; padding: 0 3px;
+/* A name being renamed stays where it is, unseen, and the field lies on top of it, starting at
+   the same place and as tall: nothing around it is laid out again, so the text cannot move
+   (the user: "i dont want it to move at all"). Putting the field in the name's place was
+   tried twice and moved it both times, with a border and without: a field's line of text is
+   2px taller than the same text's outside one. The frame is a shadow, which takes no room.
+   Named as an input of its type so that it wins over the rule for every text input (under
+   "Inputs"), which otherwise gives it that rule's font size, padding and full width.
+   .key-label cuts off what sticks out of it, which a field longer than the name does. */
+.tt-anchor.renaming { visibility: hidden; }
+input[type=text].key-rename-input {
+  visibility: visible; position: absolute; left: 0; top: 0; height: 100%; z-index: 2;
+  background: var(--bg); color: inherit; font: inherit; outline: none;
+  border: 0; padding: 0; margin: 0; width: auto; border-radius: 1px;
+  box-shadow: 0 0 0 3px var(--bg), 0 0 0 4px var(--input-focus-border);
 }
+.key-label:has(.key-rename-input) { overflow: visible; }
 
 /* ── Layout ── */
 .layout { display: flex; flex: 1; overflow: hidden; }
