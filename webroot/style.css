@@ -598,7 +598,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* Half dark, half light: a pair of themes that follows the system. The plain colour underneath
    is what it's sorted by (see _applyInitialTheme()), which puts these after the dark themes. */
 .theme-swatch-osx { background: #858585 linear-gradient(90deg, #1e1e1e 50%, #ececec 50%); border-color: #8e8e93; }
-.theme-swatch-breeze { background: #8a8b8c linear-gradient(90deg, #141618 50%, #ffffff 50%); border-color: #3daee9; }
+.theme-swatch-breeze { background: #888a8c linear-gradient(90deg, #202326 50%, #eff0f1 50%); border-color: #3daee9; }
 .theme-swatch-gnome { background: #8b8b8d linear-gradient(90deg, #1d1d20 50%, #fafafb 50%); border-color: #3584e4; }
 .theme-swatch-custom { background: #808080; border-color: #b0b0b0; } /* a user theme: overridden inline from its own colours */
 

@@ -1,25 +1,26 @@
-/* Breeze Dark — KDE Plasma's dark colour scheme, laid out after a screenshot of its System
-   Settings that the user sent (2026-10-11), with the colours measured in it. Two of Plasma's
-   greys are used, as the user settled it: the page is its View colour (#141618, the dark
-   background of its sidebar and lists in the screenshot), and everything on it is its Header and Button colour (#292c30): the bars and
-   panels, the buttons, and a section, which is always the colour of the bars. A value strip
-   is the page's colour again, set into its section, and has Plasma's frame line around it
-   (about #4c4e51 in the screenshot), as a section has. The open file's tab is filled with the Plasma blue like the selected
-   entry of Plasma's sidebar. Signal colours are the scheme's, the terminal has Konsole's
-   Breeze colours; the scheme's values are from BreezeDark.colors (breeze 6.7). Three earlier
-   layouts of the same colours were tried and did not look right. */
+/* Breeze Dark — KDE Plasma's dark colour scheme, put together by the rules every theme here
+   follows (THEMES.md): one ramp of neutrals with the page darkest, the bars a step lighter and
+   the cards a step lighter again, one accent, four signals, and nothing drawn that the other
+   themes fill. The ramp is Plasma's own greys: its Window colour (#202326) is the page, its
+   Header and Button colour (#292c30) the bars, and the cards are the next step up; the accent
+   is the Plasma blue, the signal colours and the dimmed text are the scheme's, and the
+   terminal has Konsole's Breeze colours. The scheme's values are read from BreezeDark.colors
+   (breeze 6.7).
+   On 2026-10-11 it was first laid out to copy Plasma's System Settings surface by surface,
+   with lines round sections and value strips where the other themes have fills; after an
+   afternoon of that the user found it horrible and asked for it by the general rules. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
-  --bg:   #141618;
+  --bg:   #202326;
   --bg2:  #292c30;
-  --bg3:  #292c30;
-  --bg4:  #35393e;
+  --bg3:  #31363b;
+  --bg4:  #3b4045;
   --text:  #fcfcfc;
   --text2: #a1a9b1;
-  --text3: color-mix(in srgb, #a1a9b1 70%, #202326);
+  --text3: color-mix(in srgb, #a1a9b1 70%, #292c30);
   --accent:  #3daee9;
   --accent2: #1d99f3;
   /* The NixOS logo, every other arm: the two Breeze blues. */
@@ -38,13 +39,13 @@
   --term-padding: 4px;
 
   /* ── Borders ── */
-  --border:  #474c51;
-  --border2: #535659;
-  --input-border: #535659;
-  --select-option-bg:    #292c30;
+  --border:  #35383c;
+  --border2: #45484c;
+  --input-border: #45484c;
+  --select-option-bg:    #2d3136;
   --select-option-color: #fcfcfc;
-  --select-option-hover: color-mix(in srgb, #3daee9 25%, #292c30);
-  --popup-bg: #292c30; /* dialogs and tooltips */
+  --select-option-hover: color-mix(in srgb, #3daee9 25%, #2d3136);
+  --popup-bg: #2d3136; /* dialogs and tooltips */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
   --btn-primary-border: #3daee9;
@@ -60,9 +61,9 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #3daee9;
+  --tab-active-bg:     #3b4045;
   --tab-active-border: #3daee9;
-  --tab-active-text:   #fcfcfc;
+  --tab-active-text:   var(--text);
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #da4453 16%, #202326);
@@ -72,14 +73,14 @@
   --success-border: color-mix(in srgb, #27ae60 35%, #202326);
 
   /* ── Nix expression fields ── */
-  --expr-border: #474c51;
+  --expr-border: #35383c;
 
   /* ── Editor fields ── */
   --field-bg: rgb(255 255 255 / 5%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--bg2); /* a top-level section: always the colour of the bars */
-  --card-border:  var(--border); /* the line around that block */
-  --value-border: #4c4e51; /* the line around an option's value cell; transparent: none */
+  --card-bg:   var(--bg3); /* the filled block of a top-level section */
+  --card-border:  var(--panel-hairline); /* the line around that block */
+  --value-border: transparent; /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
@@ -98,17 +99,17 @@
   /* ── Editor colours ── */
   --section-title-color:    var(--section-key-color); /* top-level section name */
   --section-key-deep-color: var(--section-key-color); /* section names below a sub-section */
-  --value-bg:       var(--editor-bg); /* value strip: the page's colour, set into the section, with its line */
+  --value-bg:       color-mix(in srgb, var(--card-bg) 50%, var(--editor-bg)); /* value cell: halfway between the section and the page */
   --danger-text:    #ffffff; /* text on a red (destructive) menu item */
 
   /* ── Misc UI ── */
   --statusbar-bg:   var(--bg2);
   --dirty-color:    #f67400;
-  --wildcard-bg:    #292c30;
-  --wildcard-hover: #35393e;
+  --wildcard-bg:    #2d3136;
+  --wildcard-hover: #353a3f;
   --shadow:         rgb(0 0 0 / 45%);
-  --panel-hairline: var(--border); /* 1px line along a panel edge */
-  --panel-shadow:   transparent; /* small soft shadow a panel casts beside that line */
+  --panel-hairline: rgb(0 0 0 / 40%); /* 1px line along a panel edge */
+  --panel-shadow:   rgb(0 0 0 / 28%); /* small soft shadow a panel casts beside that line */
   --overlay:        #00000099;
   --scrollbar:      #4d5257;
   --scrollbar-hover: #6b7177;

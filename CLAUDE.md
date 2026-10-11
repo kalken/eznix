@@ -290,6 +290,75 @@ this, on both kinds of data.
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 
+**Going back past a Save** (`_rebaseHistoryOnDisk()`, run after every Save): each other point
+in the undo stack is told what is on disk now, its `fileSaved`, `folderExists` and
+`pendingFsOps` worked out again against it. Before, a point kept what was true when it was
+taken, and going back past a saved delete brought the tab back with Save grey. Undo never
+changes the disk: the earlier state comes back as unsaved changes. No folder delete is ever
+queued by it (a folder can hold files eznix shows no tab for); one made since stays as an
+empty tab. The case it was made for the user tried in the page on 2026-10-11 ("remove file,
+save, undo save works"); renames and folders only as a function on made-up cases.
+
+**The page starts with one request for all the files** (`/api/v1/files?content=1`, compressed)
+and asks for the suggestions at the same time (`_fetchAutocompleteData()`,
+`loadSiblingFiles()`). It was a request per file and then the suggestions. The server
+answers HTTP/1.0, a connection per request, which is what made many files slow; keep-alive
+was considered and left (the redirect to https and the terminal proxy sit in that code).
+
+**The page, its stylesheets and its scripts are kept by the browser and checked on every
+load** (`_unchanged()`, `_send_validator()`): `private, no-cache` with an ETag that is a
+checksum of the file, so the answer is a 304 while the file is the same one and the file
+itself the moment it is another. Never the address-with-a-checksum way of caching: the user
+wanted to be sure that whatever an update changes arrives. API answers stay `no-store`.
+
+**Nothing is shown until the page is whole** (`booting` on `<html>`, taken off at the end of
+`_init()`, or after three seconds whatever happens): a browser keeps the old page on screen
+meanwhile, so a reload has no header filling in and no "Loading…".
+
+**The editor's layout is boxes and rows, with the numbers in the themes.** Settled over a
+long afternoon (2026-10-11) of the user pointing at one gap after another; read the comments
+in `style.css` before changing any of it, since most of what looks adjustable there was
+tried and taken back. As it stands:
+
+- A top-level section is a card. What is in it is a stack of boxes, each with a line along
+  its top and the same padding above and below (`--card-gap`): a sub-section is one, and so
+  is a run of plain options. A run of options is an element, `.field-group`, made by
+  `renderObj()` (not at the root of a file); nothing that moves or finds rows goes by their
+  place among siblings, so the wrapper is invisible to drags (the user tried: "drag drop
+  works"). No rule looks at what is next to what.
+- Inside a box everything is a row of `--row-height` (24px) with its text 4px from the top:
+  a heading, an option's name, the text of a value. Rows follow each other with nothing
+  between, so lines of text are evenly far apart. A strip of values has 4px below it
+  (`.field-group`'s padding), since it is filled to the bottom of its last row.
+- The indent is `--indent-step` (2ch) per level and nothing else. A foldable section's
+  arrow is part of its heading's text, two characters wide, so its options start under its
+  name. Counting the arrows of the sections around a row into its indent was tried and
+  taken out.
+- A value is 8px from its strip's left and right edge and 4px from the top of its row.
+  Giving the strip room of its own above its first value was tried and made the rows
+  uneven; the user chose even rows.
+- An object in a list is a box of its own in the section's colour, its values 4px in from
+  its top, bottom and right and its names one indent step in from its left.
+- The same in every theme: all eight set the layout variables to the same values, and a
+  theme could draw a line round a card or a value strip through `--card-border` and
+  `--value-border`. No built-in theme does: `breeze-*` did for an afternoon, to copy Plasma's
+  settings surface by surface, until the user found the result horrible and had both rebuilt
+  by the rules in `THEMES.md` like the others, with Plasma's colours.
+
+One mistake worth knowing about: a block of these rules (the name column's width, the indent,
+the heading's padding) was deleted by an edit that replaced "everything between two comments"
+in `style.css`, was pushed, and was then papered over with workarounds for an hour before the
+cause was found. Edit that file by exact strings.
+
+**Lists**: an empty list shows "Add item…", and a click adds its first item with the cursor
+in it (`addItem()` in `renderArrayField()`). An item just added and left as it was made is
+taken away again on a click or a move of the cursor outside it (`_freshItem`,
+`_leftFreshItem()`), an object and a plain text alike; the only item of a list goes the
+moment it is emptied; Backspace in an empty text field of an object with nothing in it
+removes the object. Only what was just added is ever removed for being empty: an empty
+object that was in the file may be meant. This part was tested in headless Chrome with real
+clicks and keys, at the user's request.
+
 ## Plugins
 
 **A plugin is something that needs nothing from the system eznix runs on.** That is the rule
@@ -380,6 +449,14 @@ the header since 2026-10-10, work by the user's word that day ("the document men
 menu works"); which entries of the System menu were used was not said. The points below are
 what nobody went through.
 
+- Everything of 2026-10-11 not named as tried above: going back past a saved rename or folder
+  change (a saved delete works); the
+  login ending 15 minutes after the page is closed and a day at the latest (tests move the
+  clock; no browser was left closed); the caching and the hidden start, watched in a browser;
+  the `breeze-light` and both `gnome-*` themes against a real desktop (`breeze-dark` was held
+  against a screenshot of Plasma's settings). The slow reconnect after a rebuild on the
+  user's router has not come back since the DNS lookup at start was removed, once; its cause
+  was never proven, and `debug` is there to catch the next one.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and

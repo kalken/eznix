@@ -1,5 +1,9 @@
 /* GNOME Dark — Adwaita's dark style: its window, view and header-bar greys, the GNOME blue as
-   the accent, its signal colours, and the GNOME palette in the terminal. */
+   the accent, its signal colours, and the GNOME palette in the terminal. The surfaces are
+   libadwaita's named colours, checked against its _colors.scss (1.9.3): view #1d1d20 for the
+   page, header bar #2e2e32 for the bars, and its card (white at 8% on the window colour) for
+   the cards. The signal colours are the fixed ones of earlier versions; it now derives them
+   from the palette by a formula, to much the same. The terminal's colours are from memory. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
