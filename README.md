@@ -343,11 +343,13 @@ up to your sudo setup:
 
 There are two passwords involved, and each has its own setting.
 
-**Logging in to eznix.** By default a login lasts until the browser is closed. To stay
-logged in longer, give it a number of days, and have every visit start the count again:
+**Logging in to eznix.** By default a login ends when the page has been closed for 15
+minutes (the browser quit, the computer asleep), and a day after logging in at the latest.
+To stay logged in longer, give it a number of days, and have every visit start the count
+again:
 
 ```nix
-services.eznix.session.cookies = { days = 30; renew = true; };
+services.eznix.session = { days = 30; renew = true; };
 ```
 
 400 days is the most a browser allows. Without `renew` the days count from the login.
@@ -500,8 +502,8 @@ The common ones, the same in all three modules:
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
 | `exclude` | `[ ]` | paths in it that are not configuration |
 | `users` | | who may log in with their system password |
-| `session.cookies.days` | | days a login lasts, 400 at most; unset, until the browser is closed |
-| `session.cookies.renew` | `false` | count those days from the last visit instead of from the login |
+| `session.days` | | days a login lasts, 400 at most; unset, until the page has been closed for 15 minutes, and a day at most |
+| `session.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
 | `listen`, `port` | `127.0.0.1`, `9090` | where the editor listens |
 | `interface` | | a network interface to be reached through, and no other |

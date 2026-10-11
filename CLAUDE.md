@@ -170,12 +170,19 @@ version of the icon, which has a width and a height; with the first, which had o
 viewBox, nothing had happened, though whether the size was why is not known.
 
 **Sessions**: a random token per login in the `eznix_session` cookie, stored hashed in
-`<state>/sessions.json`, so a restart of the server logs nobody out. How long the cookie
-lasts is set under `[session.cookies]` (`session.cookies.*` in the modules). `days` unset, which is the default the user chose, it has no lifetime and
-the browser drops it when it quits; set, it lasts that many days from the login, 400 at most
-because browsers cap cookies there. `renew` counts them from the last page load
-instead, which the user wanted as a separate, explicit choice. It used to be fixed at 400
-days and always renewed.
+`<state>/sessions.json`, so a restart of the server logs nobody out. How long a login lasts
+is the server's doing, set under `[session]` (`session.*` in the modules); the cookie only
+carries the token and gets the same lifetime. `days` unset, the default: it ends when the
+page has not been heard from for 15 minutes (`SESSION_IDLE`; an open page pings), and a day
+after the login at the latest. Set, it lasts that many days with no idle limit, 400 at most
+because browsers cap cookies there; `renew` counts them from the last page load, which the
+user wanted as a separate, explicit choice. Until 2026-10-11 the settings were
+`session.cookies.*` and the default left it to the cookie, which had no lifetime so that the
+browser would drop it on quitting, while the token had 400 days. The user's browser restored
+the cookie with its tabs and never asked again ("if i quit the browser i dont have to login
+again"), and found a cookie setting that decided nothing confusing. Renamed without keeping
+the old names, on the user's word that nobody uses them yet. The two limits are constants,
+not settings. It used to be fixed at 400 days and always renewed.
 
 **Requests must come from the page** (`_valid_origin()`): every POST but the login itself and the
 `/terminal` handshake are refused when the `Origin` header names another address than the `Host` the

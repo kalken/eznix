@@ -127,8 +127,40 @@ def terminal_history():
     check('terminal: the history is bounded', len(screen._scrollback) == term.SCROLLBACK_LINES)
 
 
+def sessions():
+    """How long a login lasts, which is the server's doing and not the cookie's. No server
+    needed: the clock is moved by rewriting what the functions go by."""
+    spec = importlib.util.spec_from_file_location('eznix_server', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    cookie = lambda token: {'Cookie': 'eznix_session=' + token}
+    key = lambda token: ez._token_id(token)
+
+    token = ez._new_session('alice')
+    check('session: a login is one', ez._session(cookie(token))['user'] == 'alice')
+    ez._SESSION_SEEN[key(token)] -= ez.SESSION_IDLE - 60
+    check('session: and still one a little short of the idle time', ez._session(cookie(token)) is not None)
+    ez._SESSION_SEEN[key(token)] -= ez.SESSION_IDLE + 1
+    check('session: by default it ends once the page has not been heard from for 15 minutes',
+          ez.SESSION_IDLE == 900 and ez._session(cookie(token)) is None and key(token) not in ez._SESSIONS)
+
+    token = ez._new_session('alice')
+    ez._SESSIONS[key(token)]['expires'] -= ez.SESSION_LIFETIME + 1
+    check('session: and a day after the login, heard from or not',
+          ez.SESSION_LIFETIME == 86400 and ez._session(cookie(token)) is None)
+    check('session: its cookie has no lifetime of its own', 'Max-Age' not in ez._session_cookie(token))
+
+    ez.SESSION_IDLE, ez.SESSION_LIFETIME = None, 30 * 86400      # what `days = 30` sets
+    token = ez._new_session('alice')
+    ez._SESSION_SEEN[key(token)] -= 20 * 86400
+    check('session: with days set, a page closed for weeks is still logged in', ez._session(cookie(token)) is not None)
+    ez._SESSIONS[key(token)]['expires'] -= 30 * 86400 + 1
+    check('session: until the days are over', ez._session(cookie(token)) is None)
+
+
 def main():
     terminal_history()
+    sessions()
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(f'{tmp}/flake/eznix')
         os.makedirs(f'{tmp}/flake/.git')
@@ -138,7 +170,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session.cookies]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
+                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -151,7 +183,7 @@ def main():
             check('a wrong password is refused', login(Browser(), 'nope') == 401)
             check('the right one logs in', login(b) == 200)
             cookie = login_cookie()
-            check('with no days set, the login cookie lasts until the browser is closed',
+            check('with no days set, the login cookie has no lifetime of its own (the server ends the login)',
                   cookie.startswith('eznix_session=') and 'max-age' not in cookie.lower() and 'expires' not in cookie.lower(), cookie)
 
             status, page = b.request('/')
@@ -322,7 +354,7 @@ def main():
             b = Browser()
             login(b)
             page = b.request('/')[1].decode()
-            check('[session.cookies] days sets how long the login cookie lasts', 'Max-Age=43200;' in login_cookie() + ';', login_cookie())
+            check('[session] days sets how long the login cookie lasts', 'Max-Age=43200;' in login_cookie() + ';', login_cookie())
             conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
             conn.request('GET', '/', headers={'Cookie': '; '.join(f'{c.name}={c.value}' for c in b.cookies)})
             resp = conn.getresponse(); resp.read(); conn.close()

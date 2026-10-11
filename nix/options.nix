@@ -38,9 +38,9 @@ let
     hosts            = cfg.hosts ++ cfg.certNames
                        ++ lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen;
     users            = cfg.users;
-    session.cookies  = {
-      days  = cfg.session.cookies.days;
-      renew = if cfg.session.cookies.renew then true else null;
+    session          = {
+      days  = cfg.session.days;
+      renew = if cfg.session.renew then true else null;
     };
     theme            = cfg.theme;
     themes_dir       = if cfg.themes != { } then "${themesDir}" else null;
@@ -163,8 +163,8 @@ in
       message   = "services.eznix.certNames is empty. Listening on every address (listen = \"0.0.0.0\", also what interface alone gives), eznix cannot know what you will type in the browser: list the host name or address you open it by, for example certNames = [ \"192.168.1.2\" ], or set listen to that address.";
     }
     {
-      assertion = !(cfg.session.cookies.renew && cfg.session.cookies.days == null);
-      message   = "services.eznix.session.cookies.renew needs days: a login that lasts until the browser is closed has no days to count again.";
+      assertion = !(cfg.session.renew && cfg.session.days == null);
+      message   = "services.eznix.session.renew needs days: a login that ends when the page is closed has no days to count again.";
     }
     {
       # What the templates (flake.nix, `templates`) put where the user's name goes. Left in, the
@@ -247,13 +247,13 @@ in
       default     = [ ];
       description = "Who may log in with their system password.";
     };
-    session.cookies.days = mkOption {
+    session.days = mkOption {
       type        = types.nullOr (types.numbers.between 0.01 400);
       default     = null;
-      example     = 400;
-      description = "How many days a login lasts, counted from the login. 400 is the longest a browser keeps a cookie, so there is nothing longer to choose. Left unset, a login lasts until the browser is closed.";
+      example     = 30;
+      description = "How many days a login lasts, counted from the login, whether the page is open or not. 400 is the longest a browser keeps a cookie, so there is nothing longer to choose. Left unset, a login ends when the page has been closed for 15 minutes (the browser quit, the computer asleep), and a day after logging in at the latest.";
     };
-    session.cookies.renew = mkOption {
+    session.renew = mkOption {
       type        = types.bool;
       default     = false;
       description = "Count the days from the last time the page was opened, not from the login: someone who opens eznix more often than that is then never logged out. Needs days.";

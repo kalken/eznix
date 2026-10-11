@@ -55,9 +55,11 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # From here on everything is a table: in TOML a plain setting written below a [table] line
 # belongs to that table, so the ones above have to stay above.
 
-# How long a login lasts. With nothing set here, until the browser is closed.
-# [session.cookies]
-# days  = 400                         # that many days; 400 is the longest a browser keeps a cookie
+# How long a login lasts. With nothing set here, until the page has been closed for 15
+# minutes (the browser quit, the computer asleep), and a day after logging in at the latest.
+# [session]
+# days  = 30                          # that many days, page open or not; 400 at most, the
+#                                     # longest a browser keeps a cookie
 # renew = true                        # count them from the last time the page was opened,
 #                                     # not from the login
 

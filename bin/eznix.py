@@ -44,9 +44,10 @@ Configuration (eznix.toml; every key optional unless noted):
                   when no plugin provides a login -- see plugins/password for the other way)
   auth_helper     program that checks a system password for an unprivileged eznix
 
-  [session.cookies]  how long a login lasts:
+  [session]       how long a login lasts:
                   days   that many days, 400 at most (the longest a browser keeps a cookie).
-                         Unset: until the browser is closed
+                         Unset: until the page has been closed for 15 minutes, and a day
+                         at most
                   renew  true: count them from the last time the page was opened, not from
                          the login (default false)
   terminal        false: no terminal at all
@@ -418,23 +419,31 @@ def _session_from_cookie(headers):
 # -- who logged in, and until when. Kept by the token's
 # hash, so the file they're saved in, next to the session key, is no use to whoever reads it;
 # saved at all so that restarting the service doesn't log everyone out.
-# How long a login lasts is the cookie's doing, set under [session.cookies] (the modules'
-# session.cookies.*). With `days` unset the cookie is given
-# no lifetime, and the browser throws it away when it quits: that is the default, by the
-# user's choice (2026-10; before that it was always 400 days). With it set, the cookie lasts
-# that many days from the login. 400 is the most there is: browsers cap a cookie at that
-# however much is asked for, so there is no "forever" to offer.
+# How long a login lasts is decided here, where the token is kept, and set under [session]
+# (the modules' session.*). The cookie only carries the token and is given the same lifetime;
+# it decides nothing. It was the other way round until 2026-10-11, with the settings under
+# [session.cookies]: the default gave the cookie no lifetime, for the browser to drop when it
+# quit, and the token 400 days. A browser that restores its tabs restores such a cookie with
+# them, so the user was never asked for the password again, and the limit left was the 400
+# days. Nothing a server can see says that a browser has quit.
+#
+# With `days` unset, the default: a login ends once the page has not been heard from for
+# SESSION_IDLE (an open page asks /api/v1/ping every few seconds, so this is the page being
+# gone: closed, the browser quit, the computer asleep), and SESSION_LIFETIME after the login
+# whatever happens, or a tab left open somewhere would be a login for good. The idle time is
+# not seconds because a browser slows a hidden tab's timers down to one a minute.
+#
+# With it set, a login lasts that many days from the login and there is no idle limit: asking
+# for days is asking to stay logged in with the page closed. 400 is the most there is:
+# browsers cap a cookie at that however much is asked for, so there is no "forever" to offer.
 #
 # `renew` makes those days count from the last visit and not from the login: the
 # cookie is then sent again, with its full lifetime, every time the page is loaded (see
 # _renew_session()). An option of its own, and off unless asked for, because a login that
 # quietly never ends is not what a number of days says. Renewing was once all there was.
-#
-# SESSION_LIFETIME is the server's side of it, how long the token is good for here. A cookie
-# without a lifetime gives no date to go by, so then it is the 400 days: a login whose browser
-# has quit can't be used again anyway, and just sits in the list until then.
 SESSION_MAX_DAYS   = 400
-SESSION_LIFETIME   = SESSION_MAX_DAYS * 24 * 3600
+SESSION_LIFETIME   = 24 * 3600      # seconds a login lasts at most; from days when that is set
+SESSION_IDLE       = 15 * 60        # seconds without a request that end it; None with days
 SESSION_COOKIE_AGE = None           # seconds, from days; None: until the browser quits
 SESSION_RENEW      = False          # renew: count them from the last page load
 _SESSIONS        = {}               # sha256(token) -> {'user': str, 'expires': unix time}
@@ -457,6 +466,10 @@ def _load_sessions():
         for k, v in data.items():
             if isinstance(v, dict) and v.get('expires', 0) > now:
                 _SESSIONS[k] = {'user': str(v.get('user', '')), 'expires': v['expires']}
+                # When each was last heard from is not saved (that would be a write for every
+                # ping), so a restart counts as hearing from all of them: the page of one who
+                # is there reloads and goes on, and the others end SESSION_IDLE from now.
+                _SESSION_SEEN[k] = now
 
 def _save_sessions():
     """Call with _SESSIONS_LOCK held."""
@@ -474,6 +487,7 @@ def _new_session(user):
     token = secrets.token_hex(32)
     with _SESSIONS_LOCK:
         _SESSIONS[_token_id(token)] = {'user': user, 'expires': time.time() + SESSION_LIFETIME}
+        _SESSION_SEEN[_token_id(token)] = time.time()
         _save_sessions()
     return token
 
@@ -483,24 +497,28 @@ def _session(headers):
     if not token:
         return None
     with _SESSIONS_LOCK:
-        s = _SESSIONS.get(_token_id(token))
-        if s and s['expires'] <= time.time():
-            del _SESSIONS[_token_id(token)]
+        key, now = _token_id(token), time.time()
+        s = _SESSIONS.get(key)
+        idle = SESSION_IDLE is not None and now - _SESSION_SEEN.get(key, 0) > SESSION_IDLE
+        if s and (s['expires'] <= now or idle):
+            del _SESSIONS[key]
+            _SESSION_SEEN.pop(key, None)
             _save_sessions()
             s = None
         if s:
-            _SESSION_SEEN[_token_id(token)] = time.time()
+            _SESSION_SEEN[key] = now
         return s
 
 def _session_cookie(token):
-    """Set-Cookie value. Max-Age is what makes a login outlast the browser being quit: without
-    it the cookie only lives as long as the browser process does (see SESSION_COOKIE_AGE)."""
+    """Set-Cookie value. With `days` the cookie is given the same lifetime (Max-Age), so the
+    browser keeps it when it quits. Without, it has none: a browser may drop it on quitting
+    or bring it back with its tabs, and either is fine, since the login ends here."""
     secure = '; Secure' if USE_TLS else ''
     age = '' if SESSION_COOKIE_AGE is None else f'; Max-Age={SESSION_COOKIE_AGE}'
     return f'eznix_session={token}; HttpOnly; SameSite=Strict; Path=/{age}{secure}'
 
 def _renew_session(headers):
-    """With [session.cookies] renew: push this session's expiry out again and return the cookie to send
+    """With [session] renew: push this session's expiry out again and return the cookie to send
     with it. None otherwise, and when there is no session. Called when the page itself is
     loaded -- so a login then lasts SESSION_LIFETIME past the last time the page was opened,
     not past the day it was made."""
@@ -2264,7 +2282,7 @@ def main():
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
-    global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_COOKIE_AGE, SESSION_RENEW
+    global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
         prog='eznix', description='A web editor for Nix configurations.',
@@ -2383,18 +2401,19 @@ def main():
     # System passwords are the login when the config names users for it, or when no plugin
     # brought a login of its own. Never start with no way in at all.
     ALLOWED_USERS = {str(u).strip() for u in cfg.get('users', []) if str(u).strip()}
-    cookies = (cfg.get('session') or {}).get('cookies') or {}
-    if 'days' in cookies:
-        days = cookies['days']
+    session = cfg.get('session') or {}
+    if 'days' in session:
+        days = session['days']
         if isinstance(days, bool) or not isinstance(days, (int, float)) or not 0 < days <= SESSION_MAX_DAYS:
-            sys.exit(f'eznix: [session.cookies] days must be a number of days above 0 and at most {SESSION_MAX_DAYS}, '
-                     'the longest a browser keeps a cookie. Leave it out for a login that lasts '
-                     'until the browser is closed.')
+            sys.exit(f'eznix: [session] days must be a number of days above 0 and at most {SESSION_MAX_DAYS}, '
+                     'the longest a browser keeps a cookie. Leave it out for a login that ends '
+                     'when the page has been closed for a while.')
         SESSION_LIFETIME = SESSION_COOKIE_AGE = int(days * 24 * 3600)
-    SESSION_RENEW = bool(cookies.get('renew', False))
+        SESSION_IDLE = None
+    SESSION_RENEW = bool(session.get('renew', False))
     if SESSION_RENEW and SESSION_COOKIE_AGE is None:
-        sys.exit('eznix: [session.cookies] renew needs days: a login that lasts until the browser is '
-                 'closed has no days to count again.')
+        sys.exit('eznix: [session] renew needs days: a login that ends when the page is closed '
+                 'has no days to count again.')
     SYSTEM_LOGIN = bool(ALLOWED_USERS) or not LOGINS
     if SYSTEM_LOGIN:
         ALLOWED_USERS = ALLOWED_USERS or {getpass.getuser()}
