@@ -2148,6 +2148,13 @@ function doAdd() {
 // their own to jump to, only one row for the whole value. (A tree of the open file in a side
 // panel used the same test and the same jump. It was taken out in 2026-10, on the user's word
 // that it was no longer needed once files were small and their sections fold.)
+//
+// What is typed is taken as words: a result is a setting where every one of them is found
+// somewhere, in any order, in its path, its value or its file's name ("qbit enable" finds
+// services.qbittorrent.enable, "qbit true" the ones switched on). It was one piece of text that
+// had to stand as typed in the path, or else in the value, so two words never found anything
+// (the user, 2026-10-11). What is inside a value counts in full, the names and values of an
+// object in a list too: those were skipped, an object read as the text "[object Object]".
 const SEARCH_MAX_RESULTS = 150;
 
 function _searchMatchText(v) {
@@ -2155,6 +2162,7 @@ function _searchMatchText(v) {
   if (Array.isArray(v)) return v.map(_searchMatchText).join(' ');
   if (isExprPkg(v)) return v._expr;
   if (isDisabled(v)) return _searchMatchText(v._value);
+  if (typeof v === 'object') return Object.entries(v).map(([k, x]) => k + ' ' + _searchMatchText(x)).join(' ');
   return String(v);
 }
 
@@ -2164,26 +2172,26 @@ function _searchValuePreview(v) {
   if (isExprPkg(v)) return '<' + v._expr + '>';
   if (isDisabled(v)) return '(disabled) ' + _searchValuePreview(v._value);
   if (typeof v === 'string') return JSON.stringify(v);
+  if (typeof v === 'object') return '{' + Object.entries(v).map(([k, x]) => k + ': ' + _searchValuePreview(x)).join(', ') + '}';
   return String(v);
 }
 
 function _collectSearchMatches(query) {
-  const q = query.trim().toLowerCase();
-  if (!q) return { results: [], truncated: false };
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  if (!words.length) return { results: [], truncated: false };
   const results = [];
   let truncated = false;
 
-  function walk(file, obj, path) {
+  function walk(file, obj, path, fileText) {
     if (truncated || typeof obj !== 'object' || obj === null || Array.isArray(obj)) return;
     for (const [k, v] of Object.entries(obj)) {
       if (truncated) return;
       const childPath = [...path, k];
       const pathKey = childPath.join('.');
       const isSection = v !== null && typeof v === 'object' && !Array.isArray(v) && !isExprPkg(v) && !isDisabled(v);
-      if (isSection) { walk(file, v, childPath); continue; }
-      const pathMatch = pathKey.toLowerCase().includes(q);
-      const valueMatch = _searchMatchText(v).toLowerCase().includes(q);
-      if (pathMatch || valueMatch) {
+      if (isSection) { walk(file, v, childPath, fileText); continue; }
+      const text = (pathKey + ' ' + _searchMatchText(v) + ' ' + fileText).toLowerCase();
+      if (words.every(w => text.includes(w))) {
         results.push({ file, pathKey, path: childPath, value: v });
         if (results.length >= SEARCH_MAX_RESULTS) { truncated = true; return; }
       }
@@ -2191,7 +2199,7 @@ function _collectSearchMatches(query) {
   }
 
   for (const file of Object.keys(fileConfigs)) {
-    walk(file, fileConfigs[file], []);
+    walk(file, fileConfigs[file], [], _filePathLabel(file));
     if (truncated) break;
   }
   return { results, truncated };
@@ -2217,7 +2225,7 @@ function toggleSearchPanel() {
   wrap.className = 'autocomplete-wrap search-panel-wrap';
   const inp = document.createElement('input');
   inp.type = 'text';
-  inp.placeholder = 'Search option paths or values…';
+  inp.placeholder = 'Search: words from a path, a value or a file…';
   inp.autocomplete = 'off';
   const list = document.createElement('div');
   list.className = 'autocomplete-list search-results-list hidden';
