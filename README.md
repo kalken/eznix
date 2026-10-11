@@ -9,7 +9,7 @@ framework: just Python and a browser.
 - Edit a NixOS, nix-darwin or home-manager configuration in a web page, with suggestions for options and packages taken from your own flake
 - The configuration is split over files and folders of your choosing, each a tab, merged by Nix when you rebuild
 - Nothing is written until you save; undo and redo, and the earlier versions of every file kept to go back to
-- Search (Ctrl+F) across all files for an option or a value
+- Search (Ctrl+F) across all files for an option or a value, each result with the file it is in
 - A terminal in the page, with buttons and menus of your own for rebuilding and anything else
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself

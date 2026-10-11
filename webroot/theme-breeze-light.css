@@ -45,6 +45,7 @@
   --select-option-color: #232629;
   --select-option-hover: #c2e0f5;
   --popup-bg: #ffffff; /* dialogs and tooltips */
+  --search-file-color: #1f72aa; /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
   --btn-primary-border: #2980b9;

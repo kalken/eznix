@@ -86,7 +86,9 @@ comes from them.
   a dark theme, darker in a light one), or hover states disappear.
 - **Popups** (`--popup-bg`, `--select-option-bg`) sit above everything and want their own
   shade, not the page's. `--popup-bg` is one surface shared by dialogs, the documentation popup
-  over an option and the search results, so those always match each other.
+  over an option and the search results, so those always match each other. `--search-file-color`
+  is the file a search result is in, a line of small text on that surface: pick something
+  readable there that is neither the path's colour (`--text2`) nor the value's.
 - **Edges are shadows, not borders**: `--panel-hairline` is the 1px line along a bar or card,
   `--panel-shadow` the soft shadow beside it. Both are translucent black, so they need lowering
   a lot on a light theme and barely show on a very dark one.

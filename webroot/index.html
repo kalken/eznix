@@ -2256,7 +2256,11 @@ function toggleSearchPanel() {
       name.className = 'ac-name'; name.textContent = r.pathKey;
       const val = document.createElement('span');
       val.className = ('ac-desc ' + kind).trim(); val.textContent = _searchValuePreview(r.value);
-      item.append(name, val);
+      // Which file it is in, on a line of its own under the path: the same option can be set
+      // in several.
+      const file = document.createElement('span');
+      file.className = 'search-result-file'; file.textContent = _filePathLabel(r.file);
+      item.append(name, file, val);
       item.addEventListener('mousedown', e => { e.preventDefault(); _jumpToSearchResult(r); });
       list.appendChild(item);
     });
@@ -5037,6 +5041,12 @@ function _tabLabel(name) {
   if (base.endsWith('.json.disabled')) base = base.slice(0, -'.json.disabled'.length);
   else if (base.endsWith('.json')) base = base.slice(0, -5);
   return base;
+}
+// A file as it is named where there is no tab bar to say which folder it is in: its folders and
+// its name as the tabs show them, so without ".json" and without what marks one as disabled.
+function _filePathLabel(name) {
+  const folders = name.split('/').slice(0, -1).map(_folderLabel);
+  return [...folders, _tabLabel(name)].join('/');
 }
 
 // A file is disabled either directly (its own name ends in ".json.disabled" — a plain

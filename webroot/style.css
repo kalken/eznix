@@ -737,6 +737,13 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   background: var(--popup-bg); box-shadow: 0 4px 16px var(--shadow);
 }
 .search-results-list .ac-name { color: var(--text2); }
+/* The file a result is in has a line of its own under the path, in a colour the theme names
+   for it (--search-file-color): a blue in every theme, its accent where that is one, and
+   otherwise that system's own blue in a tone readable on the popup (calculated: about 5 to 1
+   against --popup-bg in all eight). Tried by the user first and given up: the path's colour,
+   which ran into the path above it, the dimmest text, which was hard to read, and each
+   theme's purple ("i dont like the pink"). */
+.search-result-file { color: var(--search-file-color); font-size: 11px; overflow-wrap: anywhere; }
 .search-results-list .ac-desc { color: var(--text); }
 .search-results-list .ac-desc.is-expr { color: var(--green); }
 .search-results-list .ac-desc.is-pkgs { color: var(--accent); }
