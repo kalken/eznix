@@ -86,6 +86,7 @@ import shlex
 import shutil
 import signal
 import socket
+import socketserver
 import ssl
 import subprocess
 import sys
@@ -2217,6 +2218,18 @@ class _Server(http.server.ThreadingHTTPServer):
     request_queue_size = 128
     tls = None
 
+    def server_bind(self):
+        """Bind, and no more. http.server's own goes on to look its address up in DNS
+        (socket.getfqdn(), for a server_name nothing here uses), at every start, between
+        binding and listening: where that lookup is slow, eznix was started and refusing
+        connections for as long as it took. On the user's router (2026-10-11), after a rebuild
+        that restarted only eznix, in a second by the journal, page and terminal were both
+        out for about a minute, long enough for the terminal to give up reconnecting. That
+        the lookup was what took the minute is not proven: none of eznix's own lines were in
+        that journal (see line_buffering at the bottom)."""
+        socketserver.TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
+
     def finish_request(self, request, client_address):
         if not self.tls:
             return super().finish_request(request, client_address)
@@ -2458,4 +2471,9 @@ def main():
 
 
 if __name__ == '__main__':
+    # Each line out as it is written. Started by a service manager, output goes to a pipe and
+    # Python then holds it back until some kilobytes have gathered: the requests, the logins
+    # and the lines printed at start never reached the journal while they were of any use
+    # (seen in the user's journal on 2026-10-11, which had systemd's lines and none of these).
+    sys.stdout.reconfigure(line_buffering=True)
     main()
