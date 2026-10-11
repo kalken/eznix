@@ -991,7 +991,7 @@ class PluginApi:
 
     def login(self, check, user=None):
         """Add a way to log in: check(username, password) says whether that is right. `user`,
-        when the method is for one known name, lets the login page offer it."""
+        when the method is for one known name, is that name, for what eznix says at start."""
         LOGINS.append((self.name, check, user))
 
     def get(self, path, handler):
@@ -1242,70 +1242,12 @@ def _ca_download_name():
 
 
 def _read_login_page(error=''):
-    # Every name there is a login for, when that is known.
-    names = sorted({u for _p, _c, u in LOGINS if u} | (ALLOWED_USERS if SYSTEM_LOGIN else set()))
-    if len(names) > 1:
-        # A <select> here (tried first) can only ever submit one of these exact values, but
-        # browsers' saved-password heuristics look for an <input> paired with the password field --
-        # a <select> isn't recognized as a username field at all, so Brave/Chrome saved the password
-        # with no username attached. A plain <input> with a <list>-linked <datalist> (tried second)
-        # fixed that but broke autofill in a different way: Chromium suppresses its own saved-
-        # password suggestion dropdown on any input that has a `list` attribute at all, since the
-        # datalist popup and the browser's native autofill popup would otherwise compete for the
-        # same space -- confirmed this reproduces on any <input list=...> paired with a password
-        # field, on any site, not something specific to this app. A hand-rolled dropdown wired to
-        # the input's own focus/typing (tried third) hit the exact same problem one level up:
-        # screenshotted on a real login, our dropdown and the browser's own suggestion (both opening
-        # on focus) stacked on top of each other. There's no documented way to make a suggestion UI
-        # and the browser's native autofill popup coexist at that same moment -- checked Chromium's
-        # own password-forms guidance and web.dev's sign-in-form best practices, neither covers it --
-        # so this version doesn't try: the field is an entirely ordinary <input> that autofill never
-        # has any reason to react to, and the picker is a separate, explicit action (a small arrow
-        # button) rather than anything tied to focusing or typing in the field at all. None of this
-        # is a security boundary either way: user_allowed() re-checks the submitted username against
-        # ALLOWED_USERS server-side regardless of how it arrived, since anyone can POST /login with
-        # an arbitrary username directly, with or without a picker in front of it.
-        users_json = json.dumps(names)
-        username_field = f'''<div class="login-suggest-wrap">
-      <input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username" autofocus>
-      <button type="button" class="login-suggest-arrow" id="u-arrow" tabindex="-1" aria-label="Choose a username">&#9662;</button>
-      <div class="login-suggest hidden" id="u-suggest"></div>
-    </div>
-    <script>
-    (function() {{
-      var users = {users_json};
-      var inp = document.getElementById('u');
-      var arrow = document.getElementById('u-arrow');
-      var list = document.getElementById('u-suggest');
-      function render() {{
-        list.innerHTML = '';
-        users.forEach(function(u) {{
-          var item = document.createElement('div');
-          item.className = 'login-suggest-item';
-          item.textContent = u;
-          item.addEventListener('mousedown', function(e) {{
-            e.preventDefault();
-            inp.value = u;
-            list.classList.add('hidden');
-          }});
-          list.appendChild(item);
-        }});
-      }}
-      render();
-      // The only way this ever opens -- never on the input's own focus or typing, both of which
-      // the browser's native autofill also reacts to on this same field (see the comment above).
-      // An explicit click is a separate, deliberate action that can't collide with that.
-      arrow.addEventListener('mousedown', function(e) {{
-        e.preventDefault();
-        list.classList.toggle('hidden');
-      }});
-      document.addEventListener('mousedown', function(e) {{
-        if (e.target !== arrow && !list.contains(e.target)) list.classList.add('hidden');
-      }});
-    }})();
-    </script>'''
-    else:
-        username_field = '<input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username" autofocus>'
+    # The page offers no names, also when it could know them (the users system passwords are
+    # accepted for, the one a plugin's login is for): whoever logs in knows their own. Until
+    # 2026-10-11 the field came filled in when there was one name, and had an arrow listing
+    # them when there were several. That list was a <select> first, then a <datalist>, then a
+    # dropdown opening on focus, and each got in the way of the browser's saved logins, which
+    # are what offers a name now.
     ca_link = ''
     if CA_FILE and os.path.exists(CA_FILE):
         ca_link = (f'<div class="login-ca-link"><a href="/download-ca" tabindex="-1">'
@@ -1316,7 +1258,6 @@ def _read_login_page(error=''):
                 .replace('%%EZNIX_ERROR%%', error)
                 .replace('%%EZNIX_THEME_LINKS%%', _theme_links(THEME))
                 .replace('%%EZNIX_HOSTNAME%%', html.escape(HOSTNAME))
-                .replace('%%EZNIX_USERNAME_FIELD%%', username_field)
                 .replace('%%EZNIX_CA_LINK%%', ca_link))
     except FileNotFoundError:
         return f'<html><body><form method="post" action="/login"><input name="username"><input name="password" type="password"><button>Sign in</button></form><p>{error}</p></body></html>'
