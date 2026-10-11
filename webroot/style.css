@@ -348,11 +348,11 @@ body {
    user preferred the even rows. (Both at once would need the strip to start right under the
    heading's text.) */
 .field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 4px; }
-/* A text value's own text sits 1px border + 3px/6px padding inside its box. A toggle (7px from
-   the left, here) and the key (4px from the top, above) are offset by the same amounts, so
-   every kind of value starts on one vertical line and a key shares a text line with its
-   value. */
-.field-row.nest .toggle-wrap { padding-left: 7px; }
+/* A text value's own text sits 1px border + 3px padding inside its box, above and at the left.
+   A toggle (4px from the left, here) and the key (4px from the top, above) are offset by the
+   same amounts, so every kind of value starts on one vertical line and a key shares a text
+   line with its value. */
+.field-row.nest .toggle-wrap { padding-left: 4px; }
 /* Object items inside an array sit in the value column already, so they restart at depth 0
    (see _setNestDepths()) with a narrower key column of their own. */
 .array-obj-fields { --key-width: var(--list-key-width); }
@@ -450,7 +450,17 @@ body {
    an empty one says so with a placeholder instead (_setValuePlaceholders()). */
 .field-row.nest :is(input[type=text], input[type=number], input[type=password], textarea, .custom-select-btn):not(.key-rename-input) {
   border-color: transparent;
+  /* 4px from the strip's left edge to the text, with the 1px border: what a value has above it
+     in its row. Every kind of value starts on that line (a switch, chips and the "Add item…"
+     of an empty list, below and further down), so a strip is as close to its values at the
+     side as at the top. It was 7px, and a switch in the first row sat visibly nearer the
+     strip's top than its side; the user's way of evening that out, after room added at the
+     top instead had made the rows uneven (2026-10-11). The right side is the same 4px, for
+     a long text and for a dropdown's arrow (the two rules after this one). */
+  padding-left: 3px; padding-right: 3px;
 }
+.field-row.nest .custom-select-btn:not(.key-rename-input) { padding-right: 19px; }
+.field-row.nest .custom-select-btn::after { right: 4px; }
 .field-row.nest :is(input, textarea)::placeholder { color: var(--text3); opacity: 1; }
 /* No gaps between the plain items of a list, or between the options inside one object item --
    but object items themselves keep a gap, so each one still reads as a separate entry. */
@@ -458,7 +468,7 @@ body {
 /* ...except between a package or value list and the box for adding to it. */
 .field-row.nest > .field-value:has(> .pkg-items) { gap: 2px; }
 /* Chips start on the same vertical line as every other kind of value (see .toggle-wrap). */
-.field-row.nest .pkg-items { padding: 4px 7px; }
+.field-row.nest .pkg-items { padding: 4px; }
 /* An object item is filled like a section, so its keys sit on the section colour while its own
    value cells stay the page colour -- the same split an ordinary option row has. */
 .field-row.nest .array-obj-item { background: var(--card-bg); }
@@ -856,7 +866,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
 /* What an empty list shows in place of its first item (renderArrayField()): the placeholder's
    colour, on the line and at the left edge where a value's text is. */
-.list-empty { color: var(--text3); font-size: 12px; padding: 4px 7px; cursor: pointer; }
+.list-empty { color: var(--text3); font-size: 12px; padding: 4px; cursor: pointer; }
 .list-empty:hover { color: var(--text2); }
 
 /* ── Invalid input state ── */
