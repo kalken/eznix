@@ -70,6 +70,8 @@
   --field-bg: rgb(0 0 0 / 4%);
   --editor-bg: var(--bg);  /* the editor page */
   --card-bg:   #ffffff; /* the filled block of a top-level section */
+  --card-border:  var(--panel-hairline); /* the line around that block */
+  --value-border: transparent; /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */

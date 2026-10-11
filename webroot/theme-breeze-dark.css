@@ -1,17 +1,24 @@
-/* Breeze Dark — KDE Plasma's dark colour scheme: its window and view greys, the Plasma blue as
-   the accent, its signal colours, and Konsole's Breeze colours in the terminal. */
+/* Breeze Dark — KDE Plasma's dark colour scheme, with each colour where Plasma has it: the
+   header bars in its Header colour (#292c30) and the page in its Window colour (#202326).
+   The Plasma blue is the accent, the signal colours are Plasma's, and the terminal has
+   Konsole's Breeze colours. The values are read from BreezeDark.colors (breeze 6.7); the
+   first version had the same colours on the wrong surfaces, the page darkest and the
+   sections lighter, and did not look like Plasma.
+   Nothing in the editor is filled: Plasma's own settings pages put options straight on the
+   window's colour, so a section and a value cell here are that colour too, each with a line
+   around it (the user's wish on seeing an earlier version beside System Settings). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
-  --bg:   #141618;
-  --bg2:  #202326;
-  --bg3:  #292c30;
-  --bg4:  #31363b;
+  --bg:   #202326;
+  --bg2:  #292c30;
+  --bg3:  #31363b;
+  --bg4:  #3b4045;
   --text:  #fcfcfc;
-  --text2: color-mix(in srgb, #fcfcfc 62%, #202326);
-  --text3: color-mix(in srgb, #fcfcfc 40%, #202326);
+  --text2: #a1a9b1;
+  --text3: color-mix(in srgb, #a1a9b1 70%, #202326);
   --accent:  #3daee9;
   --accent2: #1d99f3;
   /* The NixOS logo, every other arm: the two Breeze blues. */
@@ -30,12 +37,12 @@
   --term-padding: 4px;
 
   /* ── Borders ── */
-  --border:  #33373b;
-  --border2: #4b5055;
-  --input-border: #3b4045;
+  --border:  #35383c;
+  --border2: #45484c;
+  --input-border: #45484c;
   --select-option-bg:    #292c30;
   --select-option-color: #fcfcfc;
-  --select-option-hover: #3a4046;
+  --select-option-hover: color-mix(in srgb, #3daee9 25%, #292c30);
   --popup-bg: #292c30; /* dialogs and tooltips */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
@@ -44,7 +51,7 @@
   --btn-primary-text:   #ffffff;
 
   /* ── Selection / highlight ── */
-  --selected-bg:   color-mix(in srgb, #3daee9 30%, #202326);
+  --selected-bg:   #1e5774;
   --toggle-on-bg:  #3daee9;
   --toggle-on-knob:   #fcfcfc;
   --toggle-on-border: #3daee9;
@@ -52,7 +59,7 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #31363b;
+  --tab-active-bg:     #202326;
   --tab-active-border: #3daee9;
   --tab-active-text:   var(--text);
 
@@ -64,12 +71,14 @@
   --success-border: color-mix(in srgb, #27ae60 35%, #202326);
 
   /* ── Nix expression fields ── */
-  --expr-border: #33373b;
+  --expr-border: #35383c;
 
   /* ── Editor fields ── */
   --field-bg: rgb(255 255 255 / 5%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--bg3); /* the filled block of a top-level section */
+  --card-bg:   var(--editor-bg); /* a top-level section: the page's own colour, told apart by its line */
+  --card-border:  var(--border2); /* the line around that block */
+  --value-border: var(--border); /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
@@ -97,8 +106,8 @@
   --wildcard-bg:    #292c30;
   --wildcard-hover: #31363b;
   --shadow:         rgb(0 0 0 / 45%);
-  --panel-hairline: rgb(0 0 0 / 45%); /* 1px line along a panel edge */
-  --panel-shadow:   rgb(0 0 0 / 30%); /* small soft shadow a panel casts beside that line */
+  --panel-hairline: var(--border); /* 1px line along a panel edge */
+  --panel-shadow:   transparent; /* small soft shadow a panel casts beside that line */
   --overlay:        #00000099;
   --scrollbar:      #4d5257;
   --scrollbar-hover: #6b7177;

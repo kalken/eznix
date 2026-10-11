@@ -322,29 +322,20 @@ body {
    (the value cell carries it), so the value cells of consecutive rows touch and form one strip
    that's only rounded at its two ends. */
 .field-row.nest { background: transparent; padding: 0; border-radius: 0; min-height: var(--row-height); }
-/* Barely different from the card it sits on (see --value-bg in the themes). */
-.field-row.nest > .field-value { background: var(--value-bg); border-radius: var(--radius); padding: 2px 0; }
-.field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; }
-.field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; }
-.field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 6px; }
-/* A text value's own text sits 1px border + 3px/6px padding inside its box, itself 2px down
-   inside the value cell. The key (6px from the top, above) and a toggle (7px from the left, here) are offset by the same amounts, so a
-   key shares a text line with its value and every kind of value starts on one vertical line. */
-.field-row.nest .toggle-wrap { padding-left: 7px; }
-/* Object items inside an array sit in the value column already, so they restart at depth 0
-   (see _setNestDepths()) with a narrower key column of their own. */
-.array-obj-fields { --key-width: var(--list-key-width); }
-/* The heading of a top-level section lines up with the content of the cards beneath it. */
-.section.nest-top > .section-header { padding: 0 var(--block-pad) var(--card-gap); }
-/* Section names by depth: a top-level one reads as a title, a sub-section gets the full accent,
-   and anything deeper keeps .section-key's own dimmed tone. */
-.section.nest-top > .section-header .section-key { color: var(--section-title-color); font-size: var(--section-title-size); }
-.section.nest-card > .section-header .section-key { color: var(--section-key-color); }
-/* .file-card is the wrapper renderEditor() puts around everything in the file. It used to be a
-   filled, outlined block of its own with the sections framed inside it; now it's only spacing
-   (--page-margin, the same on every side), and each top-level section is its own card straight
-   on the page (see below). */
-.file-card { padding: calc(var(--page-margin) - 10px) calc(var(--page-margin) - 12px); } /* less .editor-area's own padding */
+/* Barely different from the card it sits on (see --value-bg in the themes). A theme can give
+   the strip a line around it instead of, or beside, the fill (--value-border; transparent in
+   most): around the strip as one block, which is what was filled, and not around each cell
+   in it (tried first, and not what the user meant: "each input should not have a border").
+   Drawn as inset shadows so that nothing moves; a cell with one above it has no top line and
+   one with another below it no bottom line. */
+.field-row.nest > .field-value {
+  background: var(--value-bg); border-radius: var(--radius); padding: 2px 0;
+  --value-line-top: var(--value-border); --value-line-bottom: var(--value-border);
+  box-shadow: inset 1px 0 var(--value-border), inset -1px 0 var(--value-border),
+              inset 0 1px var(--value-line-top), inset 0 -1px var(--value-line-bottom);
+}
+.field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; --value-line-top: transparent; }
+.field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; --value-line-bottom: transparent; }
 .file-card:empty { display: none; }
 .file-card > .section:last-child { margin-bottom: 0; }
 /* Everything at the top level of the file is a card -- a section, or an option set at the root
@@ -353,7 +344,7 @@ body {
 .section.nest-top, .field-row.nest-root {
   background: var(--card-bg);
   border-radius: var(--radius);
-  box-shadow: 0 0 0 1px var(--panel-hairline), 0 0 var(--panel-shadow-size) var(--panel-shadow);
+  box-shadow: 0 0 0 1px var(--card-border), 0 0 var(--panel-shadow-size) var(--panel-shadow);
 }
 .section.nest-top { padding: 8px 0; }
 .field-row.nest-root { padding-top: 8px; padding-bottom: 8px; margin-bottom: var(--section-gap); }
@@ -396,7 +387,7 @@ body {
 .field-row.nest .pkg-items { padding: 4px 7px; }
 /* An object item is filled like a section, so its keys sit on the section colour while its own
    value cells stay the page colour -- the same split an ordinary option row has. */
-.field-row.nest .array-obj-item { background: var(--card-bg); }
+.field-row.nest .array-obj-item { background: var(--card-bg); box-shadow: inset 0 0 0 1px var(--value-border); }
 .field-row.nest .array-obj-item + .array-obj-item { margin-top: var(--list-item-gap); }
 /* ...and the same space between the items and the edges of the value cell holding them, so every
    object item has it on all four sides. */
@@ -509,7 +500,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* Half dark, half light: a pair of themes that follows the system. The plain colour underneath
    is what it's sorted by (see _applyInitialTheme()), which puts these after the dark themes. */
 .theme-swatch-osx { background: #858585 linear-gradient(90deg, #1e1e1e 50%, #ececec 50%); border-color: #8e8e93; }
-.theme-swatch-breeze { background: #828384 linear-gradient(90deg, #141618 50%, #eff0f1 50%); border-color: #3daee9; }
+.theme-swatch-breeze { background: #888a8c linear-gradient(90deg, #202326 50%, #eff0f1 50%); border-color: #3daee9; }
 .theme-swatch-gnome { background: #8b8b8d linear-gradient(90deg, #1d1d20 50%, #fafafb 50%); border-color: #3584e4; }
 .theme-swatch-custom { background: #808080; border-color: #b0b0b0; } /* a user theme: overridden inline from its own colours */
 

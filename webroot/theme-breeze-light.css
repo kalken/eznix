@@ -1,5 +1,7 @@
-/* Breeze Light — KDE Plasma's light colour scheme: its window grey with white views, the
-   Plasma blue as the accent. The counterpart of theme-breeze-dark.css. */
+/* Breeze Light — KDE Plasma's light colour scheme: the header bars in its Header colour
+   (#dee0e2) and the page in its Window colour (#eff0f1). The counterpart of
+   theme-breeze-dark.css, with sections and value cells drawn as lines and not filled, as
+   there; the values are read from BreezeLight.colors (breeze 6.7). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
@@ -44,7 +46,7 @@
   --btn-primary-text:   #ffffff;
 
   /* ── Selection / highlight ── */
-  --selected-bg:   color-mix(in srgb, #3daee9 30%, #ffffff);
+  --selected-bg:   #a3d4fa;
   --toggle-on-bg:  #3daee9;
   --toggle-on-knob:   #ffffff;
   --toggle-on-border: #3daee9;
@@ -52,7 +54,7 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
-  --tab-active-bg:     #fcfcfc;
+  --tab-active-bg:     #eff0f1;
   --tab-active-border: #3daee9;
   --tab-active-text:   var(--text);
 
@@ -69,7 +71,9 @@
   /* ── Editor fields ── */
   --field-bg: rgb(0 0 0 / 4%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   #ffffff; /* the filled block of a top-level section */
+  --card-bg:   var(--editor-bg); /* a top-level section: the page's own colour, told apart by its line */
+  --card-border:  var(--border2); /* the line around that block */
+  --value-border: var(--border); /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
   --key-width:      300px; /* key column; every value starts right after it */
@@ -97,8 +101,8 @@
   --wildcard-bg:    #f7f7f7;
   --wildcard-hover: #e9eaeb;
   --shadow:         rgb(0 0 0 / 14%);
-  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
-  --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
+  --panel-hairline: var(--border); /* 1px line along a panel edge */
+  --panel-shadow:   transparent; /* small soft shadow a panel casts beside that line */
   --overlay:        #00000055;
   --scrollbar:      #b8bdc2;
   --scrollbar-hover: #9aa0a6;
