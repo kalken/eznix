@@ -377,14 +377,18 @@ body {
 .field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
 /* A second-level section is only set off by a plain line above it, across the frame it sits
    in: the frame's hairline colour, without the shadow. */
-/* The same 8px between its line and what is nearest on either side, as one sees it: above, to
-   its name (4px here and the 4px a row's text has above it); below, to the bottom edge of
-   its last row, which a value strip fills right to that edge (8px here). With 4px below, the
-   user's picture showed a sub-section's values ending almost on the next one's line. */
-.section.nest-card { padding: 4px var(--block-pad) 8px; border-top: 1px solid var(--panel-hairline); }
-/* No gap before or after a sub-section: its own line and its padding set it off from what is
-   above and below (it had the themes' --card-gap on both sides, then only after it, until
-   the user had both taken out on 2026-10-11). */
+/* One rule for the space round a sub-section: the themes' --card-gap (8px) between it and
+   whatever is next to it, above or below, be that another sub-section or a plain option of
+   the top-level section. The line is the sub-section's top edge, so it has the gap above it;
+   its name follows 8px under the line (4px here and the 4px a row's text has above it); and
+   the sub-section has no padding at its bottom, the gap after it being that space. Above the
+   first one the top-level name's own padding is the gap, below the last one the card's.
+   This is the rule the stylesheet began the day with, 2026-10-11. In between, the gap was
+   taken out and the space put back case by case (padding below a sub-section, a margin
+   under a plain option), each time for the one place the user had pointed at, until the
+   user asked whether one rule could cover everything. */
+.section.nest-card { padding: 4px var(--block-pad) 0; border-top: 1px solid var(--panel-hairline); }
+* + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
 /* Every section from the third level down (.nest-arrow) can be folded away, and starts out
    folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
    pointing right while the section is hidden and down while it's shown. The arrow is part of
