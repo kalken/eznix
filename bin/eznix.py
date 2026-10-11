@@ -1731,13 +1731,35 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self._plugin_route('GET', parsed); return
         if parsed.path == '/api/v1/files':
             try:
-                data = json.dumps({
+                listing = {
                     'files': list_config_files(),
                     'folders': list_config_folders(),
                     'default': DEFAULT_FILE,
-                }).encode()
+                }
+                # With ?content=1, what is in each file too, as the text on disk: the page loads
+                # every tab at start, and asked for them one by one, each its own connection (and
+                # over HTTPS its own handshake), six at a time. With many files that was the
+                # wait before anything showed. A file that can't be read is left out of
+                # `content`, which the page takes as that file failing to load, as before.
+                if parse_qs(parsed.query).get('content', [''])[0] == '1':
+                    listing['content'] = {}
+                    for name in listing['files']:
+                        target = resolve_config_path(name)
+                        try:
+                            with open(target, encoding='utf-8') as f:
+                                listing['content'][name] = f.read()
+                        except (OSError, TypeError, ValueError):
+                            pass
+                data = json.dumps(listing).encode()
+                # Compressed like the page and the suggestions are: with the files' text in it
+                # this is no longer a small answer.
+                gzipped = 'gzip' in self.headers.get('Accept-Encoding', '')
+                if gzipped:
+                    data = gzip.compress(data)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
+                if gzipped:
+                    self.send_header('Content-Encoding', 'gzip')
                 self.send_header('Content-Length', str(len(data)))
                 self.end_headers()
                 self.wfile.write(data)

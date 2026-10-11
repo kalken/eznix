@@ -4123,7 +4123,8 @@ async function reloadFile(name) {
 // entry nothing else references anymore (isAnyDirty() scans Object.keys(fileConfigs), not files).
 async function reloadAllFiles() {
   try {
-    const filesRes = await apiFetch('/files');
+    const autocomplete = _fetchAutocompleteData();
+    const filesRes = await apiFetch('/files?content=1');
     if (!filesRes.ok) throw filesRes.status;
     const data = await filesRes.json();
     files = data.files || [];
@@ -4137,7 +4138,7 @@ async function reloadAllFiles() {
     } else {
       activeFile = null;
     }
-    const ok = await loadSiblingFiles();
+    const ok = await loadSiblingFiles(data.content || {}, autocomplete);
     if (!ok) return;
     renderFileSelector();
     renderAll();
@@ -5637,35 +5638,35 @@ async function loadBackup(name, targetFile) {
 }
 
 // ── Load files ────────────────────────────────────────────────────────────────
+// The suggestions, asked for by themselves so that they can be on their way while the files
+// are (see loadSiblingFiles()). Settles to the five results, never rejects.
+function _fetchAutocompleteData() {
+  const get = name => fetch('autocomplete/' + name + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); });
+  return Promise.allSettled(['packages', 'options', 'kernels', 'brews', 'casks'].map(get));
+}
+
 // Loads every tab's config up front (not just the active one) so Save can persist all of them
 // and save_first buttons can see every file's dirty state, regardless of which tab is open.
-async function loadSiblingFiles() {
+// `content` is every file's text, as it came with the list of files (/files?content=1), and
+// `autocomplete` the suggestions asked for before that list was (_fetchAutocompleteData()).
+// It was a request per file here and then the suggestions, one after the other: with many
+// files the page took a while to show anything, which the user noticed (2026-10-11). The
+// server closes the connection after each answer, so every file was a connection of its own.
+async function loadSiblingFiles(content, autocomplete) {
   let cfgOk = true;
-  if (files.length) {
-    const results = await Promise.allSettled(files.map(f =>
-      fetch(_cfgPathFor(f), { cache: 'no-cache' }).then(r => { if (!r.ok) throw r.status; return r.json(); })
-    ));
-    files.forEach((f, i) => {
-      if (results[i].status === 'fulfilled') {
-        fileConfigs[f] = normalizeConfig(results[i].value);
-        fileSaved[f] = JSON.stringify(fileConfigs[f]);
-        _syncFileSavedToHistory(f, fileSaved[f]);
-      } else {
-        cfgOk = false;
-      }
-    });
-    config = fileConfigs[activeFile] || {};
-  } else {
-    config = {};
-  }
+  files.forEach(f => {
+    try {
+      if (typeof content[f] !== 'string') throw 0;
+      fileConfigs[f] = normalizeConfig(JSON.parse(content[f]));
+      fileSaved[f] = JSON.stringify(fileConfigs[f]);
+      _syncFileSavedToHistory(f, fileSaved[f]);
+    } catch (e) {
+      cfgOk = false;
+    }
+  });
+  config = (files.length && fileConfigs[activeFile]) || {};
 
-  const [pkgResult, optResult, kernelResult, brewResult, caskResult] = await Promise.allSettled([
-    fetch('autocomplete/packages.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-    fetch('autocomplete/options.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-    fetch('autocomplete/kernels.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-    fetch('autocomplete/brews.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-    fetch('autocomplete/casks.json').then(r => { if (!r.ok) throw r.status; return r.json(); }),
-  ]);
+  const [pkgResult, optResult, kernelResult, brewResult, caskResult] = await autocomplete;
 
   if (!cfgOk) {
     document.getElementById('editor-area').innerHTML =
@@ -5695,10 +5696,13 @@ async function _init() {
   eznix.emit('init');
   _initHoverTooltips(document.body);
   _applyInitialTheme();
+  const autocomplete = _fetchAutocompleteData();
+  let content = {};
   try {
-    const filesRes = await apiFetch('/files');
+    const filesRes = await apiFetch('/files?content=1');
     if (filesRes.ok) {
       const data = await filesRes.json();
+      content = data.content || {};
       files = data.files || [];
       folders = data.folders || [];
       folderExists = new Set(folders);
@@ -5709,7 +5713,7 @@ async function _init() {
     }
   } catch (e) { setStatus('Could not load file list', 4000, 'err'); }
   renderFileSelector();
-  const ok = await loadSiblingFiles();
+  const ok = await loadSiblingFiles(content, autocomplete);
   if (!ok) return;
   _tryRestoreHistoryFromStorage();
   renderFileSelector();

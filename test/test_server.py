@@ -179,6 +179,10 @@ def main():
                   and manifest['icons'][1]['purpose'] == 'maskable', manifest)
 
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
+            whole = b.json('/api/v1/files?content=1')[1]
+            check('and come with their text when asked, only then',
+                  whole['content'] == {'a.json': open(f'{tmp}/flake/eznix/a.json').read()}
+                  and 'content' not in b.json('/api/v1/files')[1], whole)
             check('a file saves', b.request('/api/v1/file/save?file=a.json', b'{"a": 2}')[0] == 200
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 2})
             check('and the earlier version is kept', len(b.json('/api/v1/backups?file=a.json')[1]['backups']) == 1)
