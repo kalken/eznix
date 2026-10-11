@@ -89,6 +89,8 @@
   .login-suggest-item { padding: 7px 10px; font-size: 12px; color: var(--text); cursor: pointer; }
   .login-suggest-item:hover { background: var(--bg4); }
   .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  /* The button gets the cursor once a saved login is chosen (the script below), so it shows it. */
+  .login-card .btn:focus { outline: 2px solid var(--input-focus-border); outline-offset: 2px; }
   .login-error { color: var(--red); font-size: 12px; margin-top: 14px; min-height: 18px; text-align: center; }
   .login-ca-link { text-align: center; margin-top: 14px; font-size: 11px; }
   .login-ca-link a { color: var(--text2); text-decoration: none; }
@@ -102,21 +104,53 @@
   <form method="post" action="/login">
     %%EZNIX_USERNAME_FIELD%%
     <input id="p" name="password" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password" autofocus>
-    <button type="submit" class="btn primary" tabindex="-1">Sign in</button>
+    <button type="submit" class="btn primary">Sign in</button>
   </form>
   <div class="login-error">%%EZNIX_ERROR%%</div>
   %%EZNIX_CA_LINK%%
 </div>
 <script>
-// Tab (and Shift+Tab) only ever moves between the two fields -- never on to the button, the
-// username picker's arrow, the certificate link or out into the browser's own toolbar. Enter
-// signs in from either field, so nothing else needs to be reachable by keyboard.
+// Tab goes round the two fields and the button, Shift+Tab the other way -- never on to the
+// username picker's arrow, the certificate link or out into the browser's own toolbar. The
+// button was left out too until the user asked for it (2026-10-11): Enter signs in from either
+// field, but a saved login chosen in the browser's list puts the cursor on the button (below),
+// and from there Tab should lead somewhere one would expect.
 (function() {
   var u = document.getElementById('u'), p = document.getElementById('p');
+  var button = document.querySelector('.login-card button[type=submit]'), stops = [u, p, button];
   document.addEventListener('keydown', function(e) {
     if (e.key !== 'Tab' || e.ctrlKey || e.altKey || e.metaKey) return;
     e.preventDefault();
-    (document.activeElement === u ? p : u).focus();
+    var at = stops.indexOf(document.activeElement);
+    if (at < 0) at = e.shiftKey ? 0 : stops.length - 1;
+    stops[(at + (e.shiftKey ? stops.length - 1 : 1)) % stops.length].focus();
+  });
+  // Choosing a saved login in the browser's list fills both fields in and leaves the cursor
+  // where it was, at the end of the name, as if there were more to type. The button takes it
+  // instead: what is left to do is sign in. The browser says a field is its doing with
+  // :autofill, and tells the page with an event on the field. One that comes right after a
+  // click or a key on the page is left alone: a browser that filled the fields in by itself
+  // when the page opened only says so at the first of those, and that would take the cursor
+  // away from whoever clicked on the name to change it.
+  // A key with no name is not somebody's: Chromium sends the field one as it fills it in, for
+  // pages that wait for typing, and counting it made every fill look like the page's own.
+  var touched = 0;
+  function filled(el) {
+    try { return el.matches(':autofill'); } catch (e) {}
+    try { return el.matches(':-webkit-autofill'); } catch (e) {}
+    return false;
+  }
+  ['pointerdown', 'keydown'].forEach(function(type) {
+    document.addEventListener(type, function(e) {
+      if (type === 'keydown' && (!e.key || e.key === 'Unidentified')) return;
+      touched = Date.now();
+    }, true);
+  });
+  ['input', 'change'].forEach(function(type) {
+    p.addEventListener(type, function() {
+      if (Date.now() - touched < 300) return;
+      setTimeout(function() { if (p.value && filled(p)) button.focus(); }, 0);
+    });
   });
 })();
 </script>
