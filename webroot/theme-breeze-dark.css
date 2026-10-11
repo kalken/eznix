@@ -5,7 +5,10 @@
    Header and Button colour (#292c30) the bars, and the cards are the next step up; the accent
    is the Plasma blue, the signal colours and the dimmed text are the scheme's, and the
    terminal has Konsole's Breeze colours. The scheme's values are read from BreezeDark.colors
-   (breeze 6.7).
+   (breeze 6.7). What is marked (the open file's tab, a menu's entry under the pointer, a
+   drop target) is the dark blue Plasma fills a selected entry with, #1b4155, with no line
+   round it and its text unchanged: measured in a screenshot of Dolphin's sidebar the user
+   sent, where the scheme file only has the brighter #1e5774.
    On 2026-10-11 it was first laid out to copy Plasma's System Settings surface by surface,
    with lines round sections and value strips where the other themes have fills; after an
    afternoon of that the user found it horrible and asked for it by the general rules. */
@@ -44,7 +47,7 @@
   --input-border: #45484c;
   --select-option-bg:    #2d3136;
   --select-option-color: #fcfcfc;
-  --select-option-hover: color-mix(in srgb, #3daee9 25%, #2d3136);
+  --select-option-hover: #1b4155;
   --popup-bg: #2d3136; /* dialogs and tooltips */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
@@ -53,7 +56,7 @@
   --btn-primary-text:   #ffffff;
 
   /* ── Selection / highlight ── */
-  --selected-bg:   #1e5774;
+  --selected-bg:   #1b4155;
   --toggle-on-bg:  #3daee9;
   --toggle-on-knob:   #fcfcfc;
   --toggle-on-border: #3daee9;
@@ -61,9 +64,9 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #3b4045;
-  --tab-active-border: #3daee9;
-  --tab-active-text:   var(--text);
+  --tab-active-bg:     #1b4155;
+  --tab-active-border: #3daee9; /* the accent: Plasma has no line round a selected entry, the user liked the tab better with one */
+  --tab-active-text:   #fcfcfc;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #da4453 16%, #202326);

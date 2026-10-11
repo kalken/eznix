@@ -3,8 +3,10 @@
    colour), the bars in its Header colour (#dee0e2), the Plasma blue as the accent. Buttons
    are its Button colour (#fcfcfc), lighter than the bar they stand on as Plasma's are, and
    darken a little under the pointer: as a step darker than the bar, which is what the other
-   light theme does, they looked wrong to the user here. The open file's tab is tinted with
-   the accent, a button of the plain colour being what the other tabs are. The scheme's
+   light theme does, they looked wrong to the user here. What is marked (the open file's
+   tab, a menu's entry under the pointer, a drop target) is the light blue Plasma fills a
+   selected entry with, #c2e0f5, with no line round it and its text unchanged: measured in a
+   screenshot of Dolphin's sidebar the user sent, as #1b4155 was for the dark theme. The scheme's
    values are read from BreezeLight.colors (breeze 6.7). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
@@ -41,7 +43,7 @@
   --input-border: #c4c9cd;
   --select-option-bg:    #ffffff;
   --select-option-color: #232629;
-  --select-option-hover: #e3e5e7;
+  --select-option-hover: #c2e0f5;
   --popup-bg: #ffffff; /* dialogs and tooltips */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
@@ -50,7 +52,7 @@
   --btn-primary-text:   #ffffff;
 
   /* ── Selection / highlight ── */
-  --selected-bg:   #a3d4fa;
+  --selected-bg:   #c2e0f5;
   --toggle-on-bg:  #3daee9;
   --toggle-on-knob:   #ffffff;
   --toggle-on-border: #3daee9;
@@ -58,9 +60,9 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
-  --tab-active-bg:     color-mix(in srgb, #3daee9 22%, #ffffff);
-  --tab-active-border: #3daee9;
-  --tab-active-text:   var(--text);
+  --tab-active-bg:     #c2e0f5;
+  --tab-active-border: #3daee9; /* the accent: Plasma has no line round a selected entry, the user liked the tab better with one */
+  --tab-active-text:   #232629;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #c7303f 10%, #ffffff);
