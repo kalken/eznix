@@ -786,7 +786,7 @@ function _runInTerminal(btn) {
 let _autocompleteClickedAt = 0;
 let _autocompleteSeen = false;      // a ping has said the generator runs, since the click
 let _autocompleteStampSeen = null;  // the suggestions' stamp at the last ping
-const _AUTOCOMPLETE_GRACE_MS = 20000;
+const _AUTOCOMPLETE_GRACE_MS = 10000;   // two pings: it was 20 seconds until the user asked why so long
 function _spinAutocomplete(running, stamp) {
   const btn = document.getElementById('autocomplete-btn');
   if (!btn) return;
