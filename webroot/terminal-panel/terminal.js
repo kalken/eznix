@@ -644,7 +644,8 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
 // name. It is always there, so the button keeps its size and look: greyed while there is
 // nothing to save, and clear, with a tooltip saying so, while a click will save. Only a mark:
 // the name and the colours stay (see runButton() for the louder shapes that were tried).
-const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>';
+// The diskette since 2026-10-11, when Save's icon became one; it has to be changed with it.
+const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>';
 // Only a class and the tooltip change here, never what is inside the button: this runs on every
 // edit, also the one a press on the button itself finishes (see renderButtons()), and a
 // press that began on an icon since replaced would not count as a click.
