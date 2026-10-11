@@ -31,7 +31,19 @@
   .login-card input {
     display: block; margin-bottom: 16px; padding: 8px 11px;
     background: var(--value-bg); border: 0; border-radius: var(--input-radius);
+    font: 400 13.3333px sans-serif;
   }
+  /* Not the theme's font, alone among the inputs: while a saved login is only being offered (its
+     entry in the browser's list highlighted, not yet chosen), Chromium shows it in the field in
+     its own font for form fields, whatever the field's is. Seen in Brave on a Mac (2026-10-11),
+     the name jumping from the theme's monospace to the system's font and back. The browser's
+     rule for that state is !important, on purpose (a security fix in Chrome 74, the bug closed
+     as won't fix), and restating the font on the field's ::first-line, the workaround usually
+     given, was tried that day and did nothing. So the fields have that font to begin with.
+     It is read out of the browser's own stylesheet (Brave's resources.pak, unpacked):
+     "font: -webkit-small-control !important", which is 13.3333px, and "font-family: sans-serif
+     !important", the generic family and not the system's font (system-ui was tried first and
+     still jumped: on a Mac sans-serif is Helvetica). */
   /* No labels: an empty field says what it is for, as an empty value does in the editor. */
   .login-card input::placeholder { color: var(--text3); opacity: 1; }
   /* A field the browser has filled in from a saved login gets the browser's own pale fill, set
