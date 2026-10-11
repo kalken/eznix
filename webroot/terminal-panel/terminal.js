@@ -13,6 +13,8 @@ const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME
 // right corner of the screen, right above wherever the terminal bar starts (bottom set fresh
 // by _updateTermRestartPopup()): that edge is a constant screen position whatever the panel's
 // size, while the panel's own top edge moves -- anchoring there made the notice jump.
+// Two arrows in a circle: the terminal's restart button and the header's Autocomplete button.
+const _RELOAD_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
 <div class="term-restart-popup hidden" id="term-restart-popup" onclick="restartTerminal()">Terminal has changed - click to restart</div>
 
@@ -25,7 +27,7 @@ document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
     <div class="terminal-header">
       <div class="terminal-cmd-btns" id="terminal-cmd-btns"></div>
       <div class="terminal-header-actions">
-        <button class="btn" id="term-restart-btn" data-tooltip="Restart terminal service" onclick="restartTerminal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg></button>
+        <button class="btn" id="term-restart-btn" data-tooltip="Restart terminal service" onclick="restartTerminal()">${_RELOAD_ICON}</button>
         <button class="btn" data-tooltip="Quarter screen" onclick="setTerminalSize('quarter')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="16" width="18" height="5" fill="currentColor" stroke="none"/></svg></button>
         <button class="btn" data-tooltip="Half screen" onclick="setTerminalSize('half')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="12" width="18" height="9" fill="currentColor" stroke="none"/></svg></button>
         <button class="btn" data-tooltip="Full screen" onclick="setTerminalSize('full')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" stroke="none"/></svg></button>
@@ -771,14 +773,27 @@ function _runInTerminal(btn) {
 // *behind* the flake was built first (a checksum of flake.nix and flake.lock, the icon greyed
 // when it matched) and dropped the same day: it could not see a module added in another file,
 // and the user preferred a button that is simply always there over one that is sometimes wrong.
-// While it turns the button cannot be pressed, so a run is not started twice. The icon is the
-// NixOS logo in the theme's two colours (_nixosLogoSvg(), which the reconnect notice turns the
-// same way); it was two arrows in a circle first.
+// While it turns the button cannot be pressed, so a run is not started twice. The icon is
+// two arrows in a circle, the one the terminal's restart button has (_RELOAD_ICON), on the
+// user's wish (2026-10-11): for some days before it was the NixOS logo in the theme's two
+// colours (_nixosLogoSvg()), and before that another drawing of two arrows.
+//
+// That while ends as soon as the run is known to be over: a ping that saw the generator at
+// work followed by one that does not, or the suggestions' own stamp changing, which is the
+// generator having written them. It ran its full 20 seconds whatever happened until
+// 2026-10-11, so after a run shorter than that the icon went on turning with nothing going
+// on, which the user noticed.
 let _autocompleteClickedAt = 0;
+let _autocompleteSeen = false;      // a ping has said the generator runs, since the click
+let _autocompleteStampSeen = null;  // the suggestions' stamp at the last ping
 const _AUTOCOMPLETE_GRACE_MS = 20000;
-function _spinAutocomplete(running) {
+function _spinAutocomplete(running, stamp) {
   const btn = document.getElementById('autocomplete-btn');
   if (!btn) return;
+  const written = stamp !== undefined && _autocompleteStampSeen !== null && stamp !== _autocompleteStampSeen;
+  if (stamp !== undefined) _autocompleteStampSeen = stamp;
+  if (running) _autocompleteSeen = true;
+  else if (_autocompleteSeen || written) _autocompleteClickedAt = 0;
   const busy = running || Date.now() - _autocompleteClickedAt < _AUTOCOMPLETE_GRACE_MS;
   btn.classList.toggle('is-running', busy);
   btn.disabled = busy;
@@ -787,10 +802,14 @@ if (!INSTALL_MODE && _TERM_CONFIG.autocomplete) {
   eznix.addButton('header', {
     id: 'autocomplete-btn',
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
-    html: _nixosLogoSvg() + 'Autocomplete',
+    html: _RELOAD_ICON + 'Autocomplete',
     onclick: () => {
       _autocompleteClickedAt = Date.now();
-      _spinAutocomplete(true);
+      _autocompleteSeen = false;
+      // Turning at once, without this counting as a ping having seen the generator.
+      const btn = document.getElementById('autocomplete-btn');
+      btn.classList.add('is-running');
+      btn.disabled = true;
       _runInTerminal({ command: _TERM_CONFIG.autocomplete });
     },
   });
@@ -830,7 +849,7 @@ eznix.on('theme', () => {
 // The terminal is a separate process that isn't restarted along with the server, so its
 // hashes are tracked on every ping, whatever else that ping says.
 eznix.on('ping', data => {
-  _spinAutocomplete(data.autocomplete_running === true);
+  _spinAutocomplete(data.autocomplete_running === true, data.autocomplete_stamp);
   _terminalStale = data.terminal_stale === true;
   _updateTermRestartPopup();
 });
