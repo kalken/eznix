@@ -3153,6 +3153,9 @@ function renderArrayField(container, key, arr, path) {
   // (the user, 2026-10-11: "if i press ... an empty list, shouldnt it create the first object
   // for me?"). addItem() makes the same item the menu's Add item does: an object with its
   // required options for a list of objects, an empty value otherwise.
+  // Only an empty list has it. A list with items gets more from its items: Enter in a plain
+  // value, and "Add item" on the menu of any item, an object's included (renderArray()). The
+  // list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
   if (!arr.length && !isPkgArrayPath(path) && !enumOpts) {
     const hint = document.createElement('div');
     hint.className = 'list-empty';
@@ -3164,7 +3167,6 @@ function renderArrayField(container, key, arr, path) {
   row.oncontextmenu = e => {
     const disabled = isDisabled(getAtPath(config, path));
     const items = disabled ? [] : [
-      ...(isPkgArrayPath(path) || enumOpts ? [] : [{ label: 'Add item', onclick: addItem }]),
       { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
     ];
     showContextMenu(e, [..._listItemAddMenuItems(e, path), ...items, ..._commonMenuItems(path)]);
@@ -3684,8 +3686,17 @@ function renderArray(container, arr, path) {
       wrap.oncontextmenu = e => {
         const disabled = isDisabled(getAtPath(config, itemPath));
         const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field');
+        // "Add item" adds another object to the list, with its required options: the entry a
+        // plain item's menu has (below), which an object's lacked while the list's own menu
+        // still had one.
+        const another = { label: 'Add item', onclick: () => {
+          const blank = blankObjectFromOptions(path);
+          arr.push(blank !== null ? blank : {});
+          _markFreshItem(path, arr, arr.length - 1);
+          renderAll();
+        } };
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, [...items, ..._commonMenuItems(itemPath)]);
+        showContextMenu(e, [...items, another, ..._commonMenuItems(itemPath)]);
       };
       // Backspace in a text field that is already empty takes the whole item away when there
       // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list
