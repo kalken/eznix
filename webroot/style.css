@@ -7,6 +7,9 @@
    one alone, and what it draws by itself, a menu's list for one, is in the theme's shade.
    Dark Reader is kept off by a tag of its own in the two pages. */
 :root { color-scheme: var(--color-scheme, dark); }
+/* The theme's page colour on the document itself, so it is there while <body> is still
+   hidden at start (`booting`, in index.html) and a reload shows no white in between. */
+html { background: var(--bg); }
 
 body {
   background: var(--bg);

@@ -56,6 +56,25 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
 </script>
 <link rel="stylesheet" href="style.css">
 %%EZNIX_PLUGIN_STYLES%%
+<!-- Nothing is shown until the page is whole (_init() takes `booting` off again). A browser
+     keeps the page it is leaving on screen until the new one has something to show, so a
+     reload now goes from the old page straight to the finished new one. Before, the first
+     thing shown was the page as this file has it: the header without the plugins' buttons, no
+     tabs, no terminal bar and "Loading…", each then appearing in turn, which was the blink
+     the user asked about (2026-10-11). The page's own background is on <html> (style.css),
+     so what shows if the wait is long is the theme's empty page and not a white one. -->
+<style>
+html.booting body { visibility: hidden; }
+/* And nothing slides into place meanwhile: the terminal panel, opened again at the size it
+   had, would otherwise still be growing to it when the page is shown. */
+html.booting * { transition: none !important; }
+</style>
+<script>
+document.documentElement.classList.add('booting');
+// Whatever happens, after three seconds the page is shown as far as it has come: a script
+// that does not arrive, or a slow start, is better seen ("Loading…") than an empty page.
+setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
+</script>
 </head>
 <body>
 
@@ -5697,6 +5716,11 @@ async function loadSiblingFiles(content, autocomplete) {
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function _init() {
+  // Shown once it is whole: see `booting` in the head. Also when the start fails, since
+  // the error is then what there is to see.
+  try { await _start(); } finally { document.documentElement.classList.remove('booting'); }
+}
+async function _start() {
   eznix.emit('init');
   _initHoverTooltips(document.body);
   _applyInitialTheme();
