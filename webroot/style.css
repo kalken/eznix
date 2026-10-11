@@ -377,7 +377,11 @@ body {
 .field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
 /* A second-level section is only set off by a plain line above it, across the frame it sits
    in: the frame's hairline colour, without the shadow. */
-.section.nest-card { padding: 8px var(--block-pad); border-top: 1px solid var(--panel-hairline); }
+/* The same 8px between its line and what is nearest on either side, as one sees it: above, to
+   its name (4px here and the 4px a row's text has above it); below, to the bottom edge of
+   its last row, which a value strip fills right to that edge (8px here). With 4px below, the
+   user's picture showed a sub-section's values ending almost on the next one's line. */
+.section.nest-card { padding: 4px var(--block-pad) 8px; border-top: 1px solid var(--panel-hairline); }
 /* No gap before or after a sub-section: its own line and its padding set it off from what is
    above and below (it had the themes' --card-gap on both sides, then only after it, until
    the user had both taken out on 2026-10-11). */
