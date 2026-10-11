@@ -340,16 +340,13 @@ body {
 }
 .field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; --value-line-top: transparent; }
 .field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; --value-line-bottom: transparent; }
-/* A strip of values has 4px of its own above its first value and below its last, so the first
-   and last are as far from the strip's edge as two values are from each other (8px, twice
-   the 4px a row has round its text). Without it they stood half as far from the edge as from
-   their neighbour, which showed most on a switch: the user's picture of services.eznix.enable
-   sitting high in its strip. The name beside the first value moves down with it. A run of
-   options is a .field-group, so its first and last rows are simply its first and last child;
-   an option at the root of a file is a strip of one. */
-.field-group > .field-row.nest:first-child > .field-value, .field-row.nest.nest-root > .field-value { padding-top: 4px; }
-.field-group > .field-row.nest:last-child > .field-value, .field-row.nest.nest-root > .field-value { padding-bottom: 4px; }
-.field-group > .field-row.nest:first-child > .field-key, .field-row.nest.nest-root > .field-key { padding-top: 8px; }
+/* Every row of a strip is the same, the first and the last too: names are then one row apart
+   all the way down, which is what the eye follows. The first value is so half as far from the
+   strip's top edge as from the value under it. Giving the strip 4px of its own above its
+   first value and below its last made that equal and was tried on 2026-10-11; it pushed the
+   first name 4px further from the heading above than any other two lines are apart, and the
+   user preferred the even rows. (Both at once would need the strip to start right under the
+   heading's text.) */
 .field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 4px; }
 /* A text value's own text sits 1px border + 3px/6px padding inside its box. A toggle (7px from
    the left, here) and the key (4px from the top, above) are offset by the same amounts, so
@@ -484,11 +481,7 @@ body {
    above and below, to make lists of objects lower, and the last object then sat almost on
    the cell's bottom edge with visibly more room beside it (the user: "why the spacing at the
    bottom is so small"). The lists are lower all the same, by the objects' own padding. */
-/* (Written to outweigh the 4px a strip's first and last cell have, above: this cell's gap is
-   its own on every side.) */
-.field-row.nest > .field-value:has(> .array-obj-item),
-.field-group > .field-row.nest:is(:first-child, :last-child) > .field-value:has(> .array-obj-item),
-.field-row.nest.nest-root > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
 /* A section's whole heading line and an option's whole key column start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
