@@ -932,14 +932,18 @@ def _icon_colours(theme):
     page, and every other arm all but vanished. Every var() in them is followed to a value:
     an image has no stylesheet to look them up in."""
     found = _theme_vars(theme)
+    return (_theme_value(found, found.get('--logo-1') or 'var(--accent2)'),
+            _theme_value(found, found.get('--logo-2') or 'var(--accent)'),
+            _theme_value(found, 'var(--bg2)'))
 
-    def value(text, depth=0):
-        def one(m):
-            v = found.get(m.group(1), m.group(2))
-            return value(v, depth + 1) if v is not None and depth < 10 else 'currentColor'
-        return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
-    return (value(found.get('--logo-1') or 'var(--accent2)'), value(found.get('--logo-2') or 'var(--accent)'),
-            value('var(--bg2)'))
+
+def _theme_value(found, text, depth=0):
+    """`text` with every var() in it followed to what the theme (`found`, from _theme_vars())
+    sets, for use where there is no stylesheet to look them up in."""
+    def one(m):
+        v = found.get(m.group(1), m.group(2))
+        return _theme_value(found, v, depth + 1) if v is not None and depth < 10 else 'currentColor'
+    return re.sub(r'var\(\s*(--[A-Za-z0-9_-]+)\s*(?:,\s*([^()]*))?\)', one, text).strip()
 
 
 # The NixOS snowflake (nix-snowflake-colours.svg from github.com/NixOS/nixos-artwork, CC-BY-SA),
@@ -2000,6 +2004,14 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 icon['src'] += '?theme=%s%s&v=%s' % (
                     THEME, '&filled=1' if filled else '',
                     hashlib.sha256(_favicon_svg(THEME, filled).encode()).hexdigest()[:8])
+        # The window of the page installed as an app: its bar in the header's fill and, until
+        # the page is in, the page's own behind it. Without them the browser chooses (Brave took
+        # the profile's colour). The page says the bar's colour itself once it is loaded
+        # (_loadWindowColour()), for the theme chosen in that browser; these are the configured
+        # one's, an automatic theme's light half, as its icon is.
+        found = _theme_vars(AUTO_THEMES.get(THEME, (THEME,))[0])
+        manifest['theme_color'] = _theme_value(found, 'var(--bg2)')
+        manifest['background_color'] = _theme_value(found, 'var(--bg)')
         data = json.dumps(manifest).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'application/manifest+json')

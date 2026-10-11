@@ -11,6 +11,7 @@ import importlib.util
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -206,6 +207,9 @@ def main():
             manifest = json.loads(anon.request('/manifest.json')[1])
             check('the manifest names the icon with the configured theme',
                   manifest['icons'][0]['src'].startswith('favicon.svg?theme='), manifest)
+            check('the manifest gives the window the theme\'s colours',
+                  re.fullmatch(r'#[0-9a-fA-F]{6}', manifest.get('theme_color', ''))
+                  and re.fullmatch(r'#[0-9a-fA-F]{6}', manifest.get('background_color', '')), manifest)
             check('the manifest\'s maskable icon is the filled one, its other the bare logo',
                   ['filled=1' in i['src'] for i in manifest['icons']] == [False, True]
                   and manifest['icons'][1]['purpose'] == 'maskable', manifest)

@@ -184,6 +184,13 @@ closed and opened again ("it worked if i closed the program"). That was with the
 version of the icon, which has a width and a height; with the first, which had only a
 viewBox, nothing had happened, though whether the size was why is not known.
 
+**The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
+`theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With
+nothing said a browser chooses, and Brave took the profile's colour, which the user asked to
+be rid of (2026-10-11). The page reads the colour off what it has drawn at its top, so it
+follows the theme chosen in that browser, a user's own included; the manifest has the
+configured theme's, for before the page is in. Not seen in an installed app by anyone yet.
+
 **Sessions**: a random token per login in the `eznix_session` cookie, stored hashed in
 `<state>/sessions.json`, so a restart of the server logs nobody out. How long a login lasts
 is the server's doing, set under `[session]` (`session.*` in the modules); the cookie only

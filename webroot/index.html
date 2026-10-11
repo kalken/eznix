@@ -11,6 +11,10 @@
 <!-- The logo in the theme's colours, drawn by the server (_favicon_svg() in eznix.py). This is
      the configured theme's; _loadTheme() asks for the one chosen in this browser. -->
 <link rel="icon" type="image/svg+xml" href="favicon.svg" id="favicon-link">
+<!-- The colour a browser gives the window's own bar when the page is installed as an app:
+     filled in by _loadWindowColour() with the fill of whatever is at the top of the page.
+     With nothing said, the browser picks one itself (Brave: the profile's colour). -->
+<meta name="theme-color" id="window-colour">
 <!-- manifest.json (see webroot/manifest.json) is what lets a Chromium-based browser's own native
      "Install page as app" (README's tip) show the correct icon -- a plain <link rel="icon">
      favicon isn't enough for that installed-app icon resolution on its own, confirmed by a real
@@ -273,8 +277,20 @@ function _loadTheme(name) {
     link.href = href;
   }
   // Plugins that read colours back out of the page (the terminal) do it once both sheets are in.
-  Promise.all(pending).then(() => eznix.emit('theme'));
+  Promise.all(pending).then(() => { _loadWindowColour(); eznix.emit('theme'); });
   _loadIcon(name);
+}
+// The window's bar, where the page is installed as an app, in the colour of what lies right
+// under it: read off the page as it is drawn (the header, or the page itself where there is
+// none or it has no fill), so it is right in any theme, a user's own too, with no colour
+// named here. The manifest says the same for the configured theme (_serve_manifest()), which
+// is what the window has before the page is in.
+function _loadWindowColour() {
+  const meta = document.getElementById('window-colour');
+  for (const el of [document.querySelector('.header'), document.body, document.documentElement]) {
+    const colour = el && getComputedStyle(el).backgroundColor;
+    if (colour && colour !== 'transparent' && colour !== 'rgba(0, 0, 0, 0)') { meta.content = colour; return; }
+  }
 }
 // The tab's icon is the logo in the theme's two colours. The icon of the page installed as an
 // app is not reached from here: the browser takes that from the manifest, so it is in the
@@ -5907,7 +5923,7 @@ async function loadSiblingFiles(content, autocomplete) {
 async function _init() {
   // Shown once it is whole: see `booting` in the head. Also when the start fails, since
   // the error is then what there is to see.
-  try { await _start(); } finally { document.documentElement.classList.remove('booting'); }
+  try { await _start(); } finally { document.documentElement.classList.remove('booting'); _loadWindowColour(); }
 }
 async function _start() {
   eznix.emit('init');
