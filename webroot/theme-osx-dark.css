@@ -1,5 +1,8 @@
 /* OS X Dark — the macOS dark appearance: the system's own greys and status colours, with its Graphite accent. */
 :root {
+  /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
+     and a browser that darkens light pages by force leaves the page alone. */
+  --color-scheme: dark;
   /* ── Base palette ── */
   --bg:   #1e1e1e;
   --bg2:  #2a2a2a;

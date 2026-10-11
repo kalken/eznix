@@ -2,6 +2,12 @@
 /* Reset: strip the browser's default box-model sizing and spacing from every element. */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* Whether the theme is light or dark, said to the browser (the theme's --color-scheme): a
+   browser that darkens pages by force (Chrome's Auto Dark Mode, Android's) then leaves this
+   one alone, and what it draws by itself, a menu's list for one, is in the theme's shade.
+   Dark Reader is kept off by a tag of its own in the two pages. */
+:root { color-scheme: var(--color-scheme, dark); }
+
 body {
   background: var(--bg);
   color: var(--text);

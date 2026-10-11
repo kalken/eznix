@@ -196,6 +196,10 @@ working when a later version adds a variable.
 - The `base` comment, near the top of the file, names the built-in theme underneath. It is
   `nixos` when left out. Pick a base of the same kind, light or dark, as the theme you're
   making: everything the file doesn't set comes from there.
+- If it is of the other kind than its base, say so: `--color-scheme: only light;` in a light
+  theme on a dark base, `--color-scheme: dark;` the other way round. That is what tells the
+  browser which the page is, so that it draws its own parts (a menu's list) to match and
+  does not darken a page by force that it takes for a light one.
 - Set `--bg` and `--accent` as plain hex colours. They are what the swatch is painted with;
   without them it is a grey dot that sorts into the middle of the row.
 - Hooking it up is in the README, under "Your own themes": `services.eznix.themes` in the

@@ -1,6 +1,9 @@
 /* OS X Light — the macOS light appearance: the system's own greys and status colours, with
    its Graphite accent. The counterpart of theme-osx-dark.css. */
 :root {
+  /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
+     and a browser that darkens light pages by force leaves the page alone. */
+  --color-scheme: only light;
   /* ── Base palette ── */
   --bg:   #ececec;
   --bg2:  #f6f6f6;

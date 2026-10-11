@@ -1,4 +1,7 @@
 :root {
+  /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
+     and a browser that darkens light pages by force leaves the page alone. */
+  --color-scheme: dark;
   /* ── Base palette ── */
   --bg:   #282828;
   --bg2:  #3c3836;

@@ -409,6 +409,10 @@ Pick one with the swatches in the status bar; `theme` sets what a browser starts
 Built in: `nixos`, `dark`, `gruvbox`, `osx-dark`, `osx-light`, and `osx`, which follows the
 light or dark appearance of the system the browser runs on.
 
+The colours are the theme's and nothing else's: Dark Reader is told to leave the page alone,
+and so is a browser's own forced dark mode. Other extensions that restyle pages can't be
+kept out.
+
 The tab's icon is the logo in the theme's colours. So is the icon of the page installed as
 an app, in the colours of the theme set as `theme`; after changing that, the browser
 fetches the new icon by itself, and it shows once the app has been closed and opened again.
