@@ -260,8 +260,17 @@ def _brew_command():
 
 
 def _brew(brew, args):
-    """Run one brew command; its stdout, or None on any failure."""
-    env = {**os.environ, "HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1"}
+    """Run one brew command; its stdout, or None on any failure.
+
+    HOMEBREW_FORCE_RUBY_COMMAND: `brew formulae` and `brew casks` are otherwise answered by a
+    shell script that prints brew's cached list of names (api/formula_names.txt in its cache
+    folder) and nothing at all when that file is not there, with exit status 0. It is not there
+    from one brew update until some command next loads the list: on the user's Mac it came and
+    went within minutes (2026-10-11), and the editor's list of formulas with it. Brew's own
+    command, which that variable asks for and brew's script falls back to itself, loads the
+    names and writes the file again. Some seconds slower each."""
+    env = {**os.environ, "HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1",
+           "HOMEBREW_FORCE_RUBY_COMMAND": "1"}
     try:
         r = subprocess.run(brew + args, capture_output=True, text=True, env=env, timeout=120)
     except (OSError, subprocess.TimeoutExpired) as e:
@@ -291,12 +300,15 @@ def generate_homebrew(flake_ref):
     info("Generating brews.json and casks.json...")
     formulae = _brew(brew, ["formulae"])
     casks = _brew(brew, ["casks"])
-    if not formulae or casks is None:
+    # No names at all counts as brew not answering, like an error does: an empty brews.json
+    # written from an empty answer took the list of formulas out of the editor on the user's
+    # Mac (2026-10-11; see _brew() for why the answer was empty), with casks.json whole beside it.
+    brews = set((formulae or "").split())
+    casks = set((casks or "").split())
+    if not brews or not casks:
         warn("could not list Homebrew formulas/casks — leaving brews.json/casks.json as they were "
              "(rerun with -v for details)")
         return []
-    brews = set(formulae.split())
-    casks = set(casks.split())
 
     taps = nix_eval([f"{flake_ref}.config.homebrew.taps", "--apply", "map (t: t.name or t)"])
     if taps:
