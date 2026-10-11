@@ -2875,11 +2875,15 @@ function _detachForFloat(el) {
 // option…", prefilled to add under `path`) listed first since it's the more relevant action when
 // you've right-clicked something specific, followed by a plain "Add option…" prefilled empty (a
 // root-level option) so you don't have to back out to blank editor space just to add one of those.
-function _addOptionMenuItems(event, path, subLabel = 'Add sub option…') {
+// Not the second one on an object in a list (`rootToo` false, the two "Add field" callers): a
+// new option at the root of the file has nothing to do with the list item that was clicked,
+// and the user found it strange there (2026-10-11). A section's heading keeps it, so that a
+// new top-level option can be added from anywhere in a long file.
+function _addOptionMenuItems(event, path, subLabel = 'Add sub option…', rootToo = true) {
   return [
     ..._entryAddMenuItems(event, path),
     { label: subLabel, onclick: () => showAddOptionMenu(event, path) },
-    { label: 'Add option…', onclick: () => showAddOptionMenu(event, []) },
+    ...(rootToo ? [{ label: 'Add option…', onclick: () => showAddOptionMenu(event, []) }] : []),
   ];
 }
 
@@ -2901,7 +2905,7 @@ function _listItemAddMenuItems(event, path) {
   const entry = _entryAddMenuItems(event, path);
   if (entry.length) return entry;
   if (!itemPath.length || !Array.isArray(getAtPath(config, itemPath.slice(0, -1)))) return [];
-  return _addOptionMenuItems(event, itemPath, 'Add field');
+  return _addOptionMenuItems(event, itemPath, 'Add field', false);
 }
 
 // Right-click "Add option…": rather than a separate/duplicate implementation, this temporarily
@@ -3679,7 +3683,7 @@ function renderArray(container, arr, path) {
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         const disabled = isDisabled(getAtPath(config, itemPath));
-        const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field');
+        const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field', false);
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
         showContextMenu(e, [...items, ..._commonMenuItems(itemPath)]);
       };
