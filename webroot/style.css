@@ -195,11 +195,15 @@ body {
 .section { margin-bottom: var(--section-gap); }
 .section .section { margin-bottom: 0; }
 
+/* No padding of its own above and below: the space between two sections is the themes' gap
+   and nothing else (--nested-section-gap, --card-gap). It had 4px on each side, which made the
+   distance between two folded sections 8px more than the gap said (the user, with the gap
+   set to 4: "it looks like more"). */
 .section-header {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 0;
+  padding: 0;
   background: transparent;
   position: relative;
 }
@@ -329,7 +333,7 @@ body {
    Drawn as inset shadows so that nothing moves; a cell with one above it has no top line and
    one with another below it no bottom line. */
 .field-row.nest > .field-value {
-  background: var(--value-bg); border-radius: var(--radius); padding: 2px 0;
+  background: var(--value-bg); border-radius: var(--radius); padding: 0;
   --value-line-top: var(--value-border); --value-line-bottom: var(--value-border);
   box-shadow: inset 1px 0 var(--value-border), inset -1px 0 var(--value-border),
               inset 0 1px var(--value-line-top), inset 0 -1px var(--value-line-bottom);
@@ -337,11 +341,10 @@ body {
 .field-row.nest + .field-row.nest > .field-value { border-top-left-radius: 0; border-top-right-radius: 0; --value-line-top: transparent; }
 .field-row.nest:has(+ .field-row.nest) > .field-value { border-bottom-left-radius: 0; border-bottom-right-radius: 0; --value-line-bottom: transparent; }
 .field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 4px; }
-/* A text value's own text sits 1px border + 3px/6px padding inside its box, itself 2px down
-   inside the value cell. A toggle (7px from the left, here) is offset by the same amount, so
-   every kind of value starts on one vertical line. The key was offset to match too (6px from
-   the top), which put a key on the text line of its value; it is 4px since 2026-10-11, the
-   user's number, and so stands 2px higher than that line. */
+/* A text value's own text sits 1px border + 3px/6px padding inside its box. A toggle (7px from
+   the left, here) and the key (4px from the top, above) are offset by the same amounts, so
+   every kind of value starts on one vertical line and a key shares a text line with its
+   value. */
 .field-row.nest .toggle-wrap { padding-left: 7px; }
 /* Object items inside an array sit in the value column already, so they restart at depth 0
    (see _setNestDepths()) with a narrower key column of their own. */
@@ -375,20 +378,39 @@ body {
 /* A second-level section is only set off by a plain line above it, across the frame it sits
    in: the frame's hairline colour, without the shadow. */
 .section.nest-card { padding: 8px var(--block-pad); border-top: 1px solid var(--panel-hairline); }
-* + .nest-card, .nest-card + * { margin-top: var(--card-gap); }
+/* No gap before or after a sub-section: its own line and its padding set it off from what is
+   above and below (it had the themes' --card-gap on both sides, then only after it, until
+   the user had both taken out on 2026-10-11). */
 /* Every section from the third level down (.nest-arrow) can be folded away, and starts out
    folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
    pointing right while the section is hidden and down while it's shown. The arrow is part of
-   the heading: it stands where the section's indent puts it, on the line of the options
-   beside the section, and is one step of indent wide, so the name follows a step further in,
-   which is where the section's own options begin. It hung to the left of the name, outside
-   the heading's flow, until 2026-10-11: the name was then at the indent and the arrow a step
-   before it, and counted from the arrow the options under the section looked a step too far
-   in ("isnt the arrow counted with the subsection? it seems the indent is 3 characters"). */
+   the heading's text: "▾ name" begins where the section's indent puts it, on the line of the
+   options beside the section, and the arrow is two characters wide, itself and a space. What
+   is in the section is indented one step from where that text begins, the arrow, as with any
+   section: the indent is the depth in steps and nothing else, at every level. (The user's
+   rule, 2026-10-11: "I compare to the arrow which should be part of the text". Tried and
+   taken back that day: the arrow hanging to the left of the name, outside the heading's
+   flow, which put it a step out from the options beside the section; and counting a
+   section's own options from its name instead of from its arrow.) */
 .section-toggle { display: none; }
 .section.nest-arrow > .section-header .section-toggle {
-  display: inline-block; width: var(--indent-step); cursor: pointer; user-select: none;
+  display: inline-block; width: 2ch; cursor: pointer; user-select: none;
 }
+/* A heading below the top level is as tall as an option's row, and there is nothing between
+   rows (the themes' --nested-section-gap is 0): folded sections and options are evenly spaced,
+   as rows are in an outline on macOS, which is where the user took this from (2026-10-11).
+   Tried with it and taken out the same hour: an empty place for the arrow in front of every
+   option beside foldable sections, which lined the names up and pushed the options much too
+   far in. */
+.section.nest-card > .section-header, .section.nest-arrow > .section-header { min-height: var(--row-height); align-items: flex-start; padding-top: 4px; }
+/* Every line of the outline is then the same distance from the next, a row (--row-height, 24px
+   in the themes), with its text 4px from the top of its row whatever it is: a heading, an
+   option's name (its padding-top, above) or the text of a text value (1px border and 3px
+   padding, in a value cell that has no padding of its own). Until 2026-10-11 a row was 28px,
+   a value cell had 2px above and below, a name stood 6px down and a heading was centred in
+   its row, so the lines were unevenly far apart: a heading under an option was further from
+   it than an option under a heading (the user: "large space between ezrouter.enabled and
+   ezrouter.wan"). */
 .section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
 .section.nest-arrow.collapsed > .section-header .section-toggle::before { content: '▸'; }
 .section.collapsed > .section-body { display: none; }
