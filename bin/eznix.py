@@ -1305,9 +1305,7 @@ def _read_login_page(error=''):
     }})();
     </script>'''
     else:
-        # Exactly one user can log in, so the field comes filled in.
-        _known = f' value="{html.escape(names[0])}"' if names else ''
-        username_field = f'<input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username"{_known} autofocus>'
+        username_field = '<input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username" autofocus>'
     ca_link = ''
     if CA_FILE and os.path.exists(CA_FILE):
         ca_link = (f'<div class="login-ca-link"><a href="/download-ca" tabindex="-1">'
