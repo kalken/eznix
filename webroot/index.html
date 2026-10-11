@@ -207,6 +207,14 @@ networking.hostName = "myhost";</pre>
 //     'ping'   (data) every answer to the periodic GET /api/v1/ping
 const eznix = {
   config: %%EZNIX_PLUGIN_CONFIG%%,
+  // The `debug` setting (services.eznix.debug, debug in eznix.toml): with it on,
+  // eznix.debug(...) writes to the browser's console, with the time; off, it does nothing.
+  // For whatever is worth knowing while something is being looked into: call it from
+  // anywhere, a plugin included. The server has the same as _debug(), into its log.
+  debugging: %%EZNIX_DEBUG%%,
+  debug(...what) {
+    if (this.debugging) console.log('[eznix ' + new Date().toISOString().slice(11, 23) + ']', ...what);
+  },
   _handlers: {},
   addButton(where, { id, html, tooltip, onclick }) {
     const btn = document.createElement('button');
@@ -4042,6 +4050,7 @@ function initRestartWatcher() {
     onRestartDetected();
   }
   function onRestartDetected() {
+    eznix.debug('the server has another page than this one:', isAnyDirty() ? 'reloading once nothing is unsaved' : 'reloading');
     _restartDetected = true;
     // Reload immediately if there's nothing to lose; otherwise _updateDirty() (run after every
     // edit, undo, and Save) fires it the moment the user gets back to a clean state -- no
@@ -4053,7 +4062,10 @@ function initRestartWatcher() {
   async function poll() {
     if (_restartDetected) return; // already decided; nothing left to watch for
     let res;
-    try { res = await apiFetch('/ping'); } catch (err) { return; } // still down -- next tick retries
+    const asked = performance.now();
+    try { res = await apiFetch('/ping'); }
+    catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); return; } // still down -- next tick retries
+    if (performance.now() - asked > 1000) eznix.debug('ping answered after', Math.round(performance.now() - asked), 'ms');
     if (res.status === 401) { onRestartDetected(); return; }
     if (res.ok) {
       try { handlePayload(await res.json()); } catch (err) { /* malformed body — ignore, next tick retries */ }

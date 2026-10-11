@@ -46,6 +46,9 @@ terminal_end_on_logout = true
 theme    = "nixos"                    # nixos, dark, gruvbox, osx-dark, osx-light, osx; "osx" on macOS
 # themes_dir = "/path/to/themes"      # your own, <name>.css each
 sections = "collapsed"                # or "expanded"
+# debug  = true                       # log what is only worth knowing while looking into
+#                                     # something: every request and what took long, and in
+#                                     # the browser's console what the page does
 # mode   = "install"                  # a second row of buttons, for an installer image
 backups  = 5                          # earlier versions kept of each file; 0: none
 

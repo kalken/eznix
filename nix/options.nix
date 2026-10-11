@@ -48,6 +48,7 @@ let
     sections         = cfg.sections;
     mode             = cfg.mode;
     backups          = cfg.backups;
+    debug            = if cfg.debug then true else null;
     terminal         = cfg.terminal;
     terminal_script  = "${packages.eznix-terminal}/share/eznix-terminal/eznix-terminal.py";
     terminal_auto_hide = cfg.terminalAutoHide;
@@ -339,6 +340,11 @@ in
       type        = types.ints.unsigned;
       default     = 5;
       description = "How many earlier versions of each file to keep, one made on every save. 0: none.";
+    };
+    debug = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = "Log what is only worth knowing while something is being looked into: every request the editor answers and what took long, in the service's log, and what the page does about its connection, in the browser's console. The log is otherwise only starts, logins and errors.";
     };
 
     plugins = mkOption {

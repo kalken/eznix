@@ -61,6 +61,8 @@ Configuration (eznix.toml; every key optional unless noted):
   plugins_dir     folder of your own plugins, one folder each (see _load_plugins())
   [plugin.NAME]   settings for the plugin NAME; enabled = false leaves it out
   backups         how many saved versions of each file to keep (0: none)
+  debug           true: log what is only worth knowing while looking into something, each
+                  request and what took long among it (default false; also --debug)
   [[buttons]]     label, command, save_first, clear_first, menu, mode, static, separator
   [menus.NAME]    order, separator: where the menu NAME of those buttons stands, and a line beside it
 
@@ -155,6 +157,20 @@ TERMINAL_END_ON_LOGOUT = True    # the shell belongs to a login: it ends when it
 TERMINAL_SCRIPT  = None          # the eznix-terminal program on disk
 TERMINAL_PROGRAM = ''            # sha256 of that file, half of what a terminal's stamp is made of (_terminal_for())
 TERMINAL_AUTO_HIDE = True        # hide the open terminal panel on a click outside it
+DEBUG = False                    # the `debug` setting: see _debug()
+
+def _debug(what):
+    """One line in the log, with `debug` on only. For whatever is worth knowing while
+    something is being looked into and is noise the rest of the time: call it from anywhere,
+    with the line to write. A plugin's server code has it as api.debug(), and the page as
+    eznix.debug(), which writes to the browser's console. The first things said this way are
+    each request and what took long (`accepted` in _Server).
+
+    Never a secret in such a line, the user's condition for having this at all: no password,
+    no session token or cookie, no terminal key, no file's content. A request's line is its
+    method and address, which carry none of those (a login's password is in the body)."""
+    if DEBUG:
+        print(f'[debug] {what}')
 
 DEFAULT_THEME    = 'osx' if sys.platform == 'darwin' else 'nixos'
 THEME            = DEFAULT_THEME
@@ -1005,6 +1021,7 @@ class PluginApi:
         api.config     this plugin's [plugin.NAME] table
         api.flake, api.config_dir, api.state_dir, api.hostname
         api.page       set it to change what the page gets as eznix.config.NAME (default: config)
+        api.debug(line)  a line in the log, with the `debug` setting on only
     and api.login(check, user) adds a way to log in."""
     Error, Download = PluginError, PluginDownload
 
@@ -1012,6 +1029,9 @@ class PluginApi:
         self.name, self.config, self.page = name, config, config
         self.flake, self.config_dir, self.state_dir, self.hostname = FLAKE_DIR, CONFIG_DIR, STATE_DIR, HOSTNAME
         self.routes = {}
+
+    def debug(self, line):
+        _debug(f'plugin {self.name}: {line}')
 
     def login(self, check, user=None):
         """Add a way to log in: check(username, password) says whether that is right. `user`,
@@ -1132,6 +1152,7 @@ def _render_index():
             {n: {k: t[k] for k in ('base', 'bg', 'border')} for n, t in CUSTOM_THEMES.items()}))
         .replace('%%EZNIX_BACKUP%%', 'true' if BACKUP_COUNT > 0 else 'false')
         .replace('%%EZNIX_MODE%%', json.dumps(EZNIX_MODE))
+        .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_EXPANDED%%', 'true' if SECTIONS_EXPANDED else 'false')
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
@@ -2138,7 +2159,10 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 pass
 
     def log_message(self, fmt, *args):
-        print(f'[web]  {self.address_string()} - {fmt % args}')
+        # With how long it took since the connection was accepted, when that is a second or
+        # more: see `accepted` in _Server.
+        took = time.monotonic() - self.server.accepted.pop(self.client_address, time.monotonic())
+        _debug(f'{self.address_string()} - {fmt % args}' + (f' ({took:.1f}s)' if took >= 1 else ''))
 
 
 def _valid_host(headers):
@@ -2230,6 +2254,34 @@ class _Server(http.server.ThreadingHTTPServer):
         socketserver.TCPServer.server_bind(self)
         self.server_name, self.server_port = self.server_address[:2]
 
+    # Where the time goes, in the log. After a rebuild on the user's router (2026-10-11) the
+    # page and the terminal were out for some 20 seconds at a time, three times in a minute,
+    # with eznix up and idle throughout; the log had each request's line and no way to tell
+    # whether a request had waited here or had not arrived. So with `debug` on three things are
+    # said, each only when it took a second or more: the loop that accepts connections was not running
+    # (service_actions(), which it calls every half second), a connection's opening handshake
+    # was slow or failed (finish_request(), silent before), and a request took long from being
+    # accepted to being answered (log_message(), from `accepted`). Without `debug` the log has
+    # no line per request at all: a page pings every five seconds, and the user did not want
+    # a journal full of that ("not that chatty always"). Logins and errors are always logged.
+    accepted = {}        # (address, port) of a connection -> when it was accepted
+    _looped = None
+
+    def service_actions(self):
+        now = time.monotonic()
+        if self._looped is not None and now - self._looped >= 2:
+            _debug(f'accepting connections was held up for {now - self._looped:.1f}s')
+        self._looped = now
+        # Connections that never became a request: nothing else takes their entry out.
+        if len(self.accepted) > 500:
+            for k in [k for k, t in self.accepted.items() if now - t > 600]:
+                self.accepted.pop(k, None)
+
+    def get_request(self):
+        request, client_address = super().get_request()
+        self.accepted[client_address] = time.monotonic()
+        return request, client_address
+
     def finish_request(self, request, client_address):
         if not self.tls:
             return super().finish_request(request, client_address)
@@ -2237,13 +2289,21 @@ class _Server(http.server.ThreadingHTTPServer):
             request.settimeout(10)
             first = request.recv(1, socket.MSG_PEEK)
             if not first:
+                self.accepted.pop(client_address, None)
                 return
             if first != b'\x16':             # not a TLS record: a request in plain HTTP
+                self.accepted.pop(client_address, None)
                 return _redirect_to_https(request)
             secure = self.tls.wrap_socket(request, server_side=True)
             secure.settimeout(None)
-        except (OSError, ssl.SSLError):
+        except (OSError, ssl.SSLError) as e:
+            took = time.monotonic() - self.accepted.pop(client_address, time.monotonic())
+            if took >= 1:
+                _debug(f'{client_address[0]} - no connection after {took:.1f}s: {type(e).__name__}: {e}')
             return
+        took = time.monotonic() - self.accepted.get(client_address, time.monotonic())
+        if took >= 1:
+            _debug(f'{client_address[0]} - the handshake took {took:.1f}s')
         try:
             super().finish_request(secure, client_address)
         finally:
@@ -2294,7 +2354,7 @@ def main():
     global BIND_ADDR, INTERFACE, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
+    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2309,6 +2369,7 @@ def main():
     ap.add_argument('--port', type=int, help='port to listen on (default 9090)')
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
+    ap.add_argument('--debug', action='store_true', help='log what is only worth knowing while looking into something')
     ap.add_argument('--https', action='store_true',
                     help='serve HTTPS with a certificate eznix makes itself, kept in the state folder')
     ap.add_argument('--generate-ca', metavar='DIR',
@@ -2330,6 +2391,8 @@ def main():
     cfg = load_toml(args.config) if args.config else (
         load_toml('eznix.toml') if os.path.exists('eznix.toml') else {})
     path = lambda p: os.path.abspath(os.path.expanduser(p))
+
+    DEBUG = bool(args.debug or cfg.get('debug', False))
 
     # Where things are.
     FLAKE_DIR  = path(args.flake or cfg.get('flake') or FLAKE_DIR)

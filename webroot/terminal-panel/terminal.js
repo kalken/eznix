@@ -280,6 +280,7 @@ function connectTerminalWs() {
   _termWs = new WebSocket(_TERM_WS_BASE);
   _termWs.binaryType = 'arraybuffer';
   _termWs.onopen = () => {
+    eznix.debug('terminal: connected');
     _termReconnectAttempts = 0;
     if (_termReconnectTimer) { clearTimeout(_termReconnectTimer); _termReconnectTimer = null; }
     _setTermStatusBanner(null);
@@ -354,6 +355,7 @@ function connectTerminalWs() {
       if (_termReconnectAttempts < 10) {
         _setTermStatusBanner('Reconnecting', true);
         _termReconnectAttempts++;
+        eznix.debug('terminal: connection closed (code ' + e.code + '), try', _termReconnectAttempts, 'of 10');
         const delay = Math.min(500 * _termReconnectAttempts, 5000);
         _termReconnectTimer = setTimeout(() => connectTerminalWs(), delay);
       } else {

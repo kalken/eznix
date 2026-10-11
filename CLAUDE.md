@@ -184,6 +184,15 @@ again"), and found a cookie setting that decided nothing confusing. Renamed with
 the old names, on the user's word that nobody uses them yet. The two limits are constants,
 not settings. It used to be fixed at 400 days and always renewed.
 
+**`debug`** (off by default; `services.eznix.debug`, `debug` in `eznix.toml`, `--debug`) is
+one switch for whatever is only worth knowing while something is being looked into, which is
+how the user wanted it (2026-10-11): `_debug(line)` in the server writes to its log,
+`api.debug()` is the same for a plugin, and `eznix.debug(...)` in the page writes to the
+browser's console. Add a call wherever one helps. Never a secret in such a line (passwords,
+session tokens, terminal keys, a file's content): the user's condition. Without it the log
+has no line per request, only starts, logins and errors. The terminal program has no part in
+it: any change to that file makes every installed terminal offer a restart.
+
 **Requests must come from the page** (`_valid_origin()`): every POST but the login itself and the
 `/terminal` handshake are refused when the `Origin` header names another address than the `Host` the
 request was sent to, port included. The cookie's `SameSite=Strict` does not cover this, since

@@ -522,6 +522,8 @@ The common ones, the same in all three modules:
 | `theme`, `themes` | | see [Themes](#-themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#-plugins) |
 | `enableHttps`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#-https) |
+| `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does |
+| `debug` | `false` | log every request, and what took long; the log is otherwise starts, logins and errors |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
