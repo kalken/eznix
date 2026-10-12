@@ -1399,27 +1399,6 @@ function _typeAt(parts) {
   return undefined;
 }
 
-// Whether `parts` is a set of named entries: by its type, or because the suggestions list
-// options for its entries (PATH.<name>.FIELD, with whatever placeholder).
-function _isEntrySet(parts) {
-  if (!parts.length) return false;
-  if (_setEntryType(_typeAt(parts)) !== undefined) return true;
-  // What the suggestions declare beneath it decides the rest. A placeholder there: a set.
-  // Nothing at all, while the configuration has names in it: a set as well, one whose type
-  // does not say so in words that can be read (a section of an INI file under
-  // services.samba.settings: "section of an INI file (attrs of …)"). Only names that are
-  // declared one by one make it a group of options, where a new one is "Add sub option…".
-  let declared = false;
-  for (const o of options) {
-    const op = _optParts(o);
-    if (op.length <= parts.length || !parts.every((p, i) => _isWildcard(op[i]) || op[i] === String(p))) continue;
-    if (_isWildcard(op[parts.length]) && op[parts.length] !== '*') return true;
-    declared = true;
-  }
-  const here = getAtPath(config, parts);
-  return !declared && here !== null && typeof here === 'object' && !Array.isArray(here) && !isExprPkg(here) && !isDisabled(here);
-}
-
 // Whether a type is one that certainly holds no further names: text, a number, a yes/no, a
 // path, a package, one of a list of words, a list, or a choice between those. Asked to know if
 // a dot typed after the name of a set can only belong to an entry's name (see _addPathParts()).
@@ -1640,6 +1619,78 @@ function blankObjectFromOptions(path) {
   return Object.keys(fields).length ? fields : null;
 }
 
+// What adding to the object at `path` is called, or null where there is nothing to add: on
+// its menu (_addMenuItems()) and, for an object in a list, on its last line (renderObj()). One
+// rule for every object, whatever it is: a section at any depth, an object in a list.
+// Nothing to add: every option the suggestions list for it is there already, and it is
+// certain that it takes no others (_takesOnlyDeclared()). A set of named
+// entries (a host under networking.hosts) can always take another: by the set's type, or
+// because the suggestions have a placeholder for the name, or have nothing beneath it at all,
+// a set whose type does not say so in words that can be read (a section of an INI file under
+// services.samba.settings, "section of an INI file (attrs of …)").
+// It is "Add option…" on all of them. A set said "Add entry…" until 2026-10-12; both open the
+// same field, and the user chose the one wording.
+// What the suggestions say about a path is kept per set of suggestions: it is asked for
+// every object drawn, on every change, and the answer takes a pass over all the options.
+let _declaredAt = new Map(), _declaredAtOf = null;
+function _declaredNames(path) {
+  if (_declaredAtOf !== options) { _declaredAt = new Map(); _declaredAtOf = options; }
+  const cacheKey = JSON.stringify(path);
+  let d = _declaredAt.get(cacheKey);
+  if (d) return d;
+  const seen = new Set();
+  d = { names: [], placeholder: false };
+  for (const o of options) {
+    const op = _optParts(o);
+    if (op.length <= path.length) continue;
+    if (path.some((seg, i) => !_isWildcard(op[i]) && op[i] !== String(seg))) continue;
+    const key = op[path.length];
+    if (isInternalSegment(key) || key === '*') continue;
+    if (_isWildcard(key)) d.placeholder = true;
+    else if (!seen.has(key)) { seen.add(key); d.names.push(key); }
+  }
+  _declaredAt.set(cacheKey, d);
+  return d;
+}
+function _addLineFor(path, obj) {
+  if (!path.length || !options.length) return 'Add option…';
+  const d = _declaredNames(path);
+  const isSet = d.placeholder || !d.names.length || _setEntryType(_typeAt(path)) !== undefined;
+  return !isSet && _takesOnlyDeclared(path) && d.names.every(k => k in obj) ? null : 'Add option…';
+}
+// Whether the object at `path` can hold only the options the suggestions list for it. Yes for
+// a group of options that is no option itself (nothing at or above it has a type: its names
+// are declared one by one), and for what its type calls a plain "submodule". No for anything
+// else, since types are free text and whatever cannot be read may take any name: an "open
+// submodule", a "section of an INI file", a "settings option", a "JSON value". The type is
+// the object's own option's, or the nearest option's above it, stepped down through "attribute
+// set of" and "list of" for each name or index between. It was not asked at first, and a
+// free-form section that happened to have its few declared options set had no way to add
+// the rest (the user, 2026-10-12, on services.samba.settings.global).
+function _takesOnlyDeclared(path) {
+  const bare = (t, more) => {
+    for (;;) {
+      const before = t;
+      t = _stripWrappingParens(t.trim());
+      for (const w of ['null or ', 'non-empty ', 'lazy ', 'nested ', ...more]) if (t.startsWith(w)) t = t.slice(w.length);
+      if (t === before) return t;
+    }
+  };
+  for (let i = path.length; i >= 1; i--) {
+    const opt = findOption(path.slice(0, i));
+    if (!opt) continue;
+    let type = opt.type || '';
+    for (let j = i; j < path.length; j++) {
+      type = bare(type, ['open submodule of ']);
+      const holds = ['attribute set of ', 'list of '].find(w => type.startsWith(w));
+      if (!holds) return false;
+      type = type.slice(holds.length);
+    }
+    return bare(type, []) === 'submodule';
+  }
+  return true;
+}
+
 // Build an object pre-populated with required direct children for a concrete path.
 // Used when adding an object-type option directly (not as an array item).
 // Returns {} if no required children found.
@@ -1848,6 +1899,10 @@ function initAddPanel() {
         e.preventDefault();
         // If the displayPath is not a valid leaf option (e.g. a fuzzy match like
         // "programs.steam"), treat it as a prefix and re-open autocomplete for children.
+        // An option that can be added as it stands is added by the click, as Enter on it
+        // always did. A click only put it in the field, to be added with Enter or the Add
+        // button, until the user asked for the one step (2026-10-12: "if i click an option,
+        // can it be added right away?").
         const isLeaf = isValidOptionPath(o.displayPath);
         if (isLeaf) {
           inp.value = o.displayPath;
@@ -1855,6 +1910,7 @@ function initAddPanel() {
           addSelectedOption = o;
           hideAcList();
           inp.focus();
+          doAdd();
         } else {
           inp.value = o.displayPath + '.';
           addSelectedOption = null;
@@ -1895,9 +1951,8 @@ function initAddPanel() {
     } else if (e.key === 'Enter') {
       const active = acList.querySelector('.autocomplete-item.active');
       if (active) {
+        // An item that is a whole option adds it itself; any other continues the path.
         active.dispatchEvent(new MouseEvent('mousedown'));
-        // If the item was a leaf, the input now holds a valid path — add it immediately
-        if (isValidOptionPath(inp.value.trim())) doAdd();
       } else {
         hideAcList();
         doAdd();
@@ -1954,9 +2009,11 @@ function initAddPanel() {
         item.addEventListener('mousedown', ev => {
           ev.preventDefault();
           inp.value = segPath;
-          if (isLeaf) { addSelectedType = typeFromNix(hit.type); addSelectedOption = hit; hideAcList(); }
-          else { addSelectedOption = null; inp.dispatchEvent(new Event('input')); }
           inp.focus();
+          if (isLeaf) {
+            addSelectedType = typeFromNix(hit.type); addSelectedOption = hit; hideAcList();
+            if (isValidOptionPath(segPath)) doAdd();
+          } else { addSelectedOption = null; inp.dispatchEvent(new Event('input')); }
         });
         acList.appendChild(item);
       });
@@ -1969,6 +2026,13 @@ function initAddPanel() {
     }
   });
   inp.addEventListener('blur', () => { acHideTimer = setTimeout(() => { hideAcList(); acHideTimer = null; hideForcebar(); }, 150); });
+  // Pressing a button of the force bar does not take the cursor out of the field, as pressing
+  // a suggestion does not: the blur above hides the bar 150ms later, and a press held for
+  // longer than that was let go on nothing, the type never chosen.
+  document.getElementById('force-type-bar').addEventListener('mousedown', e => e.preventDefault());
+  // The Add button the same: on a path that needs a type it brings the bar up (doAdd()), and
+  // the blur its press had started then took the bar away again a moment later.
+  document.getElementById('add-commit-btn').addEventListener('mousedown', e => e.preventDefault());
 }
 
 // Return the default empty container for a path segment based on option type, falling back
@@ -2054,11 +2118,14 @@ function doAdd() {
   const raw = inp.value.trim();
   if (!raw) return;
 
-  // Validate: must match a known option path
+  // A path the suggestions do not know is not refused: Enter or Add on it asks what kind of
+  // value it is (the force bar), and adds it as that. The bar came up by itself only once
+  // nothing at all was suggested for what was typed (showAC()); while anything still was,
+  // Enter said "Unknown option path" and there was no way on, which is what a setting of a
+  // free-form config ran into (the user, 2026-10-12: "i need to be able to add it anyway").
   if (!isValidOptionPath(raw)) {
-    setStatus('Unknown option path: ' + raw, 3000, 'err');
-    inp.classList.add('input-error');
-    setTimeout(() => inp.classList.remove('input-error'), 1500);
+    document.getElementById('add-ac-list').classList.add('hidden');
+    document.getElementById('force-type-bar').classList.remove('hidden');
     return;
   }
 
@@ -2648,7 +2715,7 @@ function _setValuePlaceholders(root) {
 // below add is looked at afterwards, since a disabled entry can come out as either kind.
 // Nothing that moves or finds rows goes by their place among siblings (drags go by
 // data-drag-parent and data-drag-key), so the extra element is invisible to all of that.
-function renderObj(container, obj, path) {
+function renderObj(container, obj, path, addLine = false) {
   let group = null;
   for (const [k, v] of Object.entries(obj)) {
     const childPath = [...path, k];
@@ -2674,6 +2741,24 @@ function renderObj(container, obj, path) {
       group.appendChild(el);
     }
   }
+  // An object in a list ends with a line where its next option would be, and a click opens
+  // the add field for it (`addLine`, from renderArray(); what it says: _addLineFor()). It goes
+  // with the options it follows, in their run; after a sub-section it is a run of its own.
+  // Every object had it for an hour on 2026-10-12, the file and each section too: the user
+  // saw it and kept it for lists only, a section having a heading to right-click, with the
+  // same entry on its menu (_addMenuItems()).
+  const label = addLine ? _addLineFor(path, obj) : null;
+  if (!label) return;
+  const add = document.createElement('div');
+  add.className = 'add-row';
+  add.textContent = label;
+  add.onclick = e => showAddOptionMenu(e, path);
+  if (!group || group !== container.lastElementChild) {
+    group = document.createElement('div');
+    group.className = 'field-group';
+    container.appendChild(group);
+  }
+  group.appendChild(add);
 }
 
 function _escHtml(s) {
@@ -2903,37 +2988,18 @@ function _detachForFloat(el) {
   return () => { if (next && next.parentNode === parent) parent.insertBefore(el, next); else parent.appendChild(el); };
 }
 
-// The add entries of a context menu for `path`: "Add entry…" where it applies, and `subLabel`
-// (default "Add sub option…"), which opens the add field prefilled to add under `path`. A plain
-// "Add option…", for the root of the file, was a third one here until 2026-10-11: the field
-// these open can be cleared to type any path, and on an object in a list the user found the
-// entry strange. It is on the editor's blank-space menu.
-function _addOptionMenuItems(event, path, subLabel = 'Add sub option…') {
-  return [
-    ..._entryAddMenuItems(event, path),
-    { label: subLabel, onclick: () => showAddOptionMenu(event, path) },
-  ];
-}
-
-// "Add entry…" on whatever is one entry of a set of named ones: a host under networking.hosts,
-// a disk under fileSystems. It opens the add field at the set, for another entry beside this
-// one. The same thing is "Add sub option…" on the set's own heading, but the user, pointing at
-// an entry, looked for it there. What a set is: _isEntrySet().
-function _entryAddMenuItems(event, path) {
-  const setPath = path.slice(0, -1);
-  if (!_isEntrySet(setPath)) return [];
-  return [{ label: 'Add entry…', onclick: () => showAddOptionMenu(event, setPath) }];
-}
-
-// An object inside a list has no header of its own to right-click -- its "Add field" lives on
-// the item's blank space (renderArray()), which its own option rows cover almost entirely. So a
-// row directly inside such an item offers the item's add entries itself, on top of its own.
-function _listItemAddMenuItems(event, path) {
-  const itemPath = path.slice(0, -1);
-  const entry = _entryAddMenuItems(event, path);
-  if (entry.length) return entry;
-  if (!itemPath.length || !Array.isArray(getAtPath(config, itemPath.slice(0, -1)))) return [];
-  return _addOptionMenuItems(event, itemPath, 'Add field');
+// How something is added. A list ends with "Add item…" (renderArrayField()) and an object in
+// a list with "Add option…" (renderObj()), in the page. Anything with a heading, a section
+// at any depth, has the entry on its right-click menu instead, by the same rule for whether
+// it is there (_addLineFor()); so has an object in a list, beside its line.
+// The blank space of the editor has "Add option…" on its menu, for the file.
+// Until 2026-10-12 there was a menu entry per kind of thing pointed at ("Add sub option…" on
+// a heading, "Add field" on an object in a list and on the rows inside it, "Add entry…" on an
+// entry of a set, "Add item" on a list's items), and nothing in the page.
+function _addMenuItems(event, path) {
+  const obj = getAtPath(config, path);
+  const label = obj !== null && typeof obj === 'object' && !isDisabled(obj) ? _addLineFor(path, obj) : null;
+  return label ? [{ label, onclick: () => showAddOptionMenu(event, path) }] : [];
 }
 
 // Right-click "Add option…": rather than a separate/duplicate implementation, this temporarily
@@ -2972,7 +3038,7 @@ function showAddOptionMenu(event, path) {
   const container = document.createElement('div');
   container.className = 'floating-add-container';
   const W = 520; // matches .floating-add-row's own width in style.css
-  // Anchored to the click position itself, same for "Add option…" and "Add sub option…" --
+  // Anchored to the click position itself, same wherever it is opened from --
   // both open right where the user right-clicked instead of one jumping to the top of the editor.
   let x = event.clientX;
   let y = event.clientY;
@@ -3091,16 +3157,12 @@ function renderSection(container, key, obj, path) {
   // so a right-click on a child still shows the child's menu, not this one.
   section.oncontextmenu = e => {
     const items = isDisabled(getAtPath(config, path)) ? [] : [
-      ..._addOptionMenuItems(e, path),
+      ..._addMenuItems(e, path),
       { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
     ];
     // Show/hide all is offered here as well as on the editor's own blank-space menu,
     // but only reaching this section and what's below it -- the blank-space one does the file.
     const foldAll = _foldAllMenuItems(section);
-    // No "Add option…" (a new option at the root of the file) here: "Add sub option…" opens
-    // the same field with this section's path filled in, which can be cleared to type any
-    // path, so the second entry was not needed (the user, 2026-10-11, after first moving it
-    // to a group of its own). It is on the editor's blank-space menu.
     showContextMenu(e, [...items, ..._commonMenuItems(path),
       ...(foldAll.length ? [{ separator: true }, ...foldAll] : [])]);
   };
@@ -3167,7 +3229,6 @@ function renderArrayField(container, key, arr, path) {
         arr.push(isObjArray ? {} : '');
       }
     }
-    _markFreshItem(path, arr, arr.length - 1);
     renderAll();
     // The cursor goes into what was just added, its first text field: one adds an item to fill
     // it in, and from an empty list's "Add item…" there was nothing focused at all afterwards.
@@ -3176,7 +3237,7 @@ function renderArrayField(container, key, arr, path) {
     if (box) box.focus();
   }
 
-  // An empty list says "Add item…" where the first item would be, in the tone of a
+  // A list says "Add item…" where its next item would be, in the tone of a
   // placeholder, and a click on it adds that item: the words of the "Add value…" and "Add
   // package…" the other kinds of list have there. ("List is empty", "[]" and "No items" were
   // tried on 2026-10-11; they say the list is empty, which the look says already, and not
@@ -3185,12 +3246,14 @@ function renderArrayField(container, key, arr, path) {
   // (the user, 2026-10-11: "if i press ... an empty list, shouldnt it create the first object
   // for me?"). addItem() makes the same item the menu's Add item does: an object with its
   // required options for a list of objects, an empty value otherwise.
-  // Only an empty list has it. A list with items gets more from its items: Enter in a plain
-  // value, and "Add item" on the menu of any item, an object's included (renderArray()). The
-  // list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
-  if (!arr.length && !isPkgArrayPath(path) && !enumOpts) {
+  // A list with items has it too, after the last one, as those other kinds of list always
+  // have theirs. Only an empty list had it until 2026-10-12, the rest being left to Enter in
+  // a plain value and "Add item" on an item's menu (renderArray()): a list of objects then
+  // showed no way to add to it at all, and the user asked why ("i need a way to add").
+  // The list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
+  if (!isPkgArrayPath(path) && !enumOpts) {
     const hint = document.createElement('div');
-    hint.className = 'list-empty';
+    hint.className = 'list-add';
     hint.textContent = 'Add item…';
     hint.onclick = addItem;
     valEl.appendChild(hint);
@@ -3201,7 +3264,7 @@ function renderArrayField(container, key, arr, path) {
     const items = disabled ? [] : [
       { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
     ];
-    showContextMenu(e, [..._listItemAddMenuItems(e, path), ...items, ..._commonMenuItems(path)]);
+    showContextMenu(e, [...items, ..._commonMenuItems(path)]);
   };
 
   row.appendChild(keyEl);
@@ -3591,7 +3654,7 @@ function renderField(container, key, val, path) {
       ...(unwrapAction ? [{ label: 'Convert to native', onclick: unwrapAction }] : []),
       ...(canConvertExpr ? [{ label: 'Convert to Nix', onclick: convertToExpr }] : []),
     ];
-    showContextMenu(e, [..._listItemAddMenuItems(e, path), ...items, ..._commonMenuItems(path)]);
+    showContextMenu(e, [...items, ..._commonMenuItems(path)]);
   };
 
   row.appendChild(keyEl);
@@ -3633,59 +3696,12 @@ function _focusListItem(path, arr, index) {
   box.setSelectionRange(box.value.length, box.value.length);
 }
 
-// The list item "Add item" has just made, while it is still as it was made. Left like that, it
-// is taken away again: an object with its required options unfilled is not something Nix
-// accepts, and nobody means to keep one (the user: "if i go away from a list object without
-// typing a value it should be removed"). "Left" is a click or the cursor going anywhere
-// outside it; "as it was made" is by comparison with what it held then, since a new object
-// may start with a switch or a number in it and so is not simply empty. Only this one item:
-// an empty object that was in the file already may be meant (every option of it can have a
-// default) and is never removed for having been clicked through.
-// It was tried first as the item's own focusout, which missed an item with no text field to
-// have the cursor in, and one whose required options are not all text.
-// A plain value's item is the same: an empty line added to a list of texts and left empty goes
-// too (it was only the objects at first, and an empty text item stayed behind with the
-// cursor's place still drawn in it, which the user took for the cursor not having left).
-let _freshItem = null;   // { path, arr, index, len, as, at, el }, el being the item's element (renderArray())
-function _markFreshItem(path, arr, index) {
-  _freshItem = { path, arr, index, len: arr.length, as: JSON.stringify(arr[index]), at: Date.now(), el: null };
-}
-function _leftFreshItem(target) {
-  const f = _freshItem;
-  if (!f || !target || !target.isConnected || Date.now() - f.at < 300) return;
-  if ((f.el && f.el.contains(target)) || target.closest('.context-menu')) return;
-  _freshItem = null;
-  if (getAtPath(config, f.path) !== f.arr || f.arr.length !== f.len || JSON.stringify(f.arr[f.index]) !== f.as) return;
-  _dropListItem(f.path, f.arr, f.index);
-}
-// After the click or the move of the cursor has done what it does: taking the item away
-// rebuilds the editor, and a click must not lose the thing it was on its way to.
-document.addEventListener('mouseup', e => setTimeout(() => _leftFreshItem(e.target), 0), true);
-document.addEventListener('focusin', e => setTimeout(() => _leftFreshItem(e.target), 0), true);
-
-// Takes item `i` out of the list at `path` and draws the editor again, with the cursor back in
-// the field it was in, if it was in one: the editor is rebuilt from scratch on every change, so
-// the field the user has just clicked or tabbed into is otherwise gone the moment they get there.
-function _dropListItem(path, arr, i) {
-  const act = document.activeElement;
-  const row = act && act.closest ? act.closest('#editor-area .field-row[data-path]') : null;
-  let at = null;
-  if (row) {
-    let p = row.dataset.path;
-    const prefix = path.join('.') + '.';
-    if (p.startsWith(prefix)) {
-      const rest = p.slice(prefix.length), n = parseInt(rest, 10);
-      if (String(n) === rest.split('.')[0] && n > i) p = prefix + (n - 1) + rest.slice(String(n).length);
-    }
-    at = { path: p, index: [...row.querySelectorAll('input, textarea')].indexOf(act) };
-  }
-  arr.splice(i, 1);
-  renderAll();
-  if (!at) return;
-  const again = document.querySelector('#editor-area .field-row[data-path="' + CSS.escape(at.path) + '"]');
-  const box = again && again.querySelectorAll('input, textarea')[Math.max(0, at.index)];
-  if (box) box.focus();
-}
+// Nothing takes a list item away by itself: Backspace in an empty one, or Delete on its
+// menu, and nothing else (the user, 2026-10-12: "dont remove fields that are empty
+// automatically"). For a day before that an item just added and left as it was made went
+// again on a click or a move of the cursor anywhere outside it, and the only item of a list
+// went the moment it was emptied, both on the user's wish of 2026-10-11; with "Add item…"
+// and "Add option…" in the page, an item was gone before it could be filled in.
 
 // Is there nothing in this list item: every option of it an empty text, null, an empty list,
 // or a group of such? A switch or a number counts as something, set to whatever.
@@ -3706,22 +3722,11 @@ function renderArray(container, arr, path) {
       wrap.className = 'array-obj-item';
       const fields = document.createElement('div');
       fields.className = 'array-obj-fields';
-      renderObj(fields, v, itemPath);
+      renderObj(fields, v, itemPath, true);
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
-        const disabled = isDisabled(getAtPath(config, itemPath));
-        const items = disabled ? [] : _addOptionMenuItems(e, itemPath, 'Add field');
-        // "Add item" adds another object to the list, with its required options: the entry a
-        // plain item's menu has (below), which an object's lacked while the list's own menu
-        // still had one.
-        const another = { label: 'Add item', onclick: () => {
-          const blank = blankObjectFromOptions(path);
-          arr.push(blank !== null ? blank : {});
-          _markFreshItem(path, arr, arr.length - 1);
-          renderAll();
-        } };
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, [...items, another, ..._commonMenuItems(itemPath)]);
+        showContextMenu(e, [..._addMenuItems(e, itemPath), ..._commonMenuItems(itemPath)]);
       };
       // Backspace in a text field that is already empty takes the whole item away when there
       // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list
@@ -3736,14 +3741,6 @@ function renderArray(container, arr, path) {
         e.stopPropagation();
         arr.splice(i, 1);
         renderAll();
-      });
-      if (_freshItem && _freshItem.arr === arr && _freshItem.index === i) _freshItem.el = wrap;
-      // The only item of a list goes the moment the last thing in it is deleted, and the list
-      // says "Add item…" again, without a click elsewhere or another Backspace first (the user:
-      // "the object should disappear right away"). Only the only one: emptying one item among
-      // several is usually the start of typing something else into it.
-      wrap.addEventListener('input', () => {
-        if (arr.length === 1 && arr[0] === v && _isBlankItem(v)) _dropListItem(path, arr, 0);
       });
       container.appendChild(wrap);
       makeDraggable(wrap, String(i), path);
@@ -3768,8 +3765,6 @@ function renderArray(container, arr, path) {
       editor.type = 'text'; editor.value = strVal;
       editor.addEventListener('input', () => {
         setAtPath(config, itemPath, isExpr ? { _expr: editor.value } : editor.value);
-        // As with an object (above): the only item, emptied, is gone at once.
-        if (editor.value === '' && arr.length === 1) _dropListItem(path, arr, 0);
       });
       // Enter makes a new item under this one, and Backspace in an item that is already empty
       // takes it away, as in any list one types into: the user's idea, to spare the right-click
@@ -3781,7 +3776,6 @@ function renderArray(container, arr, path) {
         if (e.key === 'Enter') {
           e.preventDefault();
           arr.splice(i + 1, 0, '');
-          _markFreshItem(path, arr, i + 1);
           renderAll();
           _focusListItem(path, arr, i + 1);
         } else if (e.key === 'Backspace' && editor.value === '') {
@@ -3795,10 +3789,6 @@ function renderArray(container, arr, path) {
     if (isExpr) editor.classList.add('expr-value');
     item.oncontextmenu = e => {
       const items = [
-        // Also offered here, not only on the list's own row: an item's text box covers most of
-        // the row, so right-clicking "the list" usually lands on an item (same push as the row's
-        // own "Add item" does for a list of plain values, see renderArrayField()).
-        { label: 'Add item', onclick: () => { arr.push(''); renderAll(); } },
         isExpr
           ? { label: 'Convert to native', onclick: () => { setAtPath(config, itemPath, editor.value); renderAll(); } }
           : { label: 'Convert to Nix', onclick: () => { setAtPath(config, itemPath, { _expr: editor.value }); renderAll(); } },
@@ -3807,7 +3797,6 @@ function renderArray(container, arr, path) {
       showContextMenu(e, items);
     };
     item.appendChild(editor);
-    if (_freshItem && _freshItem.arr === arr && _freshItem.index === i) _freshItem.el = item;
     container.appendChild(item);
   });
 }

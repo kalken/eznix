@@ -887,10 +887,19 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 
 /* ── Null value display ── */
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
-/* What an empty list shows in place of its first item (renderArrayField()): the placeholder's
+/* What a list shows where its next item would be (renderArrayField()): the placeholder's
    colour, on the line and at the left edge where a value's text is. */
-.list-empty { color: var(--text3); font-size: 12px; padding: 4px 8px; cursor: pointer; }
-.list-empty:hover { color: var(--text2); }
+.list-add { color: var(--text3); font-size: 12px; padding: 4px 8px; cursor: pointer; }
+.list-add:hover { color: var(--text2); }
+/* The last line of an object in a list, "Add option…" (renderObj()): a row like any other,
+   with the words where the next option's name would be, 5px from the row's top as a name is.
+   Not in anything disabled, where nothing can be added. */
+.add-row {
+  color: var(--text3); font-size: 12px; cursor: pointer; box-sizing: border-box;
+  min-height: var(--row-height); padding-top: 5px;
+}
+.add-row:hover { color: var(--text2); }
+.is-disabled .add-row { display: none; }
 
 /* ── Invalid input state ── */
 .input-error { border-color: var(--red) !important; }

@@ -400,14 +400,34 @@ the heading's padding) was deleted by an edit that replaced "everything between 
 in `style.css`, was pushed, and was then papered over with workarounds for an hour before the
 cause was found. Edit that file by exact strings.
 
-**Lists**: an empty list shows "Add item…", and a click adds its first item with the cursor
-in it (`addItem()` in `renderArrayField()`). An item just added and left as it was made is
-taken away again on a click or a move of the cursor outside it (`_freshItem`,
-`_leftFreshItem()`), an object and a plain text alike; the only item of a list goes the
-moment it is emptied; Backspace in an empty text field of an object with nothing in it
-removes the object. Only what was just added is ever removed for being empty: an empty
-object that was in the file may be meant. This part was tested in headless Chrome with real
-clicks and keys, at the user's request.
+**Adding**: a list ends with "Add item…" (`addItem()` in `renderArrayField()`) and an object
+in a list with "Add option…" (`renderObj()` with `addLine`), both in the page; a section has
+the entry on its right-click menu (`_addMenuItems()`), and the editor's blank space has "Add
+option…" for the file. One rule says whether it is there (`_addLineFor()`): always, except where
+every option the suggestions list is already set *and* the object certainly takes no others
+(`_takesOnlyDeclared()`: a group of options with no type of its own, or a plain
+"submodule"; anything unreadable counts as free-form, after the entry went missing on
+`services.samba.settings.global`). It reads "Add
+option…" everywhere; a set said "Add entry…" until the user chose one wording that day. Settled on 2026-10-12: only an empty list had a line
+before, and the menus had an entry per kind of thing pointed at ("Add sub option…", "Add
+field", "Add entry…" on an entry, "Add item"). For an hour every object had the line, the
+file and each section too; the user looked and kept it for lists ("its better to have it as
+rightklick, but for lists its great"). A click on a whole option in the add field's list
+adds it at once. A path the suggestions do not know is never refused: Enter on it brings up the
+bar that asks what kind of value it is (`doAdd()`, `doForceAddWithType()`), where it used
+to say "Unknown option path" as long as anything was still suggested for what was typed.
+The bar's buttons and Add keep the cursor in the field, since the field's blur hides the bar.
+Tried by the user in the test server that day, on `services.samba.settings.global` ("that
+works!"): the type chosen from the bar, and Add pressed with no type chosen.
+
+**Lists**: Nothing
+removes an item by itself: Backspace in an empty plain item, or in an empty text field of an
+object with nothing in it, and Delete on the menu. On 2026-10-11 an item just added and left
+untouched went again on a click elsewhere, and the only item of a list went the moment it
+was emptied; the user had both taken out the next day ("dont remove fields that are empty
+automatically"), once adding had its own lines in the page. The Backspace part was tested in
+headless Chrome with real keys on 2026-10-11; the two lines to add with were not run in
+a browser by anyone but the user, who has not said that they work.
 
 **A name being renamed does not move** (`_startKeyRename()`, `.key-rename-input`): the name
 stays in the page, unseen, and the field lies on top of it in the same font and colour, its
