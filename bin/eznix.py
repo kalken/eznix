@@ -790,10 +790,16 @@ def _excluded(rel):
     configuration -- the flake's own root, with its package.json. json2nix.nix takes the same
     list, and the two have to agree: left out here only, a file is still built; there only,
     it is a tab that changes nothing."""
+    return _matches_rules(EXCLUDE, rel)
+
+
+def _matches_rules(rules, rel):
+    """Whether the path, or a folder above it, is left out by these rules (_exclude_rule()),
+    the last one that matches deciding."""
     parts = [p for p in rel.replace('\\', '/').split('/') if p]
     for i in range(1, len(parts) + 1):
         prefix, out = '/'.join(parts[:i]), False
-        for negated, regex in EXCLUDE:
+        for negated, regex in rules:
             if regex.fullmatch(prefix):
                 out = not negated
         if out:
@@ -1079,6 +1085,8 @@ class PluginApi:
         api.flake, api.config_dir, api.state_dir, api.hostname
         api.page       set it to change what the page gets as eznix.config.NAME (default: config)
         api.debug(line)  a line in the log, with the `debug` setting on only
+        api.ignore(entries)  a function saying whether a relative path is left out by a list
+                       read like a .gitignore, as the `exclude` setting is (_exclude_rule())
     and api.login(check, user) adds a way to log in."""
     Error, Download = PluginError, PluginDownload
 
@@ -1089,6 +1097,10 @@ class PluginApi:
 
     def debug(self, line):
         _debug(f'plugin {self.name}: {line}')
+
+    def ignore(self, entries):
+        rules = [r for r in (_exclude_rule(str(e)) for e in entries) if r]
+        return lambda rel: _matches_rules(rules, rel)
 
     def login(self, check, user=None):
         """Add a way to log in: check(username, password) says whether that is right. `user`,

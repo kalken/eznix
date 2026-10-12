@@ -17,8 +17,13 @@ adds one on request. Only the newest `backups` are kept, whichever way they were
 
 Settings ([plugin.system] in eznix.toml):
   backups   how many backups to keep (default 5; 0: none)
-  dotfiles  include dot-files and dot-folders in an export (default false)
-  exclude   file names to leave out of an export, anywhere in the tree
+  exclude   what to leave out of an export, each entry read like a line of a .gitignore, as
+            eznix's own `exclude` is: a name anywhere in the tree (a folder with everything
+            under it), "/name" from the top of the flake, * ? [a-z] **, "!entry"
+            (api.ignore). Default [".*"]: dot-files and dot-folders. A list of your own
+            replaces that, so it has to say ".*" itself to keep them out.
+            Until 2026-10-12 it was two settings, a switch `dotfiles` and a list of exact
+            file names; the user wanted the one list, with the dot-files as its default.
 """
 import datetime
 import io
@@ -33,25 +38,24 @@ def setup(api):
     flake = os.path.realpath(api.flake)
     backup_dir = os.path.join(api.state_dir, 'system-backups')
     keep = int(api.config.get('backups', 5))
-    skip_dotfiles = not api.config.get('dotfiles', False)
-    exclude = {str(n) for n in api.config.get('exclude', []) if str(n).strip()}
+    excluded = api.ignore(api.config.get('exclude', ['.*']))
     api.page = {'backups': keep > 0}
 
     def tree_files():
-        """(absolute path, path in the zip) for every file an export holds. Dot-files and
-        dot-folders are left out by default -- .git, .direnv, key material is conventionally
-        dot-prefixed, and this is a deliberately blunt way to keep secrets out of a
-        downloadable zip. Symlinks are always skipped: `nix build`'s "result" links point into
+        """(absolute path, path in the zip) for every file an export holds: all but what
+        `exclude` leaves out, which is dot-files and dot-folders unless it says otherwise --
+        .git, .direnv, key material is conventionally dot-prefixed, and this is a
+        deliberately blunt way to keep secrets out of a downloadable zip. Symlinks are always skipped: `nix build`'s "result" links point into
         /nix/store, and without them this is a plain walk with no cycles."""
         for dirpath, dirnames, filenames in os.walk(flake):
+            rel = lambda name: os.path.relpath(os.path.join(dirpath, name), flake).replace(os.sep, '/')
             dirnames[:] = [d for d in dirnames
-                           if not (skip_dotfiles and d.startswith('.'))
-                           and not os.path.islink(os.path.join(dirpath, d))]
+                           if not excluded(rel(d)) and not os.path.islink(os.path.join(dirpath, d))]
             for fn in filenames:
                 full = os.path.join(dirpath, fn)
-                if (skip_dotfiles and fn.startswith('.')) or fn in exclude or os.path.islink(full):
+                if excluded(rel(fn)) or os.path.islink(full):
                     continue
-                yield full, os.path.relpath(full, flake).replace(os.sep, '/')
+                yield full, rel(fn)
 
     def backup():
         """Zip the current tree into the backup folder and prune to the newest `keep`. Returns

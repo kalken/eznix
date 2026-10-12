@@ -267,7 +267,12 @@ agree: the function's argument keeps a path out of the build, the editor's setti
 at any depth, `/name` anchored, `* ? [a-z] **`, `!entry`, last match decides. Each side
 turns an entry into a regular expression by the same steps (`_exclude_rule()` in
 `eznix.py`, `nix/exclude.nix`), and `test/exclude.json` is one table of cases both are run
-against (`test_server.py`, `checks.exclude`): add a case there when touching either. What
+against (`test_server.py`, `checks.exclude`): add a case there when touching either. The system
+plugin's own `exclude` (what an export leaves out of the whole flake) is read the same way,
+through `api.ignore()`, and is the one setting for it, `[".*"]` by default; it was a switch
+`dotfiles` and a list of exact file names, which the user had made one ("it should be one
+option and default to excluding dot files"). An import still skips every dot path in a
+zip, whatever the setting. What
 changed for an old list: an entry without a slash now matches at any depth, not only at the
 top. A module can't pass its option to the function
 (what the function reads decides `config`, so reading `config` there recurses). A raw
@@ -469,7 +474,7 @@ change, so it can be reshaped freely.
   plugin's function directly, or it breaks when that plugin is left out.
 - **Server side**: `setup(api)` in the server file registers handlers under
   `/api/v1/plugin/NAME/` (`PluginApi`: `api.get/post`, `api.config`, `api.flake`,
-  `api.state_dir`, `api.page`, `api.login`). A handler returns JSON-able data or an
+  `api.state_dir`, `api.page`, `api.login`, `api.ignore`). A handler returns JSON-able data or an
   `api.Download`, and raises `api.Error(status, message)`. Core checks the login first. A
   plugin whose server file fails to load is left out whole.
 - `.py` files and `plugin.json` are not served to the browser.

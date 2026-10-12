@@ -87,8 +87,11 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # Export, import and restore of the whole flake.
 # [plugin.system]
 # backups  = 5                        # automatic backups kept; 0: none
-# dotfiles = false                    # include dot-files in an export
-# exclude  = ["hardware-configuration.nix"]
+# exclude  = [".*", "secrets", "*.key"]
+#                                     # what an export leaves out, read like the lines of a
+#                                     # .gitignore, as `exclude` above is. Default [".*"]:
+#                                     # dot-files and dot-folders; a list of your own
+#                                     # replaces it
 
 # [plugin.documents]
 # enabled = false

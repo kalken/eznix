@@ -188,7 +188,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n'}.items():
+                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -422,6 +422,13 @@ def main():
                   b.request('/api/v1/file?file=package.json')[0] != 200
                   and b.request('/api/v1/file/save?file=vendor/deep/x.json', b'{"a": 2}')[0] == 400
                   and open(f'{tmp}/flake/eznix/vendor/deep/x.json').read() == '{}')
+            os.makedirs(f'{tmp}/flake/secret'); os.makedirs(f'{tmp}/flake/sub/secret')
+            made = ('notes.md', 'keep.md', 'sub/more.md', 'secret/key.nix', 'sub/secret/x.nix', '.hidden', '.shown')
+            for name in made:
+                open(f'{tmp}/flake/{name}', 'w').write('x')
+            exported = set(zipfile.ZipFile(io.BytesIO(b.request('/api/v1/plugin/system/export')[1])).namelist())
+            check("system: the export's own exclude is read like a .gitignore too, dot-files being entries of it",
+                  exported & set(made) == {'keep.md', 'sub/secret/x.nix', '.shown'}, sorted(exported))
             check("behind a proxy, the page's address listed in hosts is accepted, and only that",
                   [save(o) for o in ('https://nix.example.org', 'http://nix.example.org', 'https://nix.example.org:8443')] == [200, 403, 403])
         finally:

@@ -394,6 +394,9 @@ services.eznix.plugins = {
 };
 ```
 
+An export of the flake leaves out dot-files and dot-folders. `system.exclude` changes that:
+a list read like the main `exclude`, `[ ".*" ]` by default.
+
 To write your own, make a folder with a `plugin.json` and add it with
 `services.eznix.extraPlugins.NAME = ./folder;` (or `plugins_dir` in `eznix.toml`):
 
