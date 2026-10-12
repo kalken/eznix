@@ -59,7 +59,7 @@ command = "micro"
 | `menus.*.name` | its extensions | what the button says |
 | `menus.*.extensions` | | the files it lists, by how their names end |
 | `menus.*.command` | `editor` | what this menu's files open in |
-| `auto_hide` | `true` | an open file slides away on a click outside it; a handle at the window's right edge brings it back |
+| `auto_hide` | `true` | an open file slides away on a click outside it; the arrow button at the side's top left corner hides and shows it by hand, and stays in view while it is away |
 | `exclude` | `[ ".*" ]` | what no menu lists, read like the lines of a `.gitignore` |
 | `enabled` | `true` | `false` leaves the plugin out |
 

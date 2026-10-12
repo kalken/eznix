@@ -332,28 +332,40 @@ const eznix = {
       place();
       // The side goes out of the way on a press anywhere outside it, as the terminal panel
       // does (initTerminalAutoHide() there, and the same exceptions: a menu, a dialog and a
-      // hint count as inside), while a panel that asks for this is open (`autoHide`); a
-      // handle at the window's right edge, or anything that brings a panel forward, has it
-      // back. It only slides out of view: what runs in it keeps its size and goes on.
+      // hint count as inside), while a panel that asks for this is open (`autoHide`); the
+      // button below, or anything that brings a panel forward, has it back. It only slides out of view: what runs in it keeps its size and goes on.
       // Asked for by the user for the files' editors, 2026-10-12 ("an auto hide on this
       // plugin too, like the terminal works").
-      const handle = document.createElement('button');
-      handle.className = 'side-handle hidden';
-      handle.textContent = '‹';
-      _wireHoverTooltip(handle, 'Show what is open on the side');
-      handle.onclick = () => this._sideShow();
-      document.querySelector('.main').appendChild(handle);
-      this._sideShow = () => { stack.classList.remove('side-hidden'); handle.classList.add('hidden'); };
-      const hide = () => { stack.classList.add('side-hidden'); handle.classList.remove('hidden'); };
+      // The button that does it is the terminal panel's own, turned on its side: a button
+      // like any in the page with an arrowhead, at the top left corner of the side and part
+      // of it. Away, the side has slid off only so far that this corner with the button is
+      // still in the window (the user's wish, as the terminal leaves its bar), and a press
+      // on what is left of it brings it back as the button does. So the side can
+      // be hidden and shown by hand as well. (It was a slim handle half way down the
+      // window's edge, for showing only, and for an hour a second one for hiding, which
+      // looked odd; the user asked for the terminal's look, the arrow upright.)
+      const toggle = document.createElement('button');
+      toggle.className = 'btn side-toggle hidden';
+      toggle.innerHTML = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>';
+      _wireHoverTooltip(toggle, 'Show');
+      // (A strip of its own at the window's edge with the button on it was tried first and
+      // taken back.)
+      const set = away => {
+        stack.classList.toggle('side-hidden', away);
+        toggle.classList.toggle('expanded', !away);
+        toggle.classList.toggle('hidden', !this._sideWindows.length);
+        toggle.dataset.tooltip = away ? 'Show' : 'Hide';
+      };
+      toggle.onclick = e => { e.stopPropagation(); set(!stack.classList.contains('side-hidden')); };
+      stack.appendChild(toggle);
+      stack.addEventListener('click', () => { if (stack.classList.contains('side-hidden')) set(false); });
+      this._sideShow = () => set(false);
       document.addEventListener('mousedown', e => {
-        if (stack.classList.contains('side-hidden') || stack.contains(e.target) || e.target === handle) return;
+        if (stack.classList.contains('side-hidden') || stack.contains(e.target)) return;
         if (!this._sideWindows.some(w => w.panels.some(p => p.autoHide))) return;
         if (e.target.closest && e.target.closest('.context-menu, .modal-overlay, .hover-tooltip')) return;
-        hide();
+        set(true);
       }, true);
-      // (A handle to hide it by hand, the same one the other way round on the side's left
-      // edge, was tried and taken out the same day: it looked odd, and who switches the
-      // hiding off does not want it.)
       this.resizable(stack, { edge: 'left', key: 'eznix-side-panel-width', min: 260,
         apply: width => document.documentElement.style.setProperty('--side-panel-width', width) });
     }
@@ -400,7 +412,7 @@ const eznix = {
         if (!win.panels.length) {
           this._sideWindows = this._sideWindows.filter(w => w !== win);
           win.el.remove();
-          if (!this._sideWindows.length) this._sideShow();      // nothing left to bring back
+          if (!this._sideWindows.length) this._sideShow();      // nothing left to bring back, and no button for it
         } else if (wasShown) show(win.panels[win.panels.length - 1]);
         if (onClose) onClose();
         // What is in view where the closed one was: its window's tab now shown, or, the

@@ -526,8 +526,11 @@ hanging up on the program with no question: an editor keeps what was unsaved in 
 recovery file (vim's swap file) and offers it at the next opening, which the user found
 enough ("i think thats enough then"), after a time with no cross and one that asked first. The open files slide out of the way on a press outside the side, as the terminal panel
 hides (`autoHide` in `eznix.sidePanel()`, `auto_hide` in the plugin, on by default; a
-handle at the window's edge brings them back), asked for by the user. A second handle to
-hide by hand was added and taken out again the same day ("looks weird"). No buttons without
+button brings them back), asked for by the user. That button is the terminal's own look
+turned on its side, an arrowhead on a page button at the side's top left corner, and
+hides by hand as well; away, the side has slid off only so far that this corner with the
+button is still in the window, which the user saw and called perfect; before it there was a slim handle at the window's edge for showing
+only, and for an hour a second one for hiding ("looks weird"). No buttons without
 a terminal. Its server half lists files and deletes one:
 each line of a menu ends in a cross, which removes the file at once after a question (and
 closes its tab), and "New file…" is a dialog of the page's kind with the flake's folders

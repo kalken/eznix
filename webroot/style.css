@@ -926,18 +926,18 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   z-index: 15; pointer-events: none;
   display: flex;
 }
-/* Out of the way (autoHide in eznix.sidePanel()): slid off the window's right edge, still
-   laid out, so that a terminal in it keeps its size. The handle that has it back stands at
-   that edge, half way down. */
+/* Out of the way (autoHide in eznix.sidePanel(), or its button): slid off the window's right
+   edge, still laid out, so that a terminal in it keeps its size, and only so far that its
+   left corner with the button stays in the window. The button is one of the page's own with
+   an arrowhead, as the terminal panel's is, at the side's top left: on the first window's
+   row of tabs, which leaves it room. The arrow points right to send the side off and left
+   to bring it in. */
 .side-panels { transition: transform .18s ease; }
-.side-panels.side-hidden { transform: translateX(100%); box-shadow: none; }
-.side-handle {
-  position: fixed; right: 0; top: 50vh; transform: translateY(-50%); z-index: 16;
-  width: 18px; height: 56px; padding: 0; cursor: pointer;
-  background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); border-right: none;
-  border-radius: var(--radius) 0 0 var(--radius); font-size: 14px; line-height: 1;
-}
-.side-handle:hover { background: var(--bg4); color: var(--text); }
+.side-panels.side-hidden { transform: translateX(calc(100% - 52px)); }
+.side-panels.side-hidden > .side-panel { cursor: pointer; }
+.side-toggle { position: absolute; left: 10px; top: 7px; z-index: 41; padding: 5px 8px; pointer-events: auto; }
+.side-toggle.expanded svg { transform: rotate(180deg); }
+.side-panels > .side-panel:nth-child(1 of .side-panel) > .side-tabs { padding-left: 52px; }
 .side-panels > .resize-handle { pointer-events: auto; }
 .side-panels:not(:has(.side-panel)) > .resize-handle { display: none; }
 .side-panel {
