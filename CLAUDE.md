@@ -400,8 +400,10 @@ the heading's padding) was deleted by an edit that replaced "everything between 
 in `style.css`, was pushed, and was then papered over with workarounds for an hour before the
 cause was found. Edit that file by exact strings.
 
-**Adding**: a list ends with "Add item…" (`addItem()` in `renderArrayField()`) and an object
-in a list with "Add option…" (`renderObj()` with `addLine`), both in the page; a section has
+**Adding**: a list ends with a "+" that adds an item (`addItem()` in `renderArrayField()`)
+and an object in a list with a "+" that opens the add field for it (`renderObj()` with
+`addLine`), both in the page (`_addButton()`; they were the words "Add item…" and "Add
+option…" across the line for some hours, until the user asked for a button); a section has
 the entry on its right-click menu (`_addMenuItems()`), and the editor's blank space has "Add
 option…" for the file. One rule says whether it is there (`_addLineFor()`): always, except where
 every option the suggestions list is already set *and* the object certainly takes no others

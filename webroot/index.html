@@ -2715,6 +2715,22 @@ function _setValuePlaceholders(root) {
 // below add is looked at afterwards, since a disabled entry can come out as either kind.
 // Nothing that moves or finds rows goes by their place among siblings (drags go by
 // data-drag-parent and data-drag-key), so the extra element is invisible to all of that.
+// The "+" a list has where its next item would be and an object in a list where its next
+// option would be: a small button that says what it adds when the pointer rests on it. Both
+// were words across the whole line at first, "Add item…" and "Add option…", until the user
+// asked for the button (2026-10-12: "could you add a + button for both options and items
+// instead?").
+function _addButton(what, onclick) {
+  const b = document.createElement('button');
+  b.type = 'button';
+  b.className = 'icon-btn add-btn';
+  b.textContent = '+';
+  b.setAttribute('aria-label', what);
+  b.onclick = onclick;
+  _wireHoverTooltip(b, what);
+  return b;
+}
+
 function renderObj(container, obj, path, addLine = false) {
   let group = null;
   for (const [k, v] of Object.entries(obj)) {
@@ -2751,8 +2767,7 @@ function renderObj(container, obj, path, addLine = false) {
   if (!label) return;
   const add = document.createElement('div');
   add.className = 'add-row';
-  add.textContent = label;
-  add.onclick = e => showAddOptionMenu(e, path);
+  add.appendChild(_addButton('Add option', e => showAddOptionMenu(e, path)));
   if (!group || group !== container.lastElementChild) {
     group = document.createElement('div');
     group.className = 'field-group';
@@ -3251,11 +3266,11 @@ function renderArrayField(container, key, arr, path) {
   // a plain value and "Add item" on an item's menu (renderArray()): a list of objects then
   // showed no way to add to it at all, and the user asked why ("i need a way to add").
   // The list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
+  // The words became a "+" the day after they went under every list (_addButton()).
   if (!isPkgArrayPath(path) && !enumOpts) {
     const hint = document.createElement('div');
     hint.className = 'list-add';
-    hint.textContent = 'Add item…';
-    hint.onclick = addItem;
+    hint.appendChild(_addButton('Add item', addItem));
     valEl.appendChild(hint);
   }
 

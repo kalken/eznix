@@ -889,17 +889,22 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
 /* What a list shows where its next item would be (renderArrayField()): the placeholder's
    colour, on the line and at the left edge where a value's text is. */
-.list-add { color: var(--text3); font-size: 12px; padding: 4px 8px; cursor: pointer; }
-.list-add:hover { color: var(--text2); }
-/* The last line of an object in a list, "Add option…" (renderObj()): a row like any other,
-   with the words where the next option's name would be, 5px from the row's top as a name is.
-   Not in anything disabled, where nothing can be added. */
-.add-row {
-  color: var(--text3); font-size: 12px; cursor: pointer; box-sizing: border-box;
-  min-height: var(--row-height); padding-top: 5px;
+.list-add { padding: 4px 8px; }
+/* The last line of an object in a list (renderObj()): a row like any other, with the button
+   4px from its top and bottom. */
+.add-row { box-sizing: border-box; min-height: var(--row-height); padding-top: 4px; }
+/* The "+" in either (_addButton()), in the colours of the page's other buttons (.btn): their
+   fill, line and text, and their fill on hover. 16px tall, so a row of 24px with it in is as
+   tall as any other; its left edge stands where a value's text or an option's name begins.
+   It was the placeholder's grey with nothing round it at first, and the user asked for the
+   buttons' colours (2026-10-12). Not in anything disabled (.is-disabled .icon-btn). */
+.add-btn {
+  display: block; box-sizing: border-box; height: 16px; padding: 0 5px;
+  font-size: 12px; line-height: 14px;
+  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
+  border-radius: var(--radius-sm); transition: background .15s, border-color .15s;
 }
-.add-row:hover { color: var(--text2); }
-.is-disabled .add-row { display: none; }
+.add-btn:hover { background: var(--bg4); }
 
 /* ── Invalid input state ── */
 .input-error { border-color: var(--red) !important; }
