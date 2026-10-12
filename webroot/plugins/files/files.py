@@ -17,7 +17,12 @@ Settings ([plugin.files] in eznix.toml):
               name        what the button says: "Nix files"
               extensions  the files it lists, by how their names end: [".nix"]
               command     what a file is opened with, the file's path being put behind it;
-                          default: what $EDITOR names in the terminal's shell, or nano
+                          default: `editor`
+  editor    what the menus open a file with that name no command of their own; default:
+            what $EDITOR names in the terminal's shell, or nano. The one setting to change
+            for another editor while keeping the menus as they are.
+  auto_hide the open files go out of the way on a click outside them, as the terminal panel
+            does, and come back from a handle at the window's edge (default true)
   exclude   what no menu lists, read like the lines of a .gitignore, as eznix's own `exclude`
             is (api.ignore). Default [".*"]: dot-files and dot-folders.
 
@@ -34,6 +39,7 @@ DEFAULT_MENUS = [{'name': 'Nix files', 'extensions': ['.nix']}]
 def setup(api):
     base = os.path.realpath(api.flake)
     excluded = api.ignore(api.config.get('exclude', ['.*']))
+    editor = str(api.config.get('editor') or '')
     menus = []
     for entry in api.config.get('menus', DEFAULT_MENUS):
         if not isinstance(entry, dict):
@@ -41,10 +47,10 @@ def setup(api):
         endings = [str(e) for e in entry.get('extensions', []) if str(e)]
         if endings:
             menus.append({'name': str(entry.get('name') or ', '.join(endings)), 'extensions': endings,
-                          'command': str(entry.get('command') or '')})
+                          'command': str(entry.get('command') or editor)})
     # What the page is told: the menus, and where the flake is, which the command that opens
     # a file has to name in full (a shell need not start there).
-    api.page = {'menus': menus, 'flake': base}
+    api.page = {'menus': menus, 'flake': base, 'auto_hide': bool(api.config.get('auto_hide', True))}
 
     def files(req):
         """A symlinked folder or file is skipped, so this can't follow a `result` link into

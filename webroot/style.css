@@ -926,6 +926,18 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   z-index: 15; pointer-events: none;
   display: flex;
 }
+/* Out of the way (autoHide in eznix.sidePanel()): slid off the window's right edge, still
+   laid out, so that a terminal in it keeps its size. The handle that has it back stands at
+   that edge, half way down. */
+.side-panels { transition: transform .18s ease; }
+.side-panels.side-hidden { transform: translateX(100%); box-shadow: none; }
+.side-handle {
+  position: fixed; right: 0; top: 50vh; transform: translateY(-50%); z-index: 16;
+  width: 18px; height: 56px; padding: 0; cursor: pointer;
+  background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); border-right: none;
+  border-radius: var(--radius) 0 0 var(--radius); font-size: 14px; line-height: 1;
+}
+.side-handle:hover { background: var(--bg4); color: var(--text); }
 .side-panels > .resize-handle { pointer-events: auto; }
 .side-panels:not(:has(.side-panel)) > .resize-handle { display: none; }
 .side-panel {
@@ -944,7 +956,6 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   background: var(--bg2); border-bottom: 1px solid var(--border);
 }
 .side-tab { flex-shrink: 0; padding: 3px 6px 3px 10px; }
-.side-tab:not(:has(.side-tab-close)) { padding-right: 10px; }
 .side-tab-close { color: var(--text3); font-size: 11px; line-height: 1; padding: 2px 3px; border-radius: var(--radius-sm); }
 .side-tab-close:hover { color: var(--red); }
 /* The panel of the tab that is chosen: a line with its whole title (a file's path, shown as

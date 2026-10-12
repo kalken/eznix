@@ -157,14 +157,17 @@ function newFlakeFile(menu, existing) {
 
 // Opens a file with its menu's command, in a terminal that is a tab on the side, or brings the
 // tab it is open in forward. The shell is replaced by the program (`exec`), so leaving the
-// program ends the shell and closes the tab, which is the one way to close it: the tab has no
-// cross (it had one, which hung up on an editor with whatever was unsaved in it). The shell
+// program ends the shell and closes the tab. The tab's cross closes it too, and hangs up on
+// the program as closing a terminal window does, with no question: an editor keeps what was
+// unsaved in a recovery file of its own (vim's swap file) and offers it when the file is next
+// opened, which the user found to be enough. (There was no cross for a while, and one that
+// asked first, 2026-10-12.) The shell
 // is named after the file, so that opening a file again, or reloading the page, comes back to
 // the same program (the command is only what a new shell is started on).
 function openFlakeFile(name, menu) {
   if (_filesOpen.has(name)) { _filesOpen.get(name).front(); return; }
   const asked = {};
-  const panel = eznix.sidePanel({ group: 'files', title: name, closable: false, onClose: () => {
+  const panel = eznix.sidePanel({ group: 'files', title: name, autoHide: _filesConfig.auto_hide !== false, onClose: () => {
     _filesOpen.delete(name); _filesKeepOpen();
     if (asked.close) asked.close();
   } });

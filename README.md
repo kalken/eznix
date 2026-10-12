@@ -398,7 +398,8 @@ services.eznix.plugins = {
 
 **Nix files** lists the flake's `.nix` files and opens one in your editor (`$EDITOR`, or
 nano), in a terminal of its own that is a tab beside the configuration, apart from the
-terminal at the bottom. Leaving the editor is what closes the tab; New file… asks for a
+terminal at the bottom. Leaving the editor closes the tab, and so does the tab's ✕ (an editor like vim keeps
+unsaved changes in its recovery file and offers them next time); New file… asks for a
 path, and the ✕ on a file's line deletes it. It is one menu of the `files` plugin, which can have others: each a button with a
 name, the kinds of file it lists and the command they open with.
 
@@ -409,9 +410,15 @@ services.eznix.plugins.files.menus = [
 ];
 ```
 
-`command` is any program that runs in a terminal and takes the file as its last argument,
-so it can be one you have set up in Nix. An empty list leaves the plugin with nothing to
-show. `files.exclude` is a list read like the main `exclude`, `[ ".*" ]` by default. The
+To change only the editor, for every menu that names no command of its own:
+
+```nix
+services.eznix.plugins.files.editor = "vim";      # or "${pkgs.helix}/bin/hx", an editor you set up in Nix
+```
+
+A command is any program that runs in a terminal and takes the file as its last argument. An open file goes out of the way when you click outside it, as the terminal does, and a
+handle at the window's right edge brings it back (`files.auto_hide = false` keeps it in
+place). An empty list of menus leaves the plugin with nothing to show. `files.exclude` is a list read like the main `exclude`, `[ ".*" ]` by default. The
 buttons are only there when eznix has a terminal.
 
 An export of the flake leaves out dot-files and dot-folders. `system.exclude` changes that:

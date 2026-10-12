@@ -87,11 +87,13 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # Menus of the flake's files, each a button; a file opens in a program of your choosing, in a
 # terminal of its own beside the configuration. With no menus set there is this one:
 # [plugin.files]
+# editor   = "vim"                    # what files open in; default: $EDITOR in your shell, or nano
+# auto_hide = true                    # an open file goes out of the way on a click outside it
 # exclude  = [".*"]                   # what no menu lists, read like `exclude` above
 # [[plugin.files.menus]]
 # name       = "Nix files"            # what the button says
 # extensions = [".nix"]               # the files it lists, by how their names end
-# command    = "vim"                  # opened with this; default: $EDITOR in your shell, or nano
+# command    = "code --wait"          # opened with this in place of `editor`
 
 # Export, import and restore of the whole flake.
 # [plugin.system]

@@ -514,12 +514,16 @@ list of what is open.
 entry of `[plugin.files] menus` is a button with a `name`, the `extensions` it lists and the
 `command` a file opens with, in a terminal of its own that is a tab on the side
 (`openFlakeFile()`). With nothing set there is one, "Nix files" for `.nix` (the user went
-from that to an empty default and back within the hour). The command is `$EDITOR`, then
-nano, unless given; in Nix it can be a store path, which is how an editor set up in Nix is
+from that to an empty default and back within the hour). The command is the menu's own, else the plugin's `editor`, else
+`$EDITOR`, then nano; in Nix it can be a store path, which is how an editor set up in Nix is
 used. A shell named after the file is started on `mkdir -p DIR && exec COMMAND 'path'`, so
-leaving the program ends the shell and closes the tab. That is the only way to close it:
-the tab has no cross (`closable: false`), since one hung up on the editor with whatever
-was unsaved in it. No buttons without a terminal. Its server half lists files and deletes one:
+leaving the program ends the shell and closes the tab. The tab's cross closes it too,
+hanging up on the program with no question: an editor keeps what was unsaved in its own
+recovery file (vim's swap file) and offers it at the next opening, which the user found
+enough ("i think thats enough then"), after a time with no cross and one that asked first. The open files slide out of the way on a press outside the side, as the terminal panel
+hides (`autoHide` in `eznix.sidePanel()`, `auto_hide` in the plugin, on by default; a
+handle at the window's edge brings them back), asked for by the user. No buttons without
+a terminal. Its server half lists files and deletes one:
 each line of a menu ends in a cross, which removes the file at once after a question (and
 closes its tab), and "New file…" is a dialog of the page's kind with the flake's folders
 offered under its path field.

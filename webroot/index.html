@@ -210,7 +210,7 @@ networking.hostName = "myhost";</pre>
 //   eznix.addButton('header', { id, html, tooltip, onclick })  a button in the header, in
 //                       front of the ones there; returns it. ('header' is the one place there
 //                       is: the tab bar was another until its last user, Documents, moved.)
-//   eznix.sidePanel({ group, title, onClose, closable })  a panel on the side, over the editor's right
+//   eznix.sidePanel({ group, title, onClose, autoHide })  a panel on the side, over the editor's right
 //                       part, for the plugin to fill: a tab in the window of its group; see there
 //   eznix.resizable(el, { edge, key, apply, min })  lets a panel be made larger and smaller
 //                       by dragging its `edge` ('top' or 'left'); see there
@@ -306,7 +306,7 @@ const eznix = {
   // window per file, asked for tabs in the window instead, and then for the two windows to
   // stand beside each other and not one behind the other.
   _sideWindows: [],      // left to right: { group, el, tabs, panels }
-  sidePanel({ group, title = '', onClose, closable = true } = {}) {
+  sidePanel({ group, title = '', onClose, autoHide = false } = {}) {
     let stack = document.getElementById('side-panels');
     if (!stack) {
       stack = document.createElement('div');
@@ -330,6 +330,27 @@ const eznix = {
       }
       window.addEventListener('resize', place);
       place();
+      // The side goes out of the way on a press anywhere outside it, as the terminal panel
+      // does (initTerminalAutoHide() there, and the same exceptions: a menu, a dialog and a
+      // hint count as inside), while a panel that asks for this is open (`autoHide`); a
+      // handle at the window's right edge, or anything that brings a panel forward, has it
+      // back. It only slides out of view: what runs in it keeps its size and goes on.
+      // Asked for by the user for the files' editors, 2026-10-12 ("an auto hide on this
+      // plugin too, like the terminal works").
+      const handle = document.createElement('button');
+      handle.className = 'side-handle hidden';
+      handle.textContent = '‹';
+      _wireHoverTooltip(handle, 'Show what is open on the side');
+      handle.onclick = () => this._sideShow();
+      document.querySelector('.main').appendChild(handle);
+      this._sideShow = () => { stack.classList.remove('side-hidden'); handle.classList.add('hidden'); };
+      document.addEventListener('mousedown', e => {
+        if (stack.classList.contains('side-hidden') || stack.contains(e.target) || e.target === handle) return;
+        if (!this._sideWindows.some(w => w.panels.some(p => p.autoHide))) return;
+        if (e.target.closest && e.target.closest('.context-menu, .modal-overlay, .hover-tooltip')) return;
+        stack.classList.add('side-hidden');
+        handle.classList.remove('hidden');
+      }, true);
       this.resizable(stack, { edge: 'left', key: 'eznix-side-panel-width', min: 260,
         apply: width => document.documentElement.style.setProperty('--side-panel-width', width) });
     }
@@ -351,9 +372,6 @@ const eznix = {
     tab.className = 'btn tab side-tab';
     tab.innerHTML = '<span></span><span class="side-tab-close">✕</span>';
     const [label, closeBtn] = tab.children;
-    // closable: false leaves the cross out, for a panel that is closed by what is in it (an
-    // editor in a terminal goes when the editor is left); close() still works.
-    if (!closable) closeBtn.remove();
     const show = which => win.panels.forEach(p => {
       p.el.classList.toggle('hidden', p !== which);
       p.tab.classList.toggle('active', p === which);
@@ -363,9 +381,10 @@ const eznix = {
     // another closes, so that typing goes on there (the user's wish, 2026-10-12).
     const focus = which => { if (which && which.focus) { try { which.focus(); } catch (err) { console.error('plugin, focus:', err); } } };
     const panel = {
-      el, header, title: titleEl, actions, body, tab,
+      el, header, title: titleEl, actions, body, tab, autoHide,
       setTitle: text => { titleEl.textContent = text; label.textContent = text.split('/').pop(); },
       front: () => {
+        this._sideShow();
         show(panel);
         tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
         focus(panel);
@@ -378,6 +397,7 @@ const eznix = {
         if (!win.panels.length) {
           this._sideWindows = this._sideWindows.filter(w => w !== win);
           win.el.remove();
+          if (!this._sideWindows.length) this._sideShow();      // nothing left to bring back
         } else if (wasShown) show(win.panels[win.panels.length - 1]);
         if (onClose) onClose();
         // What is in view where the closed one was: its window's tab now shown, or, the

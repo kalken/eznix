@@ -188,7 +188,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n[plugin.files]\nexclude = [".*", "sub"]\n[[plugin.files.menus]]\nname = "Text"\nextensions = [".md", ".txt"]\ncommand = "nano -w"\n[[plugin.files.menus]]\nextensions = [".nix"]\n'}.items():
+                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n[plugin.files]\nexclude = [".*", "sub"]\neditor = "hx"\n[[plugin.files.menus]]\nname = "Text"\nextensions = [".md", ".txt"]\ncommand = "nano -w"\n[[plugin.files.menus]]\nextensions = [".nix"]\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -435,7 +435,7 @@ def main():
             check('files: the menus that are set, each with its kinds of file and its command, less what is excluded',
                   listed['menus'] == [['README.md', 'keep.md', 'notes.md'], ['extra.nix', 'flake.nix', 'secret/key.nix']]
                   and 'secret' in listed['folders'] and 'sub' not in listed['folders']
-                  and '"menus": [{"name": "Text", "extensions": [".md", ".txt"], "command": "nano -w"}, {"name": ".nix", "extensions": [".nix"], "command": ""}]' in page,
+                  and '"menus": [{"name": "Text", "extensions": [".md", ".txt"], "command": "nano -w"}, {"name": ".nix", "extensions": [".nix"], "command": "hx"}]' in page,
                   listed)
             dele = lambda name: b.request('/api/v1/plugin/files/delete?name=' + name, b'')[0]
             check('files: a file of a menu is deleted when asked for, and nothing else is',
