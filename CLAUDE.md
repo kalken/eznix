@@ -514,7 +514,9 @@ has no `choices.json`, so those two things are not offered until the generator h
 again. Checked by running the generator for the kernels (a NixOS flake, 12) and for
 Homebrew (a Mac, 8,652 formulas and 7,804 casks) and the two lookups on what it wrote; the
 user then ran Autocomplete in the test server on a NixOS flake and reported "it works",
-without saying what was looked at; the Homebrew chips were not seen by anyone.
+without saying what was looked at. On the user's Mac, updated to that commit, `homebrew.casks`
+was a plain list until Autocomplete was pressed once, and had its chips again after ("it
+works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
 the user. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,

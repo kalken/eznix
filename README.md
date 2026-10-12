@@ -131,25 +131,7 @@ services.eznix = {
 
 Rebuild, and open eznix on port 9090: `https://192.168.1.2:9090`, or http://localhost:9090.
 
-**No flake yet?** With Nix installed, one of these writes a `flake.nix` and a first settings
-file with eznix switched on. Put your user name in that file before the last command.
-
-```sh
-# macOS
-mkdir -p ~/.config/nix-darwin && cd ~/.config/nix-darwin
-nix flake init -t github:kalken/eznix#darwin
-sudo nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$HOME/.config/nix-darwin#default"
-
-# NixOS (keeps your configuration.nix)
-cd /etc/nixos
-sudo nix --extra-experimental-features 'nix-command flakes' flake init -t github:kalken/eznix#nixos
-sudo nixos-rebuild switch --flake "/etc/nixos#default"
-
-# Another Linux (home-manager; also put a password in ~/.config/eznix-password)
-mkdir -p ~/.config/home-manager && cd ~/.config/home-manager
-nix flake init -t github:kalken/eznix#home
-nix run home-manager/release-26.05 -- switch --flake "$HOME/.config/home-manager#default"
-```
+**No flake yet?** The [Quick Start](#-quick-start) writes one for you.
 
 ## 📑 How the configuration is stored
 
