@@ -1000,7 +1000,9 @@ function showContextMenu(event, items, opts = {}) {
   }, 0);
 }
 
-// Shared "Disable" / "Re-enable" + "Copy" / "Cut" + "Delete" items every row's menu ends with.
+// Shared "Disable" / "Enable" + "Copy" / "Cut" + "Delete" items every row's menu ends with.
+// ("Enable" was "Re-enable" until 2026-10-12, which the user found confusing: a file's and a
+// folder's menu say Enable too.)
 // Checked live at menu-open time (not render time), so it stays correct even though
 // renderDisabled() renders the *inner* value at the same path as the {_disabled,_value} wrapper.
 function _commonMenuItems(path, { skipDisable = false } = {}) {
@@ -1012,7 +1014,7 @@ function _commonMenuItems(path, { skipDisable = false } = {}) {
   if (isDisabled(cur)) {
     return [
       ...(isArrayItem ? [] : [{ label: 'Rename', onclick: () => _startKeyRename(path) }]),
-      { label: 'Re-enable', onclick: () => { setAtPath(config, path, cur._value); renderAll(); } },
+      { label: 'Enable', onclick: () => { setAtPath(config, path, cur._value); renderAll(); } },
       { separator: true },
       { label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, path); renderAll(); } },
     ];
@@ -3378,7 +3380,7 @@ function renderDisabled(container, key, disabledObj, path) {
   if (!el) return;
   el.classList.add('is-disabled');
   // The context menu built by _commonMenuItems() checks isDisabled(getAtPath(config, path))
-  // live at menu-open time, so it already shows "Re-enable" here — nothing to patch up.
+  // live at menu-open time, so it already shows "Enable" here — nothing to patch up.
 
   container.appendChild(el);
 }
