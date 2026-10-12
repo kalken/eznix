@@ -6058,7 +6058,9 @@ async function saveToServer() {
       method: 'POST',
       body: JSON.stringify(fileConfigs[f]),
     });
-    if (!res.ok) throw new Error(String(res.status));
+    // With the server's own reason where it gives one (a save refused for the address the
+    // page was opened by says which name to list).
+    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || String(res.status));
     const fresh = normalizeConfig(await fetch(_cfgPathFor(f) + '&_=' + Date.now()).then(r => r.json()));
     fileConfigs[f] = fresh;
     fileSaved[f] = JSON.stringify(fresh);
@@ -6071,7 +6073,8 @@ async function saveToServer() {
   renderAll();
   _rebaseHistoryOnDisk();
   if (failed.length) {
-    setStatus('Save failed for: ' + failed.join(', '), 6000, 'err');
+    const why = results.find(r => r.status === 'rejected' && r.reason && !/^\d+$/.test(r.reason.message));
+    setStatus('Save failed for: ' + failed.join(', ') + (why ? ' — ' + why.reason.message : ''), why ? 15000 : 6000, 'err');
   } else {
     const parts = [];
     if (dirty.length) parts.push(`${dirty.length} file${dirty.length !== 1 ? 's' : ''}`);

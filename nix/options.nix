@@ -154,15 +154,10 @@ in
       assertion = !cfg.trustCert || generateCert;
       message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs enableHttps, with no cert and key of your own (on by default when listen isn't this machine; set it for HTTPS on localhost).";
     }
-    {
-      # Refused here, at the rebuild, and not found out in the browser: a certificate for the
-      # wrong name and saves that fail. (hosts counts too: behind a proxy the names go there.)
-      # (listen is "0.0.0.0" by default once interface is set; with an address of its own
-      # there is a name to go by, interface or not.)
-      assertion = !(builtins.elem cfg.listen [ "0.0.0.0" "::" ])
-                  || cfg.certNames != [ ] || cfg.hosts != [ ];
-      message   = "services.eznix.certNames is empty. Listening on every address (listen = \"0.0.0.0\", also what interface alone gives), eznix cannot know what you will type in the browser: list the host name or address you open it by, for example certNames = [ \"192.168.1.2\" ], or set listen to that address.";
-    }
+    # (certNames empty while listening on every address was refused here until 2026-10-12,
+    # when a save by a plain address stopped needing the address listed: a machine that gets
+    # its address from the network had nothing true to put there. What is left of an empty
+    # certNames is a certificate that names only localhost, which the descriptions say.)
     {
       assertion = !(cfg.session.renew && cfg.session.days == null);
       message   = "services.eznix.session.renew needs days: a login that ends when the page is closed has no days to count again.";
@@ -218,13 +213,13 @@ in
       type        = types.str;
       default     = if cfg.interface != null then "0.0.0.0" else "127.0.0.1";
       defaultText = lib.literalExpression ''if interface != null then "0.0.0.0" else "127.0.0.1"'';
-      description = "Address to listen on. Anything other than this machine itself turns enableHttps on by default. With \"0.0.0.0\" (every address) eznix cannot know what you will type in the browser, so put that host name or address in certNames: without it the certificate does not match what the browser asked for, and saving is refused.";
+      description = "Address to listen on. Anything other than this machine itself turns enableHttps on by default. With \"0.0.0.0\" (every address) eznix cannot know what you will type in the browser, so put that host name or address in certNames: without it the certificate does not match what the browser asked for, which the browser warns about, and a save by a host name that is not listed is refused (by a plain address it is not).";
     };
     interface = mkOption {
       type        = types.nullOr types.str;
       default     = null;
       example     = "wg0";
-      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Set listen to this machine's address on that interface as well, or put the host name or address you open it by in certNames: without either the certificate does not match and saving is refused.";
+      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Set listen to this machine's address on that interface as well, or put the host name or address you open it by in certNames: without either the certificate does not match, which the browser warns about, and a save by a host name that is not listed is refused (by a plain address it is not, so a machine that gets its address from the network needs nothing here).";
     };
     port = mkOption {
       type        = types.port;

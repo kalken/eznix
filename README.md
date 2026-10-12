@@ -470,10 +470,16 @@ Chromium, Brave and Firefox for the people eznix runs for. On macOS it goes into
 keychain, which asks for your password once: run that rebuild in a terminal of your own, not
 in eznix's panel. A browser that is open may need a restart to notice.
 
-**`certNames`** is required when eznix listens on every address: `listen = "0.0.0.0"`, which
-is also what `interface` alone gives. It can't know then what you will type in the browser,
-and without the name the certificate doesn't match and saving is refused. The rebuild stops
-and says so. A specific `listen` address is included by itself, with or without `interface`.
+**`certNames`** is for when eznix listens on every address: `listen = "0.0.0.0"`, which is
+also what `interface` alone gives. It can't know then what you will type in the browser.
+List the host name or address you open it by, and the certificate matches. Without it:
+
+- opened by its address (`https://192.168.1.2:9090`), eznix works, and the browser warns
+  about the certificate each time. That is all a machine with an address from DHCP needs.
+- opened by a host name that is not listed, saving is refused, and the page says which
+  name to add.
+
+A specific `listen` address is included by itself, with or without `interface`.
 
 With HTTPS on, an `http://` address on the same port is answered with a redirect to
 `https://`.

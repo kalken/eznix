@@ -320,6 +320,10 @@ def main():
             shutil.rmtree(f'{tmp}/flake/eznix/web')
             save = lambda origin: b.request('/api/v1/file/save?file=a.json', b'{"a": 2}', headers={'Origin': origin})[0]
             check('a save from the page itself is accepted', save(BASE) == 200)
+            named = lambda host: b.request('/api/v1/file/save?file=a.json', b'{"a": 2}', headers={'Host': host, 'Origin': 'http://' + host})
+            check('by any address in figures too, and not by a name eznix was not told of, which the answer says',
+                  named('192.168.122.149:9690')[0] == 200 and named('[fe80::1]:9690')[0] == 200
+                  and named('ezvm.local:9690')[0] == 403 and b'ezvm.local' in named('ezvm.local:9690')[1])
             check('one from another page is not: another port of this host, another site, none',
                   [save(o) for o in (f'http://127.0.0.1:{PORT + 1}', 'http://127.0.0.1', 'https://evil.example', 'null')] == [403] * 4)
 

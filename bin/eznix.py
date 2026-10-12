@@ -1532,7 +1532,19 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 self._deny('Invalid username or password.')
             return
         if not _valid_host(self.headers) or not _valid_origin(self.headers):
-            self.send_error(403); return
+            # Said in words the page can show: a bare 403 left "Save failed" with no reason,
+            # in a browser on another machine that had opened eznix by a name it was never
+            # told of, where everything but saving worked (the user, 2026-10-12).
+            host = self.headers.get('Host', '').split(':')[0]
+            why = (f'eznix has not been told it is reached by the name "{host}": add that to certNames (hosts in eznix.toml)'
+                   if not _valid_host(self.headers) else "the request did not come from eznix's own page")
+            data = json.dumps({'error': why}).encode()
+            self.send_response(403)
+            self.send_header('Content-Type', 'application/json')
+            self.send_header('Content-Length', str(len(data)))
+            self.end_headers()
+            self.wfile.write(data)
+            return
         if not check_auth(self.headers):
             self.send_response(401)
             self.send_header('Content-Type', 'application/json')
@@ -2299,8 +2311,22 @@ def _valid_host(headers):
     # installer ISO getting a DHCP lease), where listing exact hosts isn't possible.
     if '*' in TRUSTED_HOSTS:
         return True
-    host = headers.get('Host', '').split(':')[0].lower()
-    return host in {'localhost', '127.0.0.1', ''} | TRUSTED_HOSTS
+    host = headers.get('Host', '').lower()
+    host = host[1:].partition(']')[0] if host.startswith('[') else host.split(':')[0]
+    # An address in figures is always let through, whichever it is. What this check is
+    # there for is a name: a page elsewhere whose name is made to point at this machine
+    # (DNS rebinding), which then looks to the browser like this server's own page. No name
+    # is involved when the address itself is what the request was sent to. Until
+    # 2026-10-12 an address had to be listed like a name, so a machine that gets its
+    # address from the network (interface, no listen) refused every save from another
+    # computer until the address of the day was put in certNames, which the user rightly
+    # found pointless ("i could as well put listen = dhcp cause nothing works anyway").
+    try:
+        ipaddress.ip_address(host)
+        return True
+    except ValueError:
+        pass
+    return host in {'localhost', ''} | TRUSTED_HOSTS
 
 
 def _valid_origin(headers):

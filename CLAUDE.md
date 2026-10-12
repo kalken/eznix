@@ -255,7 +255,13 @@ opens the port on that interface only.
 
 **With `interface` or `listen = "0.0.0.0"` the names go in `certNames`, by hand.** eznix
 doesn't know what will be typed in the browser, so the certificate names only localhost and
-a save to any other name is refused until it is listed. Looking the machine's addresses up
+a save to any other name is refused until it is listed. A save to a plain address is not
+(`_valid_host()`, since 2026-10-12): the check is there against a foreign name pointed at
+this machine, and an address is no name. Before, an address had to be listed too and the
+rebuild stopped on an empty `certNames`; the user, with a VM on DHCP and `interface`
+alone, had saves refused from another computer, added a name they did not open it by, and
+said of listing the address "i could as well put listen = dhcp". The refusal now says in
+the page which name to add. Looking the machine's addresses up
 (an ioctl per request, and again for the certificate at start) was built and taken out
 again on 2026-10-09: the user found it hacky and prefers a certificate that is plainly wrong
 until `certNames` is set, with the options' descriptions saying so. Those descriptions are
