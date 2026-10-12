@@ -49,6 +49,8 @@ let
 
   common = import ./options.nix {
     inherit lib pkgs cfg packages stateDir terminals;
+    hostNames = let name = config.networking.hostName; in
+      lib.optionals (name != "") [ name config.networking.fqdnOrHostName "${name}.local" ];
     defaults = { flake = "/etc/nixos"; theme = "nixos"; };
     extra = {
       auth_helper = "/run/wrappers/bin/eznix-auth";
@@ -71,7 +73,7 @@ in
     openFirewall = lib.mkOption {
       type        = lib.types.bool;
       default     = false;
-      description = "Open the editor's port in the firewall, on the one interface when `interface` is set. The terminals' ports are never opened.";
+      description = "Open the editor's port in the firewall, on the interfaces eznix is reached through (`interfaces`), or on every one when that list is empty. The terminals' ports are never opened.";
     };
     flakeWritable = lib.mkOption {
       type        = lib.types.bool;
@@ -97,10 +99,11 @@ in
     ];
 
     environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
-    # With an interface named, the port is opened on that one alone.
-    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interface == null) [ cfg.port ];
+    # On the interfaces eznix is reached through, alone (lo has no firewall); on every one
+    # where none is named.
+    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interfaces == [ ]) [ cfg.port ];
     networking.firewall.interfaces = lib.mkIf cfg.openFirewall
-      (lib.optionalAttrs (cfg.interface != null) { ${cfg.interface}.allowedTCPPorts = [ cfg.port ]; });
+      (lib.genAttrs (lib.filter (i: i != "lo") cfg.interfaces) (_: { allowedTCPPorts = [ cfg.port ]; }));
 
     users.users.eznix = {
       isSystemUser = true;

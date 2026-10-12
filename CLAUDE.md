@@ -247,13 +247,35 @@ would let any port of the protected host through. `/logout` is a GET and is not
 checked: a page on another port of the host could log the user out, which also ends their
 shell (`terminal_end_on_logout`). Any other GET that changes something would need the check.
 
-**`interface`** ties the listening socket itself to one network interface
-(`_bind_to_interface()`: `SO_BINDTODEVICE` on Linux, `IP_BOUND_IF` on macOS), because the
-user wanted that as a setting of eznix and not a firewall rule beside it. It shuts out the
-machine itself too (local traffic arrives through loopback). On NixOS `openFirewall` then
-opens the port on that interface only.
+**Where eznix is reached is dnsmasq's and Samba's model**: `interfaces`, a list of network
+interfaces, and optionally `listenAddresses` (`listen_addresses`), a list of addresses that
+narrows it. One listening
+socket per interface (and address), tied to its interface (`_bind_to_interface()`:
+`SO_BINDTODEVICE` on Linux, `IP_BOUND_IF` on macOS), so eznix itself takes nothing that
+arrives through another, whatever a firewall says: the user wanted that as a setting of
+eznix and not a firewall rule beside it, which on a router with its own rules is all that
+can be relied on. Through an interface it is every address that has, so DHCP needs
+nothing. `lo`, the machine itself, is an interface like any other and the default, `[ "lo"
+]`; an empty list is every interface (an installer cannot know their names). One that is
+not there is left out with a line in the log, as long as another is. On NixOS
+`openFirewall` opens the port on the listed interfaces only.
+How it came to this, all on 2026-10-12, with nothing kept for compatibility at the user's
+word ("nobody is using this yet"): it was `listen`, one address, and `interface`, one name
+that shut the machine itself out. The user changed the address in the editor, rebuilt, and
+had no page left to change it back in. A `localhost` switch with a fallback was my first
+answer; the user called it hacky and had it removed ("i need it to be secure"), proposed
+the list with `lo` in it, asked what nginx does (addresses only, the interface left to the
+firewall: what ezconf did, and the weak spot on a router), and chose the model that names
+interfaces once told that dnsmasq and Samba are it.
+Tried on a Mac: the default, `lo` with a real interface, a real one alone, the empty list,
+a missing interface beside `lo` and alone, and with addresses; the NixOS module evaluated
+for the same. Not run on Linux, where two sockets share a port by being tied to different
+interfaces.
 
-**With `interface` or `listen = "0.0.0.0"` the names go in `certNames`, by hand.** eznix
+**Reached from elsewhere, what eznix cannot know goes in `certNames`, by hand.** What it
+can know it takes by itself since 2026-10-12: the machine's host name (`hostNames` from the
+NixOS and nix-darwin modules: the name, with its domain, and as `NAME.local`; home-manager
+has none to give) and the addresses in `listenAddresses`. eznix
 doesn't know what will be typed in the browser, so the certificate names only localhost and
 a save to any other name is refused until it is listed. A save to a plain address is not
 (`_valid_host()`, since 2026-10-12): the check is there against a foreign name pointed at

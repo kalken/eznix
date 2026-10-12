@@ -5,11 +5,23 @@
 #   stateDir   where this install keeps its state (null: the server's own default, ~/.local/state/eznix)
 #   terminals  user -> { port, key_file }: terminals run by the module, one per user
 #   extra      more top-level eznix.toml keys from the module (terminal_restart, auth_helper, ...)
-{ lib, pkgs, cfg, packages, defaults, stateDir, terminals ? { }, extra ? { } }:
+#   hostNames  what the machine is called, where the module can know: named in the
+#              certificate and accepted in requests without being listed in certNames
+{ lib, pkgs, cfg, packages, defaults, stateDir, terminals ? { }, extra ? { }, hostNames ? [ ] }:
 let
   inherit (lib) mkOption mkEnableOption types;
 
-  isLocal = builtins.elem cfg.listen [ "127.0.0.1" "::1" "localhost" ];
+  # Reached from this machine alone: every interface named is the loopback one, or every
+  # address is.
+  isLocal = (cfg.interfaces != [ ] && lib.all (i: builtins.elem i [ "lo" "lo0" ]) cfg.interfaces)
+         || (cfg.listenAddresses != [ ] && lib.all (a: builtins.elem a [ "127.0.0.1" "::1" "localhost" ]) cfg.listenAddresses);
+  # The addresses eznix is told to answer on, which the certificate can therefore name.
+  # And the machine's own names. Both are what eznix can know of how it will be opened
+  # without being told; certNames is for the rest. (The names were left to certNames until
+  # 2026-10-12: the user had put config.networking.hostName and fqdn there by hand on the
+  # router and asked why eznix did not.)
+  listenNames = lib.optionals (!isLocal)
+    (lib.unique (lib.filter (a: !builtins.elem a [ "0.0.0.0" "::" ]) cfg.listenAddresses ++ hostNames));
 
   themesDir  = pkgs.linkFarm "eznix-themes"
     (lib.mapAttrsToList (name: path: { name = "${name}.css"; inherit path; }) cfg.themes);
@@ -30,13 +42,13 @@ let
     exclude          = cfg.exclude;
     default_file     = cfg.defaultFile;
     state_dir        = stateDir;
-    listen           = cfg.listen;
-    interface        = cfg.interface;
+    interfaces       = cfg.interfaces;
+    listen_addresses = if cfg.listenAddresses == [ ] then null else cfg.listenAddresses;
     port             = cfg.port;
     # The address itself, when it is one in particular: the certificate is made for it (see
     # generateCa), so it is a name the browser will use. Without it a save is refused (403).
     hosts            = cfg.hosts ++ cfg.certNames
-                       ++ lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen;
+                       ++ listenNames;
     users            = cfg.users;
     session          = {
       days  = cfg.session.days;
@@ -87,7 +99,7 @@ in
   # `eznix --generate-ca`: a no-op when the certificate exists and still carries these names.
   generateCa = eznix: lib.optionalString generateCert ''
     ${eznix} --generate-ca ${lib.escapeShellArg certDir} ${lib.concatMapStringsSep " " (n: "--san ${lib.escapeShellArg n}")
-      (lib.optional (!isLocal && !builtins.elem cfg.listen [ "0.0.0.0" "::" ]) cfg.listen ++ cfg.certNames)}
+      (listenNames ++ cfg.certNames)}
   '';
 
   # trustCert: make this user's browsers trust the generated authority. Run as that user, never
@@ -152,7 +164,7 @@ in
   assertions = [
     {
       assertion = !cfg.trustCert || generateCert;
-      message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs enableHttps, with no cert and key of your own (on by default when listen isn't this machine; set it for HTTPS on localhost).";
+      message   = "services.eznix.trustCert is for the certificate eznix makes itself: it needs enableHttps, with no cert and key of your own (on by default when eznix is reached from elsewhere; set it for HTTPS on localhost).";
     }
     # (certNames empty while listening on every address was refused here until 2026-10-12,
     # when a save by a plain address stopped needing the address listed: a machine that gets
@@ -209,17 +221,17 @@ in
       description = "The file to open first, in a browser that hasn't picked one before. Only a hint; nothing creates it.";
     };
 
-    listen = mkOption {
-      type        = types.str;
-      default     = if cfg.interface != null then "0.0.0.0" else "127.0.0.1";
-      defaultText = lib.literalExpression ''if interface != null then "0.0.0.0" else "127.0.0.1"'';
-      description = "Address to listen on. Anything other than this machine itself turns enableHttps on by default. With \"0.0.0.0\" (every address) eznix cannot know what you will type in the browser, so put that host name or address in certNames: without it the certificate does not match what the browser asked for, which the browser warns about, and a save by a host name that is not listed is refused (by a plain address it is not).";
+    interfaces = mkOption {
+      type        = types.listOf types.str;
+      default     = [ "lo" ];
+      example     = [ "lo" "enp1s0" ];
+      description = "The network interfaces eznix is reached through, by name, and no others. \"lo\" is this machine itself, and all there is unless you add to it: [ \"lo\" \"enp1s0\" ] opens eznix here and on that network. Through an interface eznix answers on every address it has, also when that changes (DHCP), so there is no address to set. An empty list is every interface, for where their names are not known. One that is not there is left out, with a line in the log. Reached from elsewhere, enableHttps is on by default; opened by a host name instead of an address, put that name in certNames.";
     };
-    interface = mkOption {
-      type        = types.nullOr types.str;
-      default     = null;
-      example     = "wg0";
-      description = "A network interface, by name, that eznix is reached through and no other; it then listens on every address of it, also when that address changes. This machine itself is not let in either, unless it is the loopback interface that is named. Set listen to this machine's address on that interface as well, or put the host name or address you open it by in certNames: without either the certificate does not match, which the browser warns about, and a save by a host name that is not listed is refused (by a plain address it is not, so a machine that gets its address from the network needs nothing here).";
+    listenAddresses = mkOption {
+      type        = types.listOf types.str;
+      default     = [ ];
+      example     = [ "192.168.1.2" ];
+      description = "Addresses to answer on, and no others, of those the interfaces have. Empty, the usual: every address of the interfaces. An address given here is in the generated certificate by itself.";
     };
     port = mkOption {
       type        = types.port;
@@ -361,8 +373,8 @@ in
     enableHttps = mkOption {
       type        = types.bool;
       default     = !isLocal || cfg.cert != null;
-      defaultText = lib.literalExpression "listen isn't this machine itself, or cert is set";
-      description = "Serve HTTPS. On by itself when listen is anything but this machine; set it to have HTTPS on localhost too. With no cert and key given, eznix makes a certificate itself, signed by a local authority of its own: browsers warn until that authority is trusted (trustCert does that for the browsers on this machine; the login page offers it for download for others).";
+      defaultText = lib.literalExpression "reached from elsewhere than this machine itself, or cert is set";
+      description = "Serve HTTPS. On by itself when eznix is reached from elsewhere than this machine (interfaces, listenAddresses); set it to have HTTPS on localhost too. With no cert and key given, eznix makes a certificate itself, signed by a local authority of its own: browsers warn until that authority is trusted (trustCert does that for the browsers on this machine; the login page offers it for download for others).";
     };
     trustCert = mkOption {
       type        = types.bool;
@@ -372,7 +384,7 @@ in
     certNames = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "The host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. Needed when listen is \"0.0.0.0\", which it also is with interface set and no listen: eznix then has no way to know them, the certificate names only localhost, the browser complains about it on every other name, and saving is refused. A specific listen address is included by itself.";
+      description = "More host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. For when eznix is reached from elsewhere by something it cannot know by itself: the certificate names localhost, this machine's host name (also with its domain, and as NAME.local) and the addresses in listenAddresses, the browser complains about it on every other name or address, and saving by a host name that is not listed is refused (by a plain address it is not).";
     };
     cert = mkOption {
       type        = types.nullOr types.str;

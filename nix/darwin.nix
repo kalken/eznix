@@ -30,6 +30,8 @@ let
   common = import ./options.nix {
     inherit lib pkgs cfg packages stateDir;
     terminals = { ${user} = terminal; };
+    hostNames = let name = config.networking.hostName; in
+      lib.optionals (name != null && name != "") [ name "${name}.local" ];
     defaults  = { flake = "/etc/nix-darwin"; theme = "osx"; };
     extra = lib.optionalAttrs cfg.terminal {
       terminal_restart = [ "/bin/launchctl" "kickstart" "-k" "gui/{uid}/${label}" ];

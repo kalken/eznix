@@ -17,12 +17,16 @@ default_file = "configuration.json"   # the file to open first
 # state_dir        = "~/.local/state/eznix"
 # autocomplete_dir = "<state_dir>/autocomplete"
 
-listen = "127.0.0.1"
-# interface = "wg0"                   # be reached through this network interface and no
-#                                     # other; listen then defaults to every address.
-#                                     # With it, or with listen = "0.0.0.0", list the name
-#                                     # or address you open eznix by in hosts (and have the
-#                                     # certificate made for it), or saving is refused.
+# interfaces = ["lo", "enp1s0"]       # be reached through these network interfaces and no
+#                                     # other, on every address they have. "lo" is this
+#                                     # machine itself, and all there is with nothing set;
+#                                     # [] is every interface.
+# listen_addresses = ["192.168.1.2"]  # answer on these addresses alone, of those the
+#                                     # interfaces have
+#                                     # Reached from elsewhere by a host name: list it in
+#                                     # hosts (and have the certificate made for it), or
+#                                     # saving by that name is refused; by a plain address
+#                                     # it works without.
 port   = 9090
 # hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
 #                                     # behind a proxy that changes the Host header, add the

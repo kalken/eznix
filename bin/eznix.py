@@ -33,9 +33,10 @@ Configuration (eznix.toml; every key optional unless noted):
   state_dir       sessions, backups, autocomplete data, keys (default ~/.local/state/eznix)
   autocomplete_dir  where the generated suggestions are read from (default <state_dir>/autocomplete)
   webroot         the page's files (default: next to this file)
-  listen, port    address and port (default 127.0.0.1:9090)
-  interface       a network interface, by name, to be reached through and no other; `listen`
-                  then defaults to every address
+  interfaces      the network interfaces to be reached through, by name, and no others, on
+                  every address they have (default ["lo"], this machine itself; []: any)
+  listen_addresses  addresses, to answer on those alone of what the interfaces have (default: all)
+  port            the port (default 9090)
   hosts           extra host names to accept in requests; ["*"] accepts any. Behind a proxy
                   that changes the Host header, also the page's address ("https://name")
   cert, key       serve HTTPS with these (ca: the CA to offer for download on the login page)
@@ -136,8 +137,8 @@ WEBROOT          = None          # the page's own files
 BACKUP_DIR       = None          # per-file backups, made on every save
 BACKUP_COUNT     = 5
 
-BIND_ADDR        = '127.0.0.1'
-INTERFACE        = None          # `interface`: the one network interface to be reached through
+INTERFACES       = None          # `interfaces`: the network interfaces to be reached through, and no other; []: any
+LISTEN           = []            # `listen_addresses`: the addresses answered on, of those the interfaces have; []: all
 WEB_PORT         = 9090
 TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(), and origins by _valid_origin(); "*" accepts any
 CERT_FILE        = None          # HTTPS when both are set
@@ -2238,7 +2239,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
     def _proxy_terminal(self):
         """Relay a /terminal WebSocket upgrade straight through to eznix-terminal.py's own listener on
         127.0.0.1:the terminal's port (which only ever binds to loopback -- see eznix-terminal.py's own
-        BIND_ADDR), so the browser only ever needs to trust *this* process's certificate. A
+        BIND_ADDR there), so the browser only ever needs to trust *this* process's certificate. A
         separate wss://host:the terminal's port connection straight to eznix-terminal.py would be a different
         origin (port included), needing its own certificate-trust decision the browser has no way
         to prompt for over a raw WebSocket handshake -- see the comment on the terminal's port in
@@ -2505,7 +2506,7 @@ def _bind_to_interface(sock, name):
 def main():
     global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
-    global BIND_ADDR, INTERFACE, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
+    global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL
@@ -2519,7 +2520,11 @@ def main():
     ap.add_argument('--config-dir', metavar='DIR', help='the folder of *.json files (default: <flake>/eznix)')
     ap.add_argument('--state-dir', metavar='DIR', help='where eznix keeps its own data')
     ap.add_argument('--webroot', metavar='DIR', help="the page's files")
-    ap.add_argument('--listen', metavar='ADDR', help='address to listen on (default 127.0.0.1)')
+    ap.add_argument('--interface', metavar='NAME', action='append',
+                    help='a network interface to be reached through, and no other; may be given '
+                         'more than once ("lo": this machine itself, the default; "any": every one)')
+    ap.add_argument('--listen-address', metavar='ADDR', action='append',
+                    help='answer on this address alone of those the interfaces have; may be given more than once')
     ap.add_argument('--port', type=int, help='port to listen on (default 9090)')
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
@@ -2568,9 +2573,26 @@ def main():
     BACKUP_COUNT = int(cfg.get('backups', 5))
 
     # Network.
-    INTERFACE = str(cfg['interface']) if cfg.get('interface') else None
-    # An interface without an address means every address that interface has.
-    BIND_ADDR = args.listen or cfg.get('listen') or ('0.0.0.0' if INTERFACE else BIND_ADDR)
+    # Where eznix is reached, as dnsmasq and Samba have it: a list of network interfaces,
+    # and optionally the addresses to answer on. Through an interface it is every address
+    # that interface has, so nothing changes when the address does (DHCP). The machine's
+    # own, lo, is an interface like any other and the only one unless more are named; an
+    # empty list is every interface, for where their names cannot be known (an installer).
+    # "lo" is this system's loopback interface whatever it calls it.
+    # Until 2026-10-12 it was `listen`, one address, 127.0.0.1 unless set, and beside it
+    # `interface`, one name, which shut the machine itself out. The user, having cut a
+    # machine off from its own page by changing the address there, wanted a list with lo in
+    # it, and one well-established model in place of two settings that leaned on each other.
+    loopback = 'lo0' if sys.platform == 'darwin' else 'lo'
+    names = args.interface if args.interface else cfg.get('interfaces', ['lo'])
+    names = [] if 'any' in (args.interface or []) else [str(n) for n in names]
+    INTERFACES = []
+    for name in names:
+        name = loopback if name in ('lo', 'lo0') else name
+        if name not in INTERFACES:
+            INTERFACES.append(name)
+    listen = args.listen_address or cfg.get('listen_addresses') or []
+    LISTEN = [str(a) for a in ([listen] if isinstance(listen, str) else listen)]
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
@@ -2665,21 +2687,44 @@ def main():
                      'package (or "auth_helper")')
     PAGE_HASH = _compute_page_hash()
 
-    try:
-        srv = _Server((BIND_ADDR, WEB_PORT), StaticHandler, bind_and_activate=False)
-        if INTERFACE:
-            _bind_to_interface(srv.socket, INTERFACE)
-        srv.server_bind()
-        srv.server_activate()
-    except OSError as e:
-        sys.exit(f'eznix: cannot listen on {BIND_ADDR}:{WEB_PORT}'
-                 + (f' through {INTERFACE}' if INTERFACE else '') + f': {e}')
+    # One listening socket per interface and address, each tied to its interface
+    # (_bind_to_interface()); with no interface named, one per address and tied to none.
+    # Where no address is named it is every address: 127.0.0.1 for the loopback interface,
+    # so that tied to different interfaces the sockets do not get in each other's way on
+    # Linux, while macOS, which goes by the address alone, is told that the port is shared.
+    # One that cannot be listened on (an interface that is not there, an address the machine
+    # does not have) is left out and said so, as long as another can: of several ways in,
+    # one that is missing must not close the rest. With none left it is the end.
+    servers, failed = [], []
+    for name in INTERFACES or [None]:
+        for addr in LISTEN or ['127.0.0.1' if name == loopback else '0.0.0.0']:
+            where = f'{addr}:{WEB_PORT}' + (f' through {name}' if name else '')
+            try:
+                server = _Server((addr, WEB_PORT), StaticHandler, bind_and_activate=False)
+                if name:
+                    if sys.platform == 'darwin':
+                        server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    _bind_to_interface(server.socket, name)
+                server.server_bind()
+                server.server_activate()
+                servers.append(server)
+            except OSError as e:
+                failed.append(f'eznix: cannot listen on {where}: {e}')
+    if not servers:
+        sys.exit('\n'.join(failed))
+    for line in failed:
+        print(line + ' -- left out', file=sys.stderr)
+    srv = servers[0]
     if CERT_FILE:
         try:
-            srv.tls = make_ssl_context()
+            tls = make_ssl_context()
         except (OSError, ssl.SSLError) as e:
             sys.exit(f'eznix: cert/key: {e}')
+        for server in servers:
+            server.tls = tls
         USE_TLS = True
+    for server in servers[1:]:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
 
     n = len(list_config_files())
     print(f'eznix → {"https" if USE_TLS else "http"}://localhost:{WEB_PORT}')

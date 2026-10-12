@@ -111,9 +111,8 @@ services.eznix = {
   enable       = true;
   users        = [ "alice" ];       # put your user name here (NixOS: who may log in,
                                     # with their system password)
-  listen       = "192.168.1.2";     # this machine's address; HTTPS is then on by itself
+  interfaces   = [ "lo" "enp1s0" ]; # this machine itself and that network; HTTPS is then on by itself
   openFirewall = true;              # NixOS
-  # interface  = "wg0";             # optional: answer through this network interface only
 };
 ```
 
@@ -452,17 +451,17 @@ kept in its state folder. Four options cover it:
 
 | Option | Default | |
 |---|---|---|
-| `enableHttps` | on when `listen` isn't this machine | serve HTTPS; set it for HTTPS on `localhost` too. eznix makes the certificate unless you give `cert` and `key` |
+| `enableHttps` | on when eznix is reached from elsewhere | serve HTTPS; set it for HTTPS on `localhost` too. eznix makes the certificate unless you give `cert` and `key` |
 | `trustCert` | `false` | have the browsers on this machine trust it, so they don't warn |
-| `certNames` | `[ ]` | the host names and addresses you open eznix by |
-| `interface` | | be reached through one network interface only |
+| `certNames` | `[ ]` | more host names and addresses you open eznix by, beside the machine's own name |
+| `interfaces` | `[ "lo" ]` | the network interfaces eznix is reached through, and no others; `"lo"` is the machine itself |
 
 ```nix
 # HTTPS on this machine, no warning in its browsers:
 services.eznix = { enableHttps = true; trustCert = true; };
 
-# Reached from other computers, by this address:
-services.eznix = { listen = "0.0.0.0"; certNames = [ "192.168.1.2" ]; };
+# Reached from other computers, with a certificate that names what you open it by:
+services.eznix = { interfaces = [ "lo" "enp1s0" ]; certNames = [ "192.168.1.2" ]; };
 ```
 
 **`trustCert`** adds the authority, at each rebuild, to the certificate lists of Chrome,
@@ -470,16 +469,38 @@ Chromium, Brave and Firefox for the people eznix runs for. On macOS it goes into
 keychain, which asks for your password once: run that rebuild in a terminal of your own, not
 in eznix's panel. A browser that is open may need a restart to notice.
 
-**`certNames`** is for when eznix listens on every address: `listen = "0.0.0.0"`, which is
-also what `interface` alone gives. It can't know then what you will type in the browser.
-List the host name or address you open it by, and the certificate matches. Without it:
+**`interfaces`** says where eznix is reached, as dnsmasq and Samba say it: a list of network
+interfaces, `[ "lo" ]` (this machine itself) unless you add to it. No address is set, so it
+suits a machine that gets its address from DHCP:
+
+```nix
+services.eznix = {
+  interfaces   = [ "lo" "enp1s0" ];     # this machine itself, and that network
+  openFirewall = true;                  # NixOS: on enp1s0 alone
+};
+```
+
+Open it by the machine's address, `https://192.168.1.2:9090`, or on the machine itself as
+`https://localhost:9090`. eznix itself takes nothing that arrives through another interface,
+whatever the firewall says, which is what you want on a router.
+
+- leave `"lo"` out and the machine itself is shut out too
+- an empty list, `[ ]`, is every interface, for where their names are not known
+- a name that is not an interface of the machine is left out, with a line in the log, and
+  the rest still work
+- `listenAddresses = [ "192.168.1.2" ];` narrows it further, to those addresses of the interfaces
+
+**`certNames`** is for when eznix is reached from elsewhere by something it can't know by
+itself. The machine's host name is in the certificate without being listed (also with its
+domain, and as `NAME.local`), on NixOS and macOS, and so are the addresses in
+`listenAddresses`. List anything else you open it by, and the certificate matches. Without it:
 
 - opened by its address (`https://192.168.1.2:9090`), eznix works, and the browser warns
   about the certificate each time. That is all a machine with an address from DHCP needs.
 - opened by a host name that is not listed, saving is refused, and the page says which
   name to add.
 
-A specific `listen` address is included by itself, with or without `interface`.
+An address in `listenAddresses` is included by itself.
 
 With HTTPS on, an `http://` address on the same port is answered with a redirect to
 `https://`.
@@ -525,8 +546,9 @@ The common ones, the same in all three modules:
 | `session.days` | | days a login lasts, 400 at most; unset, until the page has been closed for 15 minutes, and a day at most |
 | `session.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
-| `listen`, `port` | `127.0.0.1`, `9090` | where the editor listens |
-| `interface` | | a network interface to be reached through, and no other |
+| `port` | `9090` | the editor's port |
+| `listenAddresses` | `[ ]` | addresses to answer on, and no others, of those the interfaces have; empty: all |
+| `interfaces` | `[ "lo" ]` | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |
 | `terminal` | `true` | the terminal panel |
 | `buttons` | `[ ]` | command buttons, see [Buttons](#-buttons) |
 | `theme`, `themes` | | see [Themes](#-themes) |
