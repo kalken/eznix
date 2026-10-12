@@ -1995,9 +1995,21 @@ function _showAcTooltip(opt, itemEl) {
   _acTooltipEl.classList.add('tt-visible');
   const listRect = document.getElementById('add-ac-list').getBoundingClientRect();
   const itemRect = (itemEl || document.getElementById('add-ac-list')).getBoundingClientRect();
-  const left = listRect.right + 2;
+  // Always whole inside the window (the user, 2026-10-12: it ran off the right edge beside a
+  // wide list, and off the bottom beside a low item). To the right of the list where it has
+  // the room, else to its left, else against the window's edge; level with the item, moved
+  // up as far as it must be; and never larger than the window, scrolling within itself then.
+  const gap = 4, w = window.innerWidth, h = window.innerHeight;
+  _acTooltipEl.style.maxWidth = Math.min(520, w - 2 * gap) + 'px';      // 520: its usual most (.tooltip)
+  _acTooltipEl.style.maxHeight = (h - 2 * gap) + 'px';
+  _acTooltipEl.style.overflowY = 'auto';
+  const box = _acTooltipEl.getBoundingClientRect();
+  let left = listRect.right + 2;
+  if (left + box.width > w - gap) left = listRect.left - 2 - box.width;
+  left = Math.max(gap, Math.min(left, w - gap - box.width));
+  const top = Math.max(gap, Math.min(itemRect.top, h - gap - box.height));
   _acTooltipEl.style.left = left + 'px';
-  _acTooltipEl.style.top = itemRect.top + 'px';
+  _acTooltipEl.style.top = top + 'px';
 }
 function _hideAcTooltip() {
   if (_acTooltipEl) _acTooltipEl.classList.remove('tt-visible');
