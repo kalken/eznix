@@ -21,8 +21,9 @@ default_file = "configuration.json"   # the file to open first
 #                                     # other, on every address they have. "lo" is this
 #                                     # machine itself, and all there is with nothing set;
 #                                     # [] is every interface.
-# listen_addresses = ["192.168.1.2"]  # answer on these addresses alone, of those the
-#                                     # interfaces have
+# listen_addresses = ["192.168.1.2"]  # answer on these addresses alone: through any
+#                                     # interface with interfaces not set, else of
+#                                     # those the interfaces have
 #                                     # Reached from elsewhere by a host name: list it in
 #                                     # hosts (and have the certificate made for it), or
 #                                     # saving by that name is refused; by a plain address

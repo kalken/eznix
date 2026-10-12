@@ -34,8 +34,10 @@ Configuration (eznix.toml; every key optional unless noted):
   autocomplete_dir  where the generated suggestions are read from (default <state_dir>/autocomplete)
   webroot         the page's files (default: next to this file)
   interfaces      the network interfaces to be reached through, by name, and no others, on
-                  every address they have (default ["lo"], this machine itself; []: any)
-  listen_addresses  addresses, to answer on those alone of what the interfaces have (default: all)
+                  every address they have (default ["lo"], this machine itself, or [] with
+                  listen_addresses set; []: any)
+  listen_addresses  addresses to answer on, and no others: through any interface when
+                  interfaces is not set, else those of what the interfaces have (default: all)
   port            the port (default 9090)
   hosts           extra host names to accept in requests; ["*"] accepts any. Behind a proxy
                   that changes the Host header, also the page's address ("https://name")
@@ -2522,9 +2524,9 @@ def main():
     ap.add_argument('--webroot', metavar='DIR', help="the page's files")
     ap.add_argument('--interface', metavar='NAME', action='append',
                     help='a network interface to be reached through, and no other; may be given '
-                         'more than once ("lo": this machine itself, the default; "any": every one)')
+                         'more than once ("lo": this machine itself, the default unless an address is given; "any": every one)')
     ap.add_argument('--listen-address', metavar='ADDR', action='append',
-                    help='answer on this address alone of those the interfaces have; may be given more than once')
+                    help='answer on this address alone, through any interface unless one is named; may be given more than once')
     ap.add_argument('--port', type=int, help='port to listen on (default 9090)')
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
@@ -2579,20 +2581,25 @@ def main():
     # own, lo, is an interface like any other and the only one unless more are named; an
     # empty list is every interface, for where their names cannot be known (an installer).
     # "lo" is this system's loopback interface whatever it calls it.
+    # With addresses named and no interfaces, it is those addresses through any interface:
+    # whoever names an address and nothing else means that address, and tied to lo it could
+    # not be reached at all. Interfaces that are named are used as they are written. Until
+    # 2026-10-12 lo was the default with addresses too, and the user, about to set an
+    # address alone, asked whether that would work: it would not have.
     # Until 2026-10-12 it was `listen`, one address, 127.0.0.1 unless set, and beside it
     # `interface`, one name, which shut the machine itself out. The user, having cut a
     # machine off from its own page by changing the address there, wanted a list with lo in
     # it, and one well-established model in place of two settings that leaned on each other.
     loopback = 'lo0' if sys.platform == 'darwin' else 'lo'
-    names = args.interface if args.interface else cfg.get('interfaces', ['lo'])
+    listen = args.listen_address or cfg.get('listen_addresses') or []
+    LISTEN = [str(a) for a in ([listen] if isinstance(listen, str) else listen)]
+    names = args.interface if args.interface else cfg.get('interfaces', [] if LISTEN else ['lo'])
     names = [] if 'any' in (args.interface or []) else [str(n) for n in names]
     INTERFACES = []
     for name in names:
         name = loopback if name in ('lo', 'lo0') else name
         if name not in INTERFACES:
             INTERFACES.append(name)
-    listen = args.listen_address or cfg.get('listen_addresses') or []
-    LISTEN = [str(a) for a in ([listen] if isinstance(listen, str) else listen)]
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')

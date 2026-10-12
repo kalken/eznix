@@ -223,15 +223,18 @@ in
 
     interfaces = mkOption {
       type        = types.listOf types.str;
-      default     = [ "lo" ];
+      # With addresses and nothing said here, those addresses through any interface: tied
+      # to lo, an address of the network could not be reached at all.
+      default     = if cfg.listenAddresses == [ ] then [ "lo" ] else [ ];
+      defaultText = lib.literalExpression ''[ "lo" ], or [ ] when listenAddresses is set'';
       example     = [ "lo" "enp1s0" ];
-      description = "The network interfaces eznix is reached through, by name, and no others. \"lo\" is this machine itself, and all there is unless you add to it: [ \"lo\" \"enp1s0\" ] opens eznix here and on that network. Through an interface eznix answers on every address it has, also when that changes (DHCP), so there is no address to set. An empty list is every interface, for where their names are not known. One that is not there is left out, with a line in the log. Reached from elsewhere, enableHttps is on by default; opened by a host name instead of an address, put that name in certNames.";
+      description = "The network interfaces eznix is reached through, by name, and no others. \"lo\" is this machine itself, and all there is unless you add to it: [ \"lo\" \"enp1s0\" ] opens eznix here and on that network. Through an interface eznix answers on every address it has, also when that changes (DHCP), so there is no address to set. An empty list is every interface, for where their names are not known, and what this is when left unset with listenAddresses set. One that is not there is left out, with a line in the log. Reached from elsewhere, enableHttps is on by default; opened by a host name instead of an address, put that name in certNames.";
     };
     listenAddresses = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
       example     = [ "192.168.1.2" ];
-      description = "Addresses to answer on, and no others, of those the interfaces have. Empty, the usual: every address of the interfaces. An address given here is in the generated certificate by itself.";
+      description = "Addresses to answer on, and no others. Set by itself, with interfaces left unset, eznix is reached at these addresses through any interface, and not as localhost unless 127.0.0.1 is one of them. With interfaces set as well, it is these addresses of those interfaces. Empty, the usual: every address of the interfaces. An address given here is in the generated certificate by itself.";
     };
     port = mkOption {
       type        = types.port;

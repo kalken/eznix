@@ -489,6 +489,8 @@ whatever the firewall says, which is what you want on a router.
 - a name that is not an interface of the machine is left out, with a line in the log, and
   the rest still work
 - `listenAddresses = [ "192.168.1.2" ];` narrows it further, to those addresses of the interfaces
+- `listenAddresses` with no `interfaces` set is those addresses and nothing else, through
+  any interface: add `"127.0.0.1"` to keep `localhost`
 
 **`certNames`** is for when eznix is reached from elsewhere by something it can't know by
 itself. The machine's host name is in the certificate without being listed (also with its
@@ -547,8 +549,8 @@ The common ones, the same in all three modules:
 | `session.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
 | `port` | `9090` | the editor's port |
-| `listenAddresses` | `[ ]` | addresses to answer on, and no others, of those the interfaces have; empty: all |
-| `interfaces` | `[ "lo" ]` | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |
+| `listenAddresses` | `[ ]` | addresses to answer on, and no others: through any interface when `interfaces` is not set, else of those the interfaces have; empty: all |
+| `interfaces` | `[ "lo" ]`, or `[ ]` with `listenAddresses` set | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |
 | `terminal` | `true` | the terminal panel |
 | `buttons` | `[ ]` | command buttons, see [Buttons](#-buttons) |
 | `theme`, `themes` | | see [Themes](#-themes) |

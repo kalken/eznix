@@ -267,10 +267,26 @@ answer; the user called it hacky and had it removed ("i need it to be secure"), 
 the list with `lo` in it, asked what nginx does (addresses only, the interface left to the
 firewall: what ezconf did, and the weak spot on a router), and chose the model that names
 interfaces once told that dnsmasq and Samba are it.
+Later that day the user, about to set `listenAddresses` alone, asked whether that would
+work. It would not have: the address was tied to `lo`, the default, so nothing arrived from
+the network and `localhost` was gone as well. Now `interfaces` not set is `[ ]` when there
+are addresses (the option's default in `options.nix`, and the same in `eznix.py` for a
+configuration without the key), and an `interfaces` that is written is used as written;
+`localhost` is then not answered unless `127.0.0.1` is listed, which the user found right
+("they probably dont want it"). Adding the two lists up, as dnsmasq does, and addresses
+per interface were both talked through and not built. Checked: the module's default for
+each combination, and on a Mac that an address with `lo` named still answers there; an
+address alone could not be reached from the shell it was tried in, where a plain Python
+server on that address could not either, so it has not been seen answering.
+It is IPv4 only: the sockets are `AF_INET`, and an IPv6 address in `listenAddresses` is
+left out as one that cannot be listened on.
 Tried on a Mac: the default, `lo` with a real interface, a real one alone, the empty list,
 a missing interface beside `lo` and alone, and with addresses; the NixOS module evaluated
-for the same. Not run on Linux, where two sockets share a port by being tied to different
-interfaces.
+for the same. On Linux by the user's word the same day, on two NixOS machines rebuilt to it: the
+router, with `interfaces = [ "lan" ]` and opened as `ezbox.lan` (a name eznix added by
+itself), and a desktop on the default `[ "lo" ]` ("both machines seems to work"). Not yet
+seen there: two interfaces at once, which is where two sockets share a port by being tied
+to different interfaces, and an interface that is missing.
 
 **Reached from elsewhere, what eznix cannot know goes in `certNames`, by hand.** What it
 can know it takes by itself since 2026-10-12: the machine's host name (`hostNames` from the
