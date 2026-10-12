@@ -205,8 +205,8 @@ in
     exclude = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      example     = [ "package.json" "vendor" ];
-      description = "Paths in configDir, relative to it, that are not configuration: a file, or a folder with everything under it. The editor leaves them alone. Give `lib.jsonDir` the same list (`{ dir = ./eznix; exclude = [ ... ]; }`), which is what keeps them out of the configuration; a module cannot do that for you.";
+      example     = [ "package.json" "vendor" "*.lock.json" ];
+      description = "What in configDir is not configuration, each entry read like a line of a .gitignore: a name leaves out a file or a folder of that name at any depth, with everything under a folder; `/name` or `a/b` only from the top of configDir; `*`, `?`, `[a-z]` and `**` are wildcards; `!entry` takes one back. The editor leaves them alone. Give `lib.jsonDir` the same list (`{ dir = ./eznix; exclude = [ ... ]; }`), which is what keeps them out of the configuration; a module cannot do that for you.";
     };
     defaultFile = mkOption {
       type        = types.str;

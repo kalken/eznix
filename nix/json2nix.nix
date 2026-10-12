@@ -2,9 +2,11 @@
 # `inputs.eznix.lib.jsonDir { dir = ./eznix; exclude = [ "notes.json" "vendor" ]; }`.
 #
 #   dir      the folder eznix edits (`config_dir` there)
-#   exclude  paths in it, relative to it, to leave out: a file, or a folder with everything
-#            under it. For a folder that holds other JSON than configuration (the flake's own
-#            root, say). Give the editor the same list (`exclude`), or it shows them as tabs.
+#   exclude  what in it to leave out, each entry read as a line of a .gitignore: a name (at
+#            any depth; a folder with everything under it), "/name" or "a/b" from the top of
+#            the folder only, the wildcards * ? [a-z] and **, "!entry" to take one back. For a
+#            folder that holds other JSON than configuration (the flake's own root, say).
+#            Give the editor the same list (`exclude`), or it shows them as tabs.
 #
 # This used to be copied into the folder as its default.nix, so that `imports = [ ./eznix ]`
 # worked. As a function nothing has to be installed where the files are, which is what lets
@@ -30,8 +32,9 @@
   # (see flake.nix).
   scope = args;
 
-  excludes = map (lib.removeSuffix "/") exclude;
-  excluded = relPath: lib.any (e: relPath == e || lib.hasPrefix "${e}/" relPath) excludes;
+  # Whether a path is one `exclude` leaves out. Only the path itself is asked about: walk,
+  # below, comes down from the top and never goes into a folder that is left out.
+  excluded = import ./exclude.nix { inherit lib; } exclude;
 
   # Every *.json file under this directory (including subfolders, for organizing tabs) is an
   # independent config "tab" (edited separately in the UI). No file name is special: what is

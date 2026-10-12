@@ -128,7 +128,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 
 FLAKE_DIR        = '/etc/nix-darwin' if sys.platform == 'darwin' else '/etc/nixos'
 CONFIG_DIR       = None          # the folder of *.json files being edited
-EXCLUDE          = []            # paths in it that are not configuration (see _excluded())
+EXCLUDE          = []            # what in it is not configuration, as rules (see _exclude_rule())
 DEFAULT_FILE     = None          # file to prefer as the first tab
 STATE_DIR        = os.path.expanduser('~/.local/state/eznix')
 AUTOCOMPLETE_DIR = None          # generated suggestions; <state>/autocomplete unless set
@@ -738,15 +738,67 @@ def _enabled_folder_name(name):
     return name[:-len('.disabled')].lstrip('.')
 
 
+def _exclude_rule(pattern):
+    """One entry of `exclude` as (negated, regular expression), or None for an empty one. The
+    entries are read the way a .gitignore's lines are (the user's wish, 2026-10-12; they were
+    plain paths from the top of the folder before, with no wildcards):
+
+      name       that name at any depth; a folder with everything under it
+      /name      only at the top of the folder; so is any entry with a slash inside it (a/b)
+      * ? [a-z]  wildcards within one name ([!a] for "not"), ** across folders (**/x, x/**, a/**/b)
+      !entry     takes back what an earlier entry left out; the last entry that matches decides
+
+    A slash at the end is allowed and means nothing more (git's "folders only" is not kept).
+    What is inside a folder that is left out stays out whatever comes after, as in git.
+    json2nix.nix does the same translation, step for step, and the two must agree: change
+    them together (test_server.py runs one table of cases through both)."""
+    negated = pattern.startswith('!')
+    if negated:
+        pattern = pattern[1:]
+    segs = [seg for seg in pattern.split('/') if seg]
+    if not segs:
+        return None
+    anchored = pattern.startswith('/') or len(segs) > 1
+
+    def name(seg):
+        out = ''
+        for part in re.split(r'(\*|\?|\[[^]]*\])', seg):
+            if part == '*':
+                out += '[^/]*'
+            elif part == '?':
+                out += '[^/]'
+            elif len(part) >= 2 and part[0] == '[' and part[-1] == ']':
+                out += '[^' + part[2:] if part[1] == '!' else part
+            else:
+                out += re.escape(part)
+        return out
+
+    body = ''
+    for i, seg in enumerate(segs):
+        last = i == len(segs) - 1
+        if seg == '**':
+            body += '.*' if last else '(.*/)?'
+        else:
+            body += name(seg) + ('' if last else '/')
+    return negated, re.compile(('' if anchored else '(.*/)?') + body)
+
+
 def _excluded(rel):
-    """Is this path, relative to CONFIG_DIR, one `exclude` leaves out: listed itself, or inside
-    a listed folder? Excluded paths are no tabs and no folders, and can't be read or written
-    through the editor. For a config_dir that holds other JSON than configuration -- the
-    flake's own root, with its package.json. json2nix.nix takes the same list, and the two
-    have to agree: left out here only, a file is still built; there only, it is a tab that
-    changes nothing."""
-    rel = rel.replace('\\', '/').strip('/')
-    return any(rel == e or rel.startswith(e + '/') for e in EXCLUDE)
+    """Is this path, relative to CONFIG_DIR, one `exclude` leaves out: matched itself, or inside
+    a folder that is (_exclude_rule())? Excluded paths are no tabs and no folders, and can't be
+    read or written through the editor. For a config_dir that holds other JSON than
+    configuration -- the flake's own root, with its package.json. json2nix.nix takes the same
+    list, and the two have to agree: left out here only, a file is still built; there only,
+    it is a tab that changes nothing."""
+    parts = [p for p in rel.replace('\\', '/').split('/') if p]
+    for i in range(1, len(parts) + 1):
+        prefix, out = '/'.join(parts[:i]), False
+        for negated, regex in EXCLUDE:
+            if regex.fullmatch(prefix):
+                out = not negated
+        if out:
+            return True
+    return False
 
 
 def resolve_config_path(name):
@@ -2457,7 +2509,7 @@ def main():
     FLAKE_DIR  = path(args.flake or cfg.get('flake') or FLAKE_DIR)
     CONFIG_DIR = path(args.config_dir or cfg.get('config_dir') or os.path.join(FLAKE_DIR, 'eznix'))
     DEFAULT_FILE = cfg.get('default_file')
-    EXCLUDE = [e for e in (str(x).replace('\\', '/').strip('/') for x in cfg.get('exclude', [])) if e]
+    EXCLUDE = [r for r in (_exclude_rule(str(x)) for x in cfg.get('exclude', [])) if r]
     STATE_DIR  = path(args.state_dir or cfg.get('state_dir') or STATE_DIR)
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     # CONFIG_DIR is not made here: started against a flake, eznix changes nothing in it until

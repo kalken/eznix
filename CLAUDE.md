@@ -262,7 +262,14 @@ Firefox that day ("looks good in firefox and chrome").
 (`lib.jsonDir DIR`, or `{ dir, exclude }`), so the folder can be one with a `default.nix` and
 other JSON of its own, the flake's root included. `exclude` exists twice and the two must
 agree: the function's argument keeps a path out of the build, the editor's setting
-(`_excluded()`) keeps it from being a tab. A module can't pass its option to the function
+(`_excluded()`) keeps it from being a tab. Its entries are read like the lines of a
+`.gitignore` since 2026-10-12, at the user's wish (plain paths from the top before): a name
+at any depth, `/name` anchored, `* ? [a-z] **`, `!entry`, last match decides. Each side
+turns an entry into a regular expression by the same steps (`_exclude_rule()` in
+`eznix.py`, `nix/exclude.nix`), and `test/exclude.json` is one table of cases both are run
+against (`test_server.py`, `checks.exclude`): add a case there when touching either. What
+changed for an old list: an entry without a slash now matches at any depth, not only at the
+top. A module can't pass its option to the function
 (what the function reads decides `config`, so reading `config` there recurses). A raw
 expression is another matter and gets every argument the module does (`config`, `options`,
 `specialArgs` such as `inputs`, beside `pkgs` and `lib`): it is a value, evaluated when asked

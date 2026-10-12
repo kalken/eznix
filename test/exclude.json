@@ -1,0 +1,420 @@
+[
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "package.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "sub/package.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "vendor",
+  "out": true
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "vendor/deep/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "vendored.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "a.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "package.json",
+   "vendor/"
+  ],
+  "path": "sub/vendor/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "/package.json"
+  ],
+  "path": "package.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "/package.json"
+  ],
+  "path": "sub/package.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "sub/old.json"
+  ],
+  "path": "sub/old.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "sub/old.json"
+  ],
+  "path": "a/sub/old.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "sub/old.json"
+  ],
+  "path": "sub/old.json.bak",
+  "out": false
+ },
+ {
+  "exclude": [
+   "*.lock.json"
+  ],
+  "path": "a.lock.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "*.lock.json"
+  ],
+  "path": "sub/b.lock.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "*.lock.json"
+  ],
+  "path": "a.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   ".*"
+  ],
+  "path": ".foo.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   ".*"
+  ],
+  "path": "sub/.bar.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   ".*"
+  ],
+  "path": "a.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   ".*"
+  ],
+  "path": "a.b.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "test-?.json"
+  ],
+  "path": "test-1.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "test-?.json"
+  ],
+  "path": "test-12.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "test-?.json"
+  ],
+  "path": "sub/test-a.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "[ab]*.json"
+  ],
+  "path": "a1.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "[ab]*.json"
+  ],
+  "path": "b.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "[ab]*.json"
+  ],
+  "path": "c.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "[!a]x.json"
+  ],
+  "path": "bx.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "[!a]x.json"
+  ],
+  "path": "ax.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "**/gen"
+  ],
+  "path": "gen",
+  "out": true
+ },
+ {
+  "exclude": [
+   "**/gen"
+  ],
+  "path": "a/gen",
+  "out": true
+ },
+ {
+  "exclude": [
+   "**/gen"
+  ],
+  "path": "a/b/gen/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "**/gen"
+  ],
+  "path": "general",
+  "out": false
+ },
+ {
+  "exclude": [
+   "gen/**"
+  ],
+  "path": "gen/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "gen/**"
+  ],
+  "path": "gen/a/b.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "gen/**"
+  ],
+  "path": "gen",
+  "out": false
+ },
+ {
+  "exclude": [
+   "gen/**"
+  ],
+  "path": "a/gen/x.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "a/**/z.json"
+  ],
+  "path": "a/z.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/**/z.json"
+  ],
+  "path": "a/b/z.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/**/z.json"
+  ],
+  "path": "a/b/c/z.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/**/z.json"
+  ],
+  "path": "b/a/z.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "*.json",
+   "!keep.json"
+  ],
+  "path": "x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "*.json",
+   "!keep.json"
+  ],
+  "path": "keep.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "*.json",
+   "!keep.json"
+  ],
+  "path": "sub/keep.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "*.json",
+   "!keep.json"
+  ],
+  "path": "sub/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "!keep.json",
+   "*.json"
+  ],
+  "path": "keep.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "vendor",
+   "!vendor/x.json"
+  ],
+  "path": "vendor/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a+b (1).json",
+   "c.d.json"
+  ],
+  "path": "a+b (1).json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a+b (1).json",
+   "c.d.json"
+  ],
+  "path": "aab (1).json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "a+b (1).json",
+   "c.d.json"
+  ],
+  "path": "c.d.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a+b (1).json",
+   "c.d.json"
+  ],
+  "path": "cxd.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "",
+   "/",
+   "!"
+  ],
+  "path": "a.json",
+  "out": false
+ },
+ {
+  "exclude": [
+   "sub/"
+  ],
+  "path": "sub",
+  "out": true
+ },
+ {
+  "exclude": [
+   "sub/"
+  ],
+  "path": "sub/a.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "sub/"
+  ],
+  "path": "a/sub/b.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/*"
+  ],
+  "path": "a/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/*"
+  ],
+  "path": "a/b/x.json",
+  "out": true
+ },
+ {
+  "exclude": [
+   "a/*"
+  ],
+  "path": "a",
+  "out": false
+ },
+ {
+  "exclude": [
+   "a/*"
+  ],
+  "path": "b/a/x.json",
+  "out": false
+ }
+]

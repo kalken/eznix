@@ -161,7 +161,13 @@ services.eznix.configDir = "/etc/nixos";
 services.eznix.exclude   = [ "package.json" "vendor" ];
 ```
 
-An entry is a path inside the folder: a file, or a folder with everything under it.
+An entry is read like a line of a `.gitignore`:
+
+- `vendor` leaves out a file or folder of that name wherever it is, a folder with everything under it
+- `/vendor` or `sub/old.json` counts from the top of the folder only
+- `*`, `?` and `[a-z]` are wildcards within a name (`*.lock.json`), `**` stands for any folders (`**/generated`)
+- `!keep.json` takes back what an earlier entry left out; it can't bring back something inside a folder that is left out
+
 Dot-folders are always left out.
 
 A setting the suggestions don't know can be added all the same, as free-form settings
@@ -504,7 +510,7 @@ The common ones, the same in all three modules:
 |---|---|---|
 | `flake` | `/etc/nixos`, `/etc/nix-darwin`, `~/.config/home-manager` | the flake being edited (`~/` works on macOS and with home-manager) |
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
-| `exclude` | `[ ]` | paths in it that are not configuration |
+| `exclude` | `[ ]` | what in it is not configuration, as in a `.gitignore` (see [How the configuration is stored](#-how-the-configuration-is-stored)) |
 | `users` | | who may log in with their system password |
 | `session.days` | | days a login lasts, 400 at most; unset, until the page has been closed for 15 minutes, and a day at most |
 | `session.renew` | `false` | count those days from the last visit instead of from the login |

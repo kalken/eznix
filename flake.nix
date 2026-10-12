@@ -55,12 +55,29 @@
             in
             if got // { list = lib.sort builtins.lessThan got.list; } == want then pkgs.emptyFile
             else throw "lib.jsonDir: got ${builtins.toJSON got}, wanted ${builtins.toJSON want}";
+
+          # What `exclude` leaves out (nix/exclude.nix), against the cases of test/exclude.json:
+          # the table test/test_server.py runs through the editor's own reading of the same
+          # entries, which has to come to the same answers. A path is out when it or a folder
+          # above it is matched, which is how json2nix.nix's walk comes to ask.
+          checks.exclude =
+            let
+              inherit (pkgs) lib;
+              cases = builtins.fromJSON (builtins.readFile ./test/exclude.json);
+              out = case: let
+                names = builtins.filter (n: n != "") (lib.splitString "/" case.path);
+                above = map (n: lib.concatStringsSep "/" (lib.take n names)) (lib.range 1 (builtins.length names));
+              in lib.any (import ./nix/exclude.nix { inherit lib; } case.exclude) above;
+              wrong = builtins.filter (case: out case != case.out) cases;
+            in
+            if wrong == [ ] then pkgs.emptyFile
+            else throw "exclude: wrong for ${builtins.toJSON wrong}";
         });
     in {
       packages  = builtins.mapAttrs (_: s: s.packages)  perSystem;
       apps      = builtins.mapAttrs (_: s: s.apps)      perSystem;
       devShells = builtins.mapAttrs (_: s: s.devShells) perSystem;
-      checks    = builtins.mapAttrs (_: s: { inherit (s.checks) json-dir; }) perSystem;
+      checks    = builtins.mapAttrs (_: s: { inherit (s.checks) json-dir exclude; }) perSystem;
 
       # pkgs.eznix, and its parts as pkgs.eznix.autocomplete / pkgs.eznix.terminal (also
       # pkgs.eznix-autocomplete, pkgs.eznix-terminal), for a configuration that wants one of

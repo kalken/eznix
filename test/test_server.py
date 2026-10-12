@@ -128,6 +128,22 @@ def terminal_history():
     check('terminal: the history is bounded', len(screen._scrollback) == term.SCROLLBACK_LINES)
 
 
+def excludes():
+    """What `exclude` leaves out, entry by entry as in a .gitignore: the cases of
+    test/exclude.json, which checks.exclude in flake.nix runs through nix/exclude.nix as well.
+    The two read the entries separately and have to come to the same answers."""
+    spec = importlib.util.spec_from_file_location('eznix_server', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    wrong = []
+    cases = json.load(open(os.path.join(ROOT, 'test', 'exclude.json')))
+    for case in cases:
+        ez.EXCLUDE = [r for r in map(ez._exclude_rule, case['exclude']) if r]
+        if ez._excluded(case['path']) != case['out']:
+            wrong.append(case)
+    check(f'exclude: {len(cases)} cases of entries read as in a .gitignore', not wrong, wrong)
+
+
 def sessions():
     """How long a login lasts, which is the server's doing and not the cookie's. No server
     needed: the clock is moved by rewriting what the functions go by."""
@@ -162,6 +178,7 @@ def sessions():
 def main():
     terminal_history()
     sessions()
+    excludes()
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(f'{tmp}/flake/eznix')
         os.makedirs(f'{tmp}/flake/.git')
