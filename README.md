@@ -526,7 +526,7 @@ The common ones, the same in all three modules:
 | `theme`, `themes` | | see [Themes](#-themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#-plugins) |
 | `enableHttps`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#-https) |
-| `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`4` folds what is inside `services.openssh.settings`); not set, nothing is folded |
+| `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`1` folds them all, `4` what is inside `services.openssh.settings`); not set, nothing is folded |
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same

@@ -332,7 +332,7 @@ in
       type        = types.nullOr types.ints.unsigned;
       default     = null;
       example     = 4;
-      description = "The level from which sections start out folded in the editor, a top-level section being level 1: with 4, services.openssh.settings is shown and what lies inside it is folded. Not set (or 0), nothing is folded. Sections can be folded from level 3 down, so 3 is the lowest number that does anything.";
+      description = "The level from which sections start out folded in the editor, a top-level section being level 1: with 4, services.openssh.settings is shown and what lies inside it is folded. 1 folds every section. Not set (or 0), nothing is folded.";
     };
     mode = mkOption {
       type        = types.nullOr (types.enum [ "install" ]);

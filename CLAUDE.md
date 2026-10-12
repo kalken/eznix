@@ -453,7 +453,10 @@ works!"): the type chosen from the bar, and Add pressed with no type chosen.
 top-level section being 1; not set (null), the default, nothing is folded
 (`SECTIONS_LEVEL`, `_sectionStartsOpen()`). Until 2026-10-12 the setting was `sections`,
 collapsed or expanded, collapsed by default, with the level fixed at 3, the first level
-that can be folded at all (levels 1 and 2, the cards and the boxes in them, have no arrow).
+that could be folded then: levels 1 and 2, the cards and the boxes in them, had no arrow
+until the user asked for those to fold too the same day, by a click on the name and
+without an arrowhead (`.foldable` on every section; `.nest-arrow` stays the mark of level
+3 and below, which have the arrowhead).
 The user wanted the level settable. It went through 4 as the default ("collapse after level
 3"), one setting taking either word or a number (unclear, the user found), and one number
 with 0 for never (my suggestion), until, having seen everything open in the test server,

@@ -2838,7 +2838,7 @@ function _sectionOpenKey(el) { return activeFile + '\x00' + el.dataset.path; }
 // How a section starts out: shown above the level the collapseLevel setting names, folded
 // from that level down; with none set (0 here) all are shown. A top-level
 // section is level 1, so one more than its depth (--depth, from _setNestDepths()). The level
-// was fixed at 3, the first that can be folded at all, until the user asked for it to be a
+// was fixed at 3, the first that could be folded then, until the user asked for it to be a
 // setting (2026-10-12), with nothing folded unless it is set: with 4, `services.ezrouter.wan` is then open and
 // `services.ezrouter.wan.bridge` folded.
 function _sectionStartsOpen(el) {
@@ -2850,7 +2850,7 @@ function _setSectionOpen(el, open) {
   el.classList.toggle('collapsed', !open);
 }
 function _toggleSectionOpen(el) {
-  if (el && el.classList.contains('nest-arrow')) _setSectionOpen(el, el.classList.contains('collapsed'));
+  if (el && el.classList.contains('foldable')) _setSectionOpen(el, el.classList.contains('collapsed'));
 }
 // Two menu entries, one showing and one hiding every foldable section at once -- both always
 // there rather than one that flips, so what a click will do never depends on what happens to be
@@ -2859,8 +2859,8 @@ function _toggleSectionOpen(el) {
 // section in reach at all.
 function _foldAllMenuItems(scope) {
   const root = scope || document.getElementById('editor-area');
-  const all = [...root.querySelectorAll('.section.nest-arrow')];
-  if (scope && scope.classList.contains('nest-arrow')) all.unshift(scope);
+  const all = [...root.querySelectorAll('.section.foldable')];
+  if (scope && scope.classList.contains('foldable')) all.unshift(scope);
   if (!all.length) return [];
   return [{ label: 'Expand all', onclick: () => all.forEach(el => _setSectionOpen(el, true)) },
           { label: 'Collapse all', onclick: () => all.forEach(el => _setSectionOpen(el, false)) }];
@@ -2887,8 +2887,14 @@ function _setNestDepths(root) {
     el.classList.add('nest');
     el.classList.toggle('nest-top', !inArrayObj && isSection && depth === 0);
     el.classList.toggle('nest-card', !inArrayObj && isSection && depth === 1);
-    const foldable = !inArrayObj && isSection && depth >= 2;
-    el.classList.toggle('nest-arrow', foldable);
+    // Every section can be folded, by a click on its name (.foldable), the top-level ones
+    // and the ones directly in them too. Those two levels could not until 2026-10-12, when
+    // the user asked for them, and have no arrowhead ("not needed on the first and second
+    // level"); .nest-arrow stays the mark of the levels below, which have one and whose
+    // headings are rows of the outline (style.css).
+    const foldable = !inArrayObj && isSection;
+    el.classList.toggle('foldable', foldable);
+    el.classList.toggle('nest-arrow', foldable && depth >= 2);
     el.classList.toggle('collapsed', foldable && !_isSectionOpen(el));
     el.classList.toggle('nest-loose', !inArrayObj && !isSection && depth <= 1);
     el.classList.toggle('nest-root', !inArrayObj && !isSection && depth === 0);

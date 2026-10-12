@@ -418,8 +418,11 @@ input[type=text].key-rename-input {
    round its values itself. */
 .field-group { padding-bottom: 4px; }
 .array-obj-fields > .field-group { padding-bottom: 0; }
-/* Every section from the third level down (.nest-arrow) can be folded away, and starts out
-   folded (.collapsed, see _setNestDepths()): the arrowhead in front of its name is the switch,
+/* Every section can be folded away by a click on its name (.foldable; from the third level
+   down only until 2026-10-12), and starts out folded or not by the collapseLevel setting
+   (.collapsed, see _setNestDepths()). From the third level down (.nest-arrow) there is an
+   arrowhead in front of the name as well; the two levels above have none, which the user
+   did not want there. The arrowhead is the switch too,
    pointing right while the section is hidden and down while it's shown. The arrow is part of
    the heading's text: "▾ name" begins where the section's indent puts it, on the line of the
    options beside the section, and the arrow is two characters wide, itself and a space. What
@@ -511,7 +514,7 @@ input[type=text].key-rename-input {
 /* A section's whole heading line and an option's whole key column start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
-.section.nest-arrow > .section-header .section-key-text { cursor: pointer; }
+.section.foldable > .section-header .section-key-text { cursor: pointer; }
 /* A dragged row keeps exactly the look it had in place: no translucency, and the fill of the
    top-level block it was lifted from behind it instead of .drag-ghost's own. */
 .nest.drag-ghost, .array-obj-item.drag-ghost { opacity: 1; background-color: var(--card-bg); }
