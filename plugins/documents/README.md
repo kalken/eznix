@@ -8,11 +8,13 @@ The **Documents** button: read the Markdown files of your flake beside the confi
 - Opens each as a tab on the side, shown as a page: headings, lists, tables, code
 - A link to another document of the flake opens that document
 - What was open is open again after a reload
+- An open document slides out of the way when you click outside it, like the terminal
 
 ## 📋 Options
 
 | Option | Default | |
 |---|---|---|
+| `auto_hide` | `true` | an open document slides away on a click outside it; the arrow button at the side's top left corner hides and shows it by hand |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ```nix

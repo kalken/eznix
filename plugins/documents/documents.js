@@ -283,7 +283,11 @@ async function openMarkdownFile(name, fragment) {
     if (fragment) _scrollMarkdownPanelToFragment(name, fragment);
     return;
   }
-  const panel = eznix.sidePanel({ group: 'documents', title: name, onClose: () => { _openMarkdownPanels.delete(name); _persistOpenMarkdownDocs(); } });
+  // Out of the way on a press outside the side, as the files' tabs and the terminal are,
+  // unless switched off ([plugin.documents] auto_hide = false). The documents stayed put at
+  // first, alone on the side; the user expected them to hide like the rest (2026-10-12).
+  const panel = eznix.sidePanel({ group: 'documents', title: name,
+    autoHide: (eznix.config.documents || {}).auto_hide !== false, onClose: () => { _openMarkdownPanels.delete(name); _persistOpenMarkdownDocs(); } });
   panel.body.classList.add('markdown-content');
   panel.body.dataset.mdPath = name; // read by the doc-link click handler below to resolve relative hrefs
   panel.body.textContent = 'Loading…';

@@ -540,7 +540,7 @@ leaving the program ends the shell and closes the tab. The tab's cross closes it
 hanging up on the program with no question: an editor keeps what was unsaved in its own
 recovery file (vim's swap file) and offers it at the next opening, which the user found
 enough ("i think thats enough then"), after a time with no cross and one that asked first. The open files slide out of the way on a press outside the side, as the terminal panel
-hides (`autoHide` in `eznix.sidePanel()`, `auto_hide` in the plugin, on by default; a
+hides (`autoHide` in `eznix.sidePanel()`, `auto_hide` in the plugin, on by default, and the same for the documents; a
 button brings them back), asked for by the user. That button is the terminal's own look
 turned on its side, an arrowhead on a page button at the side's top left corner, and
 hides by hand as well; away, the side has slid off only so far that this corner with the

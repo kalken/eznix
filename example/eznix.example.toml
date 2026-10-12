@@ -96,6 +96,10 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # extensions = [".nix"]               # the files it lists, by how their names end
 # command    = "code --wait"          # opened with this in place of `editor`
 
+# The flake's Markdown files, to read beside the configuration.
+# [plugin.documents]
+# auto_hide = true                    # an open document goes out of the way on a click outside it
+
 # Export, import and restore of the whole flake.
 # [plugin.system]
 # backups  = 5                        # automatic backups kept; 0: none
