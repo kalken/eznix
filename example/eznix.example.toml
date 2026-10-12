@@ -84,6 +84,11 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # password_file = "/path/to/file"
 # username      = "alice"             # default: whoever runs eznix
 
+# The flake's .nix files, opened in an editor of your own in a terminal on the side.
+# [plugin.nixfiles]
+# editor   = "vim"                    # default: what $EDITOR names there, or nano
+# exclude  = [".*"]                   # what not to list, read like `exclude` above
+
 # Export, import and restore of the whole flake.
 # [plugin.system]
 # backups  = 5                        # automatic backups kept; 0: none

@@ -14,9 +14,10 @@ one address and one certificate, and this leg never leaves the machine. Requests
 only with the secret in --key-file, which only eznix.py and this user can read.
 
 The shell session always survives a dropped/closed WebSocket connection (browser closed, network
-blip, logout) -- see _SESSION, _create_session(), _session_reader() below. There is only ever one
-session, shared by every connection regardless of who or what browser it comes from -- see
-_SESSION's own comment for why. Reconnecting reattaches to the same still-running shell,
+blip, logout) -- see _SESSIONS, _create_session(), _session_reader() below. A session is shared
+by every connection made under its name, regardless of who or what browser it comes from, and
+there is one that has no name, the terminal of the page's panel -- see _SESSIONS' own comment
+for why. Reconnecting reattaches to the same still-running shell,
 repainting a snapshot of its current screen content (see _VirtualScreen below) rather than
 replaying its raw output history, instead of forking a fresh one; the shell itself only ever dies
 when it exits on its own, or when this whole process does (a reboot, a manual restart of
@@ -37,6 +38,7 @@ import hashlib
 import http.server
 import json
 import os
+import re
 import secrets
 import select
 import signal
@@ -45,7 +47,7 @@ import subprocess
 import sys
 import threading
 import time
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 try:
     import pty
@@ -137,8 +139,18 @@ STAMP = ''
 # faithfully (correctly, since it's genuinely what's on screen), but the *live* shell can still
 # redraw it a second time on top of a correct snapshot if something forces a SIGWINCH afterward --
 # see the resize handling's own comment for why that's avoided for a plain shell prompt.
-_SESSION = None
+#
+# Since 2026-10-12 there can be more shells than that one, each under a name of its own
+# (_SESSIONS; /terminal?session=NAME): the user wanted to open a file in an editor of their
+# choosing without it taking over the terminal the rebuild buttons type into. Everything
+# above holds for each of them: a name is a shell that whoever connects under it shares and
+# that outlives its connections. The one without a name ('') is the terminal of the panel,
+# and the only one there was. A named one can also be ended by the page that opened it (the
+# 'end' control message), which the panel's never is. No more than MAX_SESSIONS at a time.
+_SESSIONS = {}
 _SESSION_LOCK = threading.Lock()
+MAX_SESSIONS = 8
+_SESSION_NAME = re.compile(r'[A-Za-z0-9_-]{0,40}')
 
 def _set_winsize(fd, rows, cols):
     try:
@@ -618,7 +630,7 @@ def _update_alt_screen_state(session, data):
             session['alt_screen'] = False
 
 
-def _create_session(rows, cols):
+def _create_session(rows, cols, command=None):
     """Fork a fresh shell and start its dedicated reader thread, returning the new session dict
     (or None if the PTY/shell itself couldn't be created). From here on, _session_reader() --
     not any particular WebSocket connection -- owns this shell's entire lifecycle: it keeps
@@ -659,7 +671,14 @@ def _create_session(rows, cols):
 
     try:
         proc = subprocess.Popen(
-            [SHELL, '-l'],
+            # `command`: the shell runs that and nothing else, in place of waiting for input
+            # (a named session opened to run one program, an editor on a file). Still the
+            # user's own shell, as a login and an interactive one, so that the program is
+            # found and set up as it would be at a prompt (PATH, EDITOR and the like come
+            # from the shell's startup files). The page typed the command into a waiting
+            # shell at first; the prompt and the line were then seen for a moment before the
+            # program took the screen, which the user asked to be rid of (2026-10-12).
+            [SHELL, '-l', '-i', '-c', command] if command else [SHELL, '-l'],
             stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
             close_fds=True,
             preexec_fn=_init_child,
@@ -683,6 +702,7 @@ def _create_session(rows, cols):
         'lock': threading.Lock(),
         'done': False,
         'alt_screen': False,
+        'name': '',
     }
     threading.Thread(target=_session_reader, args=(session,), daemon=True).start()
     return session
@@ -696,7 +716,6 @@ def _session_reader(session):
     tears the shell down -- once the shell process itself actually exits or the PTY read fails
     outright; a client disconnecting never reaches this at all (see _terminal_ws()'s own finally
     below, which only ever removes that one client from 'writers')."""
-    global _SESSION
     master_fd = session['master_fd']
     proc = session['proc']
     try:
@@ -770,12 +789,11 @@ def _session_reader(session):
         # KillMode=control-group, which kills every process in the unit's cgroup regardless of
         # what this code does.
         with _SESSION_LOCK:
-            if _SESSION is session:
-                _SESSION = None
+            if _SESSIONS.get(session['name']) is session:
+                del _SESSIONS[session['name']]
 
 
-def _terminal_ws(handler):
-    global _SESSION
+def _terminal_ws(handler, name='', command=None, size=(24, 80)):
     if not _PTY:
         handler.send_error(501, 'PTY not available on this platform')
         return
@@ -797,14 +815,23 @@ def _terminal_ws(handler):
     wfile = sock.makefile('wb', buffering=0)
 
     with _SESSION_LOCK:
-        session = _SESSION
+        session = _SESSIONS.get(name)
         is_new = session is None or session.get('done')
         if is_new:
-            session = _create_session(rows=24, cols=80)
+            # The handshake is answered by now, so a refusal is the connection closing.
+            # A named session can be started on a command and at the size of the place it
+            # is shown in, so that a full-screen program is not started in one size and
+            # resized a moment later. The panel's own is always a plain shell.
+            session = (_create_session(size[0], size[1], command if name else None)
+                       if len(_SESSIONS) < MAX_SESSIONS or name in _SESSIONS else None)
             if session is None:
-                handler.send_error(500)
+                try:
+                    _ws_send(wfile, b'', 0x08)
+                except Exception:
+                    pass
                 return
-            _SESSION = session
+            session['name'] = name
+            _SESSIONS[name] = session
 
     with session['lock']:
         session['writers'].add(wfile)
@@ -861,6 +888,16 @@ def _terminal_ws(handler):
                 if opcode == 0x01 and payload.startswith(b'{'):
                     try:
                         msg = json.loads(payload)
+                        if msg.get('type') == 'end':
+                            # The page that opened this shell is done with it: hang up, as on
+                            # a logout (do_POST below). Never the panel's own, for which the
+                            # message is nothing, and nothing to type into it either.
+                            if name:
+                                try:
+                                    os.killpg(session['proc'].pid, signal.SIGHUP)
+                                except (OSError, ProcessLookupError):
+                                    pass
+                            continue
                         if msg.get('type') == 'resize':
                             rows, cols = int(msg['rows']), int(msg['cols'])
                             with session['lock']:
@@ -928,11 +965,16 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if (parsed.path == '/terminal' and
                 self.headers.get('Upgrade', '').lower() == 'websocket'):
-            if _session_from_cookie(self.headers) == SESSION_KEY:
-                _terminal_ws(self)
-            else:
+            name = parse_qs(parsed.query).get('session', [''])[0]
+            if _session_from_cookie(self.headers) != SESSION_KEY:
                 self.send_response(401)
                 self.end_headers()
+            elif not _SESSION_NAME.fullmatch(name):
+                self.send_error(400, 'not a session name')
+            else:
+                query = parse_qs(parsed.query)
+                number = lambda key, default: max(2, min(500, int(query[key][0]))) if query.get(key, [''])[0].isdigit() else default
+                _terminal_ws(self, name, (query.get('run', [''])[0] or None), (number('rows', 24), number('cols', 80)))
         elif parsed.path == '/terminal/hash':
             # A plain status check -- no PTY session, no WebSocket upgrade -- so eznix.py's
             # /api/v1/ping can learn this running process's STAMP whether or not anyone has the
@@ -961,8 +1003,8 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
         if _session_from_cookie(self.headers) != SESSION_KEY:
             self.send_response(401); self.end_headers(); return
         with _SESSION_LOCK:
-            session = _SESSION
-        if session is not None:
+            sessions = list(_SESSIONS.values())
+        for session in sessions:
             try:
                 os.killpg(session['proc'].pid, signal.SIGHUP)
             except (OSError, ProcessLookupError):

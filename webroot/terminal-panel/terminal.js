@@ -155,18 +155,15 @@ const _TERM_WS_BASE = (() => {
   return `${proto}//${location.host}/terminal`;
 })();
 
-async function initTerminal() {
-  if (_term) return;
-  const container = document.getElementById('term-output');
-  if (!container) return;
-  try {
+// How a terminal looks here: the panel's own, and any other the page opens (_extraTerminal()).
+function _termOptions() {
     const _termTheme = _buildTermTheme();
     const _css = getComputedStyle(document.documentElement);
     const _tv = k => _css.getPropertyValue(k).trim();
     const _cursorStyle = _tv('--term-cursor-style');
     const _cursorBlink = _tv('--term-cursor-blink');
     const _cursorInactiveStyle = _tv('--term-cursor-inactive-style');
-    _term = new Terminal({
+    return {
       fontSize: 13,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Hack', ui-monospace, monospace",
       fontWeight: '400',
@@ -185,7 +182,15 @@ async function initTerminal() {
       // its own mouse tracking (vim, htop, etc.), which would otherwise swallow a plain drag.
       macOptionClickForcesSelection: true,
       ...(Object.keys(_termTheme).length && { theme: _termTheme }),
-    });
+    };
+}
+
+async function initTerminal() {
+  if (_term) return;
+  const container = document.getElementById('term-output');
+  if (!container) return;
+  try {
+    _term = new Terminal(_termOptions());
     _termFit = new FitAddon.FitAddon();
     _term.loadAddon(_termFit);
     try {
@@ -439,6 +444,9 @@ function setTerminalSize(size) {
         return sum + (el && !el.classList.contains('hidden') ? el.offsetHeight : 0);
       }, 0);
     h = `calc(100vh - ${taken}px)`;
+  } else if (size === 'custom') {
+    // The height it was dragged to (see eznix.resizable() below).
+    h = localStorage.getItem('eznix-terminal-height') || '25vh';
   } else {
     h = size === 'half' ? '50vh' : '25vh';
   }
@@ -832,6 +840,92 @@ eznix.on('init', () => {
 // height from the size name fresh against the current window (needed for "full" regardless,
 // since that's a live calc() against other elements' heights), rather than relying on
 // panel._openHeight, a plain JS property that never survives a reload.
+// ── A terminal somewhere else in the page ────────────────────────────────────
+// eznix.emit('terminal', { el, session, run, onExit }): a terminal of its own in `el`, on a
+// shell of its own, for whoever asks: the terminal program keeps one shell per session name
+// (see _SESSIONS in bin/eznix-terminal.py), and the panel's is the one without a name. `run`
+// is what the shell runs in place of waiting for input, when this is what starts it; coming
+// back to a session that is there (a reload) runs nothing. onExit is told when the shell is gone. The object handed in
+// gets close(), which ends the shell and takes the terminal away, and focus().
+// For the Nix files plugin, to open a file in an editor of the user's own choosing without
+// that taking over the terminal the rebuild buttons type into (2026-10-12). A plugin cannot
+// name anything here, so it asks through the event, and finds out with
+// eznix.listens('terminal') whether there is a terminal to ask.
+const _extraTerminals = new Set();
+function _extraTerminal(opts) {
+  const { el, session, run, onExit } = opts;
+  const term = new Terminal(_termOptions());
+  const fit = new FitAddon.FitAddon();
+  term.loadAddon(fit);
+  term.open(el);
+  let ws = null, exited = false, closed = false, tries = 0, fitTimer = null;
+  const sendSize = () => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows })); };
+  const refit = () => { try { fit.fit(); } catch (e) { /* not laid out yet */ } };
+  const watcher = new ResizeObserver(() => { clearTimeout(fitTimer); fitTimer = setTimeout(refit, 200); });
+  watcher.observe(el);
+  term.onResize(sendSize);
+  term.onData(data => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(data); });
+  const gone = () => {
+    if (closed) return;
+    closed = true;
+    watcher.disconnect();
+    _extraTerminals.delete(term);
+    term.dispose();
+  };
+  function connect() {
+    // With the size the place has now, where it has one: the program is then started in it.
+    ws = new WebSocket(_TERM_WS_BASE + '?session=' + encodeURIComponent(session)
+      + (run ? '&run=' + encodeURIComponent(run) : '')
+      + (term.cols > 1 && term.rows > 1 ? '&rows=' + term.rows + '&cols=' + term.cols : ''));
+    ws.binaryType = 'arraybuffer';
+    // The size is sent once the place has its own (see the same wait in connectTerminalWs()).
+    ws.onopen = () => { tries = 0; setTimeout(() => { if (!closed) { refit(); sendSize(); } }, 200); };
+    ws.onmessage = e => {
+      if (e.data instanceof ArrayBuffer) { if (!closed) term.write(new Uint8Array(e.data)); return; }
+      try {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'exited') exited = true;
+      } catch (err) { /* not a message of ours */ }
+    };
+    ws.onclose = () => {
+      if (closed) return;
+      if (exited || ++tries > 10) { gone(); if (onExit) onExit(); return; }
+      setTimeout(() => { if (!closed) connect(); }, Math.min(500 * tries, 5000));
+    };
+  }
+  opts.focus = () => { if (!closed) term.focus(); };
+  opts.close = () => {
+    if (closed) return;
+    try { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'end' })); } catch (e) { /* gone already */ }
+    gone();
+    if (ws) ws.close();
+  };
+  _extraTerminals.add(term);
+  refit();
+  connect();
+  term.focus();
+}
+eznix.on('terminal', _extraTerminal);
+eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme = _buildTermTheme(); });
+
+// How tall the panel is when it is hidden, its row (or rows) of buttons: what always stands on
+// the status bar. The panels on the side end above it (--below-bar in style.css) and do not
+// move when the terminal opens, which then comes up in front of them.
+{
+  const bars = document.querySelector('#terminal-panel .terminal-header-group');
+  const publish = () => document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
+  new ResizeObserver(publish).observe(bars);
+  publish();
+}
+
+// The panel's top edge can be dragged to any height between the three the buttons give. That
+// height is then the size remembered ('custom'), until a button is pressed again.
+{
+  const panel = document.getElementById('terminal-panel');
+  eznix.resizable(panel, { edge: 'top', key: 'eznix-terminal-height', min: 110,
+    apply: height => { panel._openHeight = height; panel.style.height = height; } })
+    .addEventListener('pointerup', () => _persistTerminalSize('custom'));
+}
 eznix.on('ready', () => {
   if (localStorage.getItem('eznix-terminal-open') === 'true') {
     setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'quarter');

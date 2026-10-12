@@ -327,6 +327,10 @@ def main():
             check('documents: reads', b.json('/api/v1/plugin/documents/content?name=README.md')[1] == {'content': '# Hi'})
             check('documents: nothing outside the flake', b.request('/api/v1/plugin/documents/content?name=../conf.toml')[0] == 400)
 
+            check('nixfiles: lists the Nix files, and that is all it answers',
+                  b.json('/api/v1/plugin/nixfiles/files')[1] == {'files': ['flake.nix']}
+                  and b.request('/api/v1/plugin/nixfiles/content?name=flake.nix')[0] == 404)
+
             status, data = b.request('/api/v1/plugin/system/export')
             names = sorted(zipfile.ZipFile(io.BytesIO(data)).namelist())
             check('system: export holds the flake, without dot-files', names == ['README.md', 'eznix/a.json', 'flake.nix'], names)

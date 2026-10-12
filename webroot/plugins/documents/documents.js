@@ -1,7 +1,6 @@
 // The documents plugin: a "Documents" button in the header listing every *.md file in the
-// flake, each opening as a panel floating over the editor. documents.py in this folder lists
-// and reads the files; everything else is here.
-document.querySelector('.main').insertAdjacentHTML('beforeend', '<div class="markdown-panels" id="markdown-panels"></div>');
+// flake, each opening as a panel on the side (eznix.sidePanel()). documents.py in this folder
+// lists and reads the files; everything else is here.
 // In the header beside Backup/Restore/Import/Export, with an icon like theirs (a page with
 // lines, Lucide's "file-text") and its name, which the user asked to keep beside the icon. It was a button reading "Documents" at the end of the tab bar until
 // 2026-10, when the user wanted it on the row with those.
@@ -187,41 +186,15 @@ function parseMarkdown(text) {
 // re-fetches fresh every time the dropdown opens, so a file added/removed on disk after page
 // load shows up without a reload.
 //
-// Multiple files can be open at once, each its own floating panel (see #markdown-panels in the
-// markup and .markdown-panel/.markdown-panels in style.css) — _openMarkdownPanels maps an open
-// file's name to its panel element, doubling as "is this file currently open". Content is
-// fetched fresh every time a panel is opened (openMarkdownFile()), not cached, so reopening a
-// file after editing it on disk shows the current content.
+// Multiple files can be open at once, each in a panel of its own on the side: the page's
+// stack (eznix.sidePanel()), which was this plugin's own until the Nix files needed the same
+// place. _openMarkdownPanels maps an open file's name to its panel, doubling as "is this file
+// currently open". Content is fetched fresh every time a panel is opened (openMarkdownFile()),
+// not cached, so reopening a file after editing it on disk shows the current content.
 let _markdownFiles = [];
-// Iteration order doubles as stacking order — last entry is frontmost. Map preserves insertion
-// order, and deleting + re-setting an existing key moves it to the end, which is exactly what
-// _bringMarkdownPanelToFront() below needs to "raise" a panel.
 const _openMarkdownPanels = new Map();
 function _persistOpenMarkdownDocs() {
   localStorage.setItem('eznix-markdown-open', JSON.stringify([..._openMarkdownPanels.keys()]));
-}
-
-// Cascades open panels so each one behind the front peeks out instead of sitting fully hidden
-// underneath — that sliver is always clickable (_bringMarkdownPanelToFront) so any open file
-// stays reachable regardless of how many are open. Only the raw per-panel index is computed
-// here; the actual px-per-step arithmetic lives in .markdown-panel's own transform (style.css),
-// driven by this --from-front custom property.
-function _layoutMarkdownPanels() {
-  const entries = [..._openMarkdownPanels.values()];
-  const n = entries.length;
-  entries.forEach((panel, i) => {
-    panel.style.zIndex = i + 1;
-    panel.style.setProperty('--from-front', n - 1 - i);
-  });
-}
-
-function _bringMarkdownPanelToFront(name) {
-  const panel = _openMarkdownPanels.get(name);
-  if (!panel) return;
-  _openMarkdownPanels.delete(name);
-  _openMarkdownPanels.set(name, panel);
-  _layoutMarkdownPanels();
-  _persistOpenMarkdownDocs();
 }
 
 async function initMarkdownMenu() {
@@ -294,7 +267,7 @@ function _resolveMdLink(basePath, href) {
 
 function _scrollMarkdownPanelToFragment(name, fragment) {
   const panel = _openMarkdownPanels.get(name);
-  const target = panel && panel.querySelector('#' + CSS.escape(fragment));
+  const target = panel && panel.body.querySelector('#' + CSS.escape(fragment));
   if (target) target.scrollIntoView({ block: 'start' });
 }
 
@@ -306,29 +279,15 @@ function _scrollMarkdownPanelToFragment(name, fragment) {
 // table of contents entry) unable to raise/rescroll an already-open panel.
 async function openMarkdownFile(name, fragment) {
   if (_openMarkdownPanels.has(name)) {
-    _bringMarkdownPanelToFront(name);
+    _openMarkdownPanels.get(name).front();
     if (fragment) _scrollMarkdownPanelToFragment(name, fragment);
     return;
   }
-  const panel = document.createElement('div');
-  panel.className = 'markdown-panel';
-  panel.dataset.mdPath = name; // read by the doc-link click handler below to resolve relative hrefs
-  panel.innerHTML =
-    '<div class="markdown-panel-header"><span></span>' +
-    '<button class="icon-btn" data-tooltip="Close">✕</button></div>' +
-    '<div class="markdown-content">Loading…</div>';
-  panel.querySelector('span').textContent = name;
-  const closeBtn = panel.querySelector('.icon-btn');
-  closeBtn.onclick = () => closeMarkdownPanel(name);
-  _wireHoverTooltip(closeBtn, 'Close');
-  // Clicking anywhere on a panel (background or front) raises it, same as clicking a background
-  // window — except the close button itself, which should just close it.
-  panel.addEventListener('mousedown', e => {
-    if (!e.target.closest('.icon-btn')) _bringMarkdownPanelToFront(name);
-  });
-  document.getElementById('markdown-panels').appendChild(panel);
+  const panel = eznix.sidePanel({ group: 'documents', title: name, onClose: () => { _openMarkdownPanels.delete(name); _persistOpenMarkdownDocs(); } });
+  panel.body.classList.add('markdown-content');
+  panel.body.dataset.mdPath = name; // read by the doc-link click handler below to resolve relative hrefs
+  panel.body.textContent = 'Loading…';
   _openMarkdownPanels.set(name, panel);
-  _layoutMarkdownPanels();
   _persistOpenMarkdownDocs();
 
   let content;
@@ -339,7 +298,7 @@ async function openMarkdownFile(name, fragment) {
   } catch (e) {
     content = '(failed to load)';
   }
-  panel.querySelector('.markdown-content').innerHTML = parseMarkdown(content);
+  panel.body.innerHTML = parseMarkdown(content);
   if (fragment) _scrollMarkdownPanelToFragment(name, fragment);
 }
 
@@ -351,11 +310,10 @@ async function openMarkdownFile(name, fragment) {
 // an in-app panel open; anything else (external, or a relative link to something that isn't a
 // known .md file) is left to inline()'s own target="_blank" fallback rather than guessed at, since
 // there's no general file-serving endpoint to open it against anyway.
-document.getElementById('markdown-panels').addEventListener('click', e => {
-  const a = e.target.closest('a');
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('.markdown-content a');
   if (!a) return;
-  const panel = a.closest('.markdown-panel');
-  const basePath = panel ? panel.dataset.mdPath : '';
+  const basePath = a.closest('.markdown-content').dataset.mdPath || '';
   const resolved = _resolveMdLink(basePath, a.getAttribute('href') || '');
   if (resolved.external) return; // let target="_blank" open it normally
   e.preventDefault();
@@ -375,11 +333,7 @@ document.getElementById('markdown-panels').addEventListener('click', e => {
 
 function closeMarkdownPanel(name) {
   const panel = _openMarkdownPanels.get(name);
-  if (!panel) return;
-  panel.remove();
-  _openMarkdownPanels.delete(name);
-  _layoutMarkdownPanels();
-  _persistOpenMarkdownDocs();
+  if (panel) panel.close();
 }
 
 eznix.on('ready', initMarkdownMenu);

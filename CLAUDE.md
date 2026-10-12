@@ -98,7 +98,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `webroot/plugins/NAME/` | the shipped plugins: `documents`, `system`, `password` |
+| `webroot/plugins/NAME/` | the shipped plugins: `documents`, `nixfiles`, `system`, `password` |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
@@ -134,6 +134,21 @@ itself. The user needed it for rebuilds: one that updates eznix restarts the edi
 reloads, and the rebuild's earlier output was out of reach. It is not the replay of raw output
 that was given up before (the comment above the class says why); nothing in those lines is
 interpreted again. Not kept: what a full-screen program showed.
+
+**The terminal program holds more than one shell**, each under a name (`_SESSIONS`,
+`/terminal?session=NAME`, at most eight), since 2026-10-12; the one without a name is the
+panel's and was the only one. Same port, key and service, so nothing changed in the
+modules. The user asked "why cant we open more terminals on the same port?" after I had
+said a second terminal would need the whole setup doubled, which was wrong: only the
+program was written for one. A page asks for a terminal of its own with
+`eznix.emit('terminal', { el, session, run, onExit })` (`_extraTerminal()` in
+`terminal-panel/terminal.js`); `run` is what a new named shell is started on (`$SHELL -l -i -c`, in the
+address as `run=`, with the size of its place as `rows=` and `cols=`), and nothing when
+the session is already there; it was typed into a waiting shell at first, and the prompt
+flashed by before the program took the screen. Closing it ends a named shell (the `end`
+message), never the panel's. Tried with a small WebSocket client through the test server: two names
+are two shells, coming back to a name is the same shell, `end` ends a named one and leaves
+the panel's alone. The terminal in the page was not looked at.
 
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
@@ -478,6 +493,42 @@ change, so it can be reshaped freely.
   `api.Download`, and raises `api.Error(status, message)`. Core checks the login first. A
   plugin whose server file fails to load is left out whole.
 - `.py` files and `plugin.json` are not served to the browser.
+
+**The panels on the side are the page's** (`eznix.sidePanel()`): a plugin's panels are tabs
+along the top of one window per `group` (the documents, the Nix files), and the windows
+stand side by side over the right part of the editor, sharing its width evenly; the left
+edge of the whole is the one to drag. The side is fixed in the window, from under the top
+bars to the terminal's row of buttons, and does not follow the editor's height: the
+terminal at the bottom comes up in front of it, so that an editor in a terminal there is
+not resized each time ("it shouldnt affect the editor window, bottom terminal should just
+show in front of it"). Settled in steps on 2026-10-12. The stack was the Documents
+plugin's own, a window per open document; the Nix files then got a panel of their own that
+lay over it and showed one file at a time, and the user missed having several things open
+("the functionality to open many files at once ... is gone"); both became windows of one
+stack in the page; and the user asked for tabs "in the editor window or document window"
+instead of a window per file, and then for the two windows "side by side" and not one
+behind the other. A plugin fills a panel's body and header and keeps its own
+list of what is open.
+
+**`nixfiles`** (2026-10-12, the user's idea) lists the flake's `.nix` files and opens one in
+an editor of the user's own, in a terminal of its own that is a tab on the side
+(`openNixFile()`): a shell named after the file, started on `mkdir -p DIR && exec EDITOR
+'path'`, so leaving the editor ends the shell and closes the tab. That is the only way to close
+it: the tab has no cross (`closable: false`), since one hung up on the editor with whatever
+was unsaved in it. `editor` in `[plugin.nixfiles]`, otherwise `$EDITOR`, otherwise nano. No
+button without a terminal. Its server half only lists files.
+It went through a whole other shape that day before this one, which is why the terminal
+and the side panels are what they are: an editor of its own in the page, a text field with
+colouring drawn under it, suggestions of options and packages from a scanner of Nix written
+for it, Save and Delete (at once, then through the page's Save, then at once again), new
+files, backups and a parse check on the server. Once a file could be opened in a terminal,
+the user asked "if we have vim we dont need any of that right?" and had all of it taken
+out, knowing it meant no suggestions, no parse check and no backups: "then we get syntax
+coloring and everything from the editor, which could be installed and configured through
+the main config files ... the plugin would only have to know how to open the program in
+the terminal". None of that was ever committed. Seen by the user in the test server that day, on a Mac
+with vim, once the shell was started on the command: "wow that works perfect". What was
+tried beyond opening a file was not said.
 
 Core, not plugins, by decision: the terminal, Save, ordinary import/export of files, file backups on save,
 themes (a theme stays a plain CSS file anyone can install without trusting code), and support

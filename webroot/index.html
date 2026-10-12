@@ -210,6 +210,10 @@ networking.hostName = "myhost";</pre>
 //   eznix.addButton('header', { id, html, tooltip, onclick })  a button in the header, in
 //                       front of the ones there; returns it. ('header' is the one place there
 //                       is: the tab bar was another until its last user, Documents, moved.)
+//   eznix.sidePanel({ group, title, onClose, closable })  a panel on the side, over the editor's right
+//                       part, for the plugin to fill: a tab in the window of its group; see there
+//   eznix.resizable(el, { edge, key, apply, min })  lets a panel be made larger and smaller
+//                       by dragging its `edge` ('top' or 'left'); see there
 //   showContextMenu(event, items)  a menu at the pointer; an item is { label, onclick, danger,
 //                       disabled, title, items (a submenu), aside ({ label, title, onclick }:
 //                       a small mark at the end of the line with an action of its own) }
@@ -221,6 +225,8 @@ networking.hostName = "myhost";</pre>
 //     'dirty'  (dirty) whenever "are there unsaved changes" has been re-checked
 //     'theme'  a theme's stylesheets have finished loading
 //     'ping'   (data) every answer to the periodic GET /api/v1/ping
+//     'terminal'  ({ el, session, run, onExit }) asks for a terminal of its own in `el`; heard by
+//              the terminal panel when there is one (eznix.listens('terminal')), see there
 const eznix = {
   config: %%EZNIX_PLUGIN_CONFIG%%,
   // The `debug` setting (services.eznix.debug, debug in eznix.toml): with it on,
@@ -242,7 +248,156 @@ const eznix = {
     document.querySelector('.header-actions').prepend(btn);
     return btn;
   },
+  // A strip along one edge of a panel, to drag: the panel grows towards that edge. What comes
+  // of it is a share of the window ("37.5vw", "40vh"), so the panel keeps its proportion when
+  // the window changes, handed to `apply`, which sets it wherever the panel takes its size
+  // from, and kept in this browser under `key`. Called again with a key that has something
+  // kept, it applies that at once: panels that share a key share a size, as the ones on the
+  // side do. `min` is the least in pixels; the most leaves 80px of the window.
+  // For the terminal and the panels on the side, which had fixed sizes (a quarter, half or
+  // all of the window; half its width) until the user asked for this on 2026-10-12, "so
+  // people can decide how big they want them to be".
+  resizable(el, { edge, key, apply, min = 120 }) {
+    const vertical = edge === 'top', unit = vertical ? 'vh' : 'vw';
+    const whole = () => (vertical ? window.innerHeight : window.innerWidth);
+    let kept = null;
+    try { kept = localStorage.getItem(key); } catch (e) { /* none */ }
+    if (kept && kept.endsWith(unit) && parseFloat(kept) > 0) apply(kept);
+    const handle = document.createElement('div');
+    handle.className = 'resize-handle resize-' + edge;
+    handle.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const from = vertical ? e.clientY : e.clientX, size = vertical ? rect.height : rect.width;
+      let value = null;
+      handle.setPointerCapture(e.pointerId);
+      el.classList.add('resizing');
+      document.documentElement.classList.add('is-resizing-' + edge);
+      const move = ev => {
+        const px = Math.max(min, Math.min(whole() - 80, size + from - (vertical ? ev.clientY : ev.clientX)));
+        value = (px / whole() * 100).toFixed(2) + unit;
+        apply(value);
+      };
+      const end = () => {
+        handle.removeEventListener('pointermove', move);
+        el.classList.remove('resizing');
+        document.documentElement.classList.remove('is-resizing-' + edge);
+        if (value) { try { localStorage.setItem(key, value); } catch (err) { /* not kept */ } }
+      };
+      handle.addEventListener('pointermove', move);
+      handle.addEventListener('pointerup', end, { once: true });
+      handle.addEventListener('pointercancel', end, { once: true });
+    });
+    el.appendChild(handle);
+    return handle;
+  },
+  // A panel on the side, over the right part of the editor, for a plugin to fill. Panels of
+  // one `group` (a plugin's kind of thing: its documents, its files) share a window and are
+  // tabs along its top; the windows of different groups stand side by side and share the
+  // width of the side, which is set by dragging its left edge (resizable()).
+  // Returns { el, header, title, actions, body, setTitle(text), front(), close() }: `body` is
+  // the plugin's to fill and `actions` takes buttons, beside the title; a `focus` the plugin
+  // puts on it is called when the panel comes into view; a tab is named by the
+  // last part of the title, a path as a rule; onClose is told when it is closed, however.
+  // How it came to this, all on 2026-10-12: the stack was the Documents plugin's own, every
+  // open document a window in it; the Nix files then got a panel of their own that lay over
+  // it; both moved here as windows of one stack, lying on each other; the user, seeing a
+  // window per file, asked for tabs in the window instead, and then for the two windows to
+  // stand beside each other and not one behind the other.
+  _sideWindows: [],      // left to right: { group, el, tabs, panels }
+  sidePanel({ group, title = '', onClose, closable = true } = {}) {
+    let stack = document.getElementById('side-panels');
+    if (!stack) {
+      stack = document.createElement('div');
+      stack.className = 'side-panels'; stack.id = 'side-panels';
+      document.querySelector('.main').appendChild(stack);
+      // Where the side is: from under the bars at the top of the page down to the status
+      // bar (and whatever bar stands on that, see --below-bar in style.css), whatever the
+      // editor beside it is doing. It took the editor's own height at first, and an editor
+      // in a terminal there was resized every time the terminal at the bottom was opened,
+      // which pushes the editor up; the user wanted that terminal to come up in front of
+      // the side and leave it as it is (2026-10-12).
+      const place = () => {
+        const root = document.documentElement.style;
+        root.setProperty('--side-top', document.querySelector('.layout').getBoundingClientRect().top + 'px');
+        root.setProperty('--side-bottom', document.querySelector('.statusbar').offsetHeight + 'px');
+      };
+      const watcher = new ResizeObserver(place);
+      for (const sel of ['.header', '.tab-bar-row', '.statusbar']) {
+        const el = document.querySelector(sel);
+        if (el) watcher.observe(el);
+      }
+      window.addEventListener('resize', place);
+      place();
+      this.resizable(stack, { edge: 'left', key: 'eznix-side-panel-width', min: 260,
+        apply: width => document.documentElement.style.setProperty('--side-panel-width', width) });
+    }
+    let win = this._sideWindows.find(w => w.group === (group || title));
+    if (!win) {
+      win = { group: group || title, el: document.createElement('div'), panels: [] };
+      win.el.className = 'side-panel';
+      win.el.innerHTML = '<div class="side-tabs"></div>';
+      win.tabs = win.el.firstChild;
+      stack.appendChild(win.el);
+      this._sideWindows.push(win);
+    }
+    const el = document.createElement('div');
+    el.className = 'side-page';
+    el.innerHTML = '<div class="side-panel-header"><span class="side-panel-title"></span>' +
+      '<div class="side-panel-actions"></div></div><div class="side-panel-body"></div>';
+    const [header, body] = el.children, [titleEl, actions] = header.children;
+    const tab = document.createElement('div');
+    tab.className = 'btn tab side-tab';
+    tab.innerHTML = '<span></span><span class="side-tab-close">✕</span>';
+    const [label, closeBtn] = tab.children;
+    // closable: false leaves the cross out, for a panel that is closed by what is in it (an
+    // editor in a terminal goes when the editor is left); close() still works.
+    if (!closable) closeBtn.remove();
+    const show = which => win.panels.forEach(p => {
+      p.el.classList.toggle('hidden', p !== which);
+      p.tab.classList.toggle('active', p === which);
+    });
+    // The cursor goes into a panel that comes to be the one shown, where the plugin has said
+    // how (panel.focus, its to set): a tab that is clicked, and the one left in view when
+    // another closes, so that typing goes on there (the user's wish, 2026-10-12).
+    const focus = which => { if (which && which.focus) { try { which.focus(); } catch (err) { console.error('plugin, focus:', err); } } };
+    const panel = {
+      el, header, title: titleEl, actions, body, tab,
+      setTitle: text => { titleEl.textContent = text; label.textContent = text.split('/').pop(); },
+      front: () => {
+        show(panel);
+        tab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        focus(panel);
+      },
+      close: () => {
+        if (!win.panels.includes(panel)) return;
+        const wasShown = tab.classList.contains('active');
+        win.panels = win.panels.filter(p => p !== panel);
+        el.remove(); tab.remove();
+        if (!win.panels.length) {
+          this._sideWindows = this._sideWindows.filter(w => w !== win);
+          win.el.remove();
+        } else if (wasShown) show(win.panels[win.panels.length - 1]);
+        if (onClose) onClose();
+        // What is in view where the closed one was: its window's tab now shown, or, the
+        // window being gone, the one shown in the window beside it.
+        const left = win.panels.length ? win : this._sideWindows[this._sideWindows.length - 1];
+        if (wasShown && left) focus(left.panels.find(p => p.tab.classList.contains('active')));
+      },
+    };
+    panel.setTitle(title);
+    tab.addEventListener('click', e => { if (e.target === closeBtn) panel.close(); else panel.front(); });
+    win.tabs.appendChild(tab);
+    win.el.appendChild(el);
+    win.panels.push(panel);
+    panel.front();
+    return panel;
+  },
   on(event, fn) { (this._handlers[event] = this._handlers[event] || []).push(fn); },
+  // Whether anything is there to hear an event: how a plugin learns that what it would ask
+  // another part of the page for exists at all (a terminal, say).
+  listens(event) { return (this._handlers[event] || []).length > 0; },
   // One plugin throwing must not take the page, or the other plugins, down with it.
   emit(event, ...args) {
     for (const fn of this._handlers[event] || []) {
@@ -5973,6 +6128,10 @@ async function _start() {
   document.querySelectorAll('[data-tooltip*="Ctrl+"]').forEach(el => { el.dataset.tooltip = _shortcutText(el.dataset.tooltip); });
 
   document.addEventListener('keydown', e => {
+    // Not from inside a panel on the side: what is typed there is its own (an editor in a
+    // terminal has its own undo and its own way of saving). Ctrl+Z in one undid the last
+    // change to the configuration instead, and Ctrl+S saved the configuration too.
+    if (e.target.closest && e.target.closest('.side-panels')) return;
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
     if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
     // Overrides the browser's own find-in-page deliberately -- a plain text search over the

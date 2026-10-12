@@ -10,10 +10,11 @@ framework: just Python and a browser.
 - The configuration is split over files and folders of your choosing, each a tab, merged by Nix when you rebuild
 - Nothing is written until you save; undo and redo, and the earlier versions of every file kept to go back to
 - Search (Ctrl+F) across all files: type words from an option, a value or a file name, in any order; each result says which file it is in
-- A terminal in the page, with buttons and menus of your own for rebuilding and anything else
+- A terminal in the page, with buttons and menus of your own for rebuilding and anything else; drag its edge, or a side panel's, to size it
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself
 - Back up, restore, export and import the whole flake, and read its `.md` files beside the editor
+- Edit the flake's `.nix` files in the page too, in your own editor (vim, nano, …), in a terminal beside the configuration
 - Themes: NixOS blue, gruvbox, and OS X, KDE Breeze and GNOME, each light or dark with the system; or your own
 
 ## 🚀 Quick Start
@@ -377,12 +378,13 @@ outright, so they suit a machine only you can reach.
 
 Some features are plugins: a folder of page files, and optionally server code, that eznix
 loads when it starts. A plugin is something that needs nothing from the system eznix runs on,
-so it works the same everywhere and can be left out. Three ship with it:
+so it works the same everywhere and can be left out. Four ship with it:
 
 | Plugin | |
 |---|---|
 | `system` | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
 | `documents` | the Documents button: read the flake's Markdown files beside the editor |
+| `nixfiles` | the Nix files button: open the flake's `.nix` files in your own editor, in a terminal beside the configuration |
 | `password` | log in with one configured password |
 
 Leave one out, or change its settings, by name:
@@ -393,6 +395,13 @@ services.eznix.plugins = {
   system.backups    = 10;
 };
 ```
+
+**Nix files** opens a `.nix` file of the flake in an editor of your own, in a terminal of
+its own that is a tab beside the configuration, apart from the terminal at the bottom.
+Leaving the editor is what closes the tab. Which editor: `nixfiles.editor = "vim";` (or `nano`,
+`hx`, anything installed), otherwise what `$EDITOR` names, or nano. New file… asks for a
+path and opens the editor on it. `nixfiles.exclude` is a list read like the main `exclude`,
+`[ ".*" ]` by default. The button is only there when eznix has a terminal.
 
 An export of the flake leaves out dot-files and dot-folders. `system.exclude` changes that:
 a list read like the main `exclude`, `[ ".*" ]` by default.
