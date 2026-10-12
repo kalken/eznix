@@ -13,8 +13,19 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg" id="favicon-link">
 <!-- The colour a browser gives the window's own bar when the page is installed as an app:
      filled in by _loadWindowColour() with the fill of whatever is at the top of the page.
-     With nothing said, the browser picks one itself (Brave: the profile's colour). -->
-<meta name="theme-color" id="window-colour">
+     With nothing said, the browser picks one itself (Brave: the profile's colour).
+     It is said from the page's first lines on: the configured theme's, as the server knows
+     it, and at once in its place what this browser had the last time, which is the theme
+     chosen here. It used to be empty until the page was whole, and after some reloads (the
+     ones eznix does by itself after an update) the installed app's bar was left in the
+     browser's own colour until the app was started again (the user, 2026-10-12). -->
+<meta name="theme-color" id="window-colour" content="%%EZNIX_WINDOW_COLOUR%%">
+<script>
+try {
+  var _windowColour = localStorage.getItem('eznix-window-colour');
+  if (_windowColour) document.getElementById('window-colour').content = _windowColour;
+} catch (e) { /* no storage: the configured theme's stays */ }
+</script>
 <!-- manifest.json (see webroot/manifest.json) is what lets a Chromium-based browser's own native
      "Install page as app" (README's tip) show the correct icon -- a plain <link rel="icon">
      favicon isn't enough for that installed-app icon resolution on its own, confirmed by a real
@@ -479,7 +490,12 @@ function _loadWindowColour() {
   const meta = document.getElementById('window-colour');
   for (const el of [document.querySelector('.header'), document.body, document.documentElement]) {
     const colour = el && getComputedStyle(el).backgroundColor;
-    if (colour && colour !== 'transparent' && colour !== 'rgba(0, 0, 0, 0)') { meta.content = colour; return; }
+    if (colour && colour !== 'transparent' && colour !== 'rgba(0, 0, 0, 0)') {
+      meta.content = colour;
+      // Kept for the next load of the page in this browser, which says it before anything is drawn.
+      try { localStorage.setItem('eznix-window-colour', colour); } catch (e) { /* not kept */ }
+      return;
+    }
   }
 }
 // The tab's icon is the logo in the theme's two colours. The icon of the page installed as an

@@ -204,7 +204,12 @@ viewBox, nothing had happened, though whether the size was why is not known.
 nothing said a browser chooses, and Brave took the profile's colour, which the user asked to
 be rid of (2026-10-11). The page reads the colour off what it has drawn at its top, so it
 follows the theme chosen in that browser, a user's own included; the manifest has the
-configured theme's, for before the page is in. Seen by the user that day in the app installed
+configured theme's, for before the page is in. The tag is never empty: the page comes with
+the configured theme's colour in it, and its first script puts in what this browser had
+last time (`eznix-window-colour`). It was empty until the page was whole, and the user
+saw the bar fall back to Brave's own colour after some of the reloads that follow an
+update, until the app was restarted (2026-10-12); whether filling it early cures that has
+not been seen. Seen by the user that day in the app installed
 in Brave on a Mac ("it works!"); not said: whether it took a restart of the app, and how it
 looks with an automatic theme.
 

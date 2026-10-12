@@ -1219,6 +1219,9 @@ def _render_index():
         .replace('%%EZNIX_PLUGIN_SCRIPTS%%', plugin['scripts'])
         .replace('%%EZNIX_PLUGIN_CONFIG%%', plugin_config)
         .replace('%%EZNIX_HOSTNAME%%', html.escape(HOSTNAME))
+        # The bar of the installed app's window, as the manifest has it (_serve_manifest()).
+        .replace('%%EZNIX_WINDOW_COLOUR%%', html.escape(
+            _theme_value(_theme_vars(AUTO_THEMES.get(THEME, (THEME,))[0]), 'var(--bg2)') or ''))
         .replace('%%EZNIX_THEME%%', THEME)
         .replace('%%EZNIX_CUSTOM_THEMES%%', json.dumps(
             {n: {k: t[k] for k in ('base', 'bg', 'border')} for n, t in CUSTOM_THEMES.items()}))
