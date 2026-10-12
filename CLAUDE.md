@@ -499,6 +499,23 @@ under home-manager, `sudo -u` in the activation on macOS, where the keychain par
 password dialog a rebuild in a real terminal can show. Read the comments there before
 touching it; each oddity was found on a real machine.
 
+**Values an option can be chosen from, where its type does not list them, come from
+`choices.json`**, written by the generator under the option's path (`write_choices()`):
+`{values, expr, free}`, a value a text or `{value, description}`, `expr` for Nix expressions,
+`free` for suggestions beside which anything may be typed. The page shows any option found
+there as a dropdown, or a list as chips (`choicesFor()`, `nameListFor()`), and knows none by
+name. Until 2026-10-12 it did: `isKernelPath()` tested for `boot.kernelPackages` and
+`nameListFor()` for `homebrew.brews` and `homebrew.casks`, each with a file of its own
+(`kernels.json`, `brews.json`, `casks.json`, which the generator now removes), the two
+places the user's rule against naming an option was still broken. Which option a list
+belongs to is said in the generator, which has to know where the list comes from anyway. A
+new kind of list is an entry there and nothing in the page. Data generated before that day
+has no `choices.json`, so those two things are not offered until the generator has run
+again. Checked by running the generator for the kernels (a NixOS flake, 12) and for
+Homebrew (a Mac, 8,652 formulas and 7,804 casks) and the two lookups on what it wrote; the
+user then ran Autocomplete in the test server on a NixOS flake and reported "it works",
+without saying what was looked at; the Homebrew chips were not seen by anyone.
+
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
 the user. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
 which only types that command into the terminal (it is part of `terminal-panel/`, so there is

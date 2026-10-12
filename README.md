@@ -318,7 +318,9 @@ runs this in the terminal, where you can follow it:
 eznix-autocomplete
 ```
 
-The open page picks the new data up by itself. Press it again after updating the flake. The
+The open page picks the new data up by itself. Press it again after updating the flake,
+and once after updating eznix past 2026-10-12: the kernels and Homebrew's names are kept in
+another file since then, and are not offered until it has been written. The
 button's icon turns while the suggestions are being generated, and the button is only there
 when eznix has a terminal.
 

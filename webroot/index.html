@@ -337,9 +337,7 @@ function initVersion() {
 // ── State ─────────────────────────────────────────────────────────────────────
 let config = {};
 let packages = [];
-let kernels = [];
-let brews = [];     // Homebrew formula / cask names (nix-darwin only) — see nameListFor()
-let casks = [];
+let choices = {};   // option path -> the values it can be filled in from — see choicesFor()
 let options = [];
 let files = [];
 let folders = []; // CONFIG_DIR-relative folder paths, including ones with no files in them yet
@@ -3288,19 +3286,35 @@ function renderArrayField(container, key, arr, path) {
   container.appendChild(row);
 }
 
-// Lists of names picked from a known set that isn't an enum in the option's own type: Homebrew
-// formulas and casks (homebrew.brews / homebrew.casks, nix-darwin), from brews.json/casks.json.
-// Same chip list as an enum array (renderEnumArray), with two differences `freeText` switches on
-// there: the set is far too large to show unfiltered, and it isn't the whole truth (a tap that
-// isn't installed yet, a name newer than the generated data), so anything typed can be added.
+// What an option can be filled in from, where that is not in its type: values the generator
+// found somewhere and wrote into choices.json under the option's path (the kernels a system
+// can run, the names Homebrew knows). { values, expr, free }: `values` are texts, or { value,
+// description }; `expr` says they are Nix expressions and are stored as such; `free` that
+// they are not the whole truth, so anything else may be typed.
+// The page knows no option by name: until 2026-10-12 it did, boot.kernelPackages here and
+// homebrew.brews and homebrew.casks below, each with a list and a file of its own
+// (kernels.json, brews.json, casks.json), against the rule that nothing in the editor names
+// an option. Which option a list belongs to is now said by whoever made the list.
+function choicesFor(path) {
+  const opt = path.every(p => typeof p === 'string') ? findOption(path) : null;
+  const c = choices[opt ? opt.path : path.join('.')];
+  if (!c || !Array.isArray(c.values) || !c.values.length) return null;
+  if (!c._items) c._items = c.values.map(v => (v !== null && typeof v === 'object' ? v : { value: String(v) }));
+  return c;
+}
+
+// A list picked from such values: the same chip list as an enum array (renderEnumArray), with
+// what `freeText` switches on there for a set that is far too large to show unfiltered and
+// isn't the whole truth (a Homebrew tap that isn't installed yet, a name newer than the
+// generated data), so anything typed can be added.
 // An entry can also be written as an attribute set ({ name, args, ... }), which a chip has no
-// way to show or edit — a list holding one of those stays an ordinary list.
+// way to show or edit — a list holding one of those stays an ordinary list. So does a list of
+// expressions: a chip is a text.
 function nameListFor(path, arr) {
-  if (path.length !== 2 || path[0] !== 'homebrew') return null;
-  const values = path[1] === 'brews' ? brews : path[1] === 'casks' ? casks : null;
-  if (!values || !values.length) return null;
+  const c = choicesFor(path);
+  if (!c || c.expr) return null;
   if (!Array.isArray(arr) || !arr.every(v => typeof v === 'string')) return null;
-  return { values, freeText: true };
+  return { values: c._items.map(i => i.value), freeText: !!c.free };
 }
 
 // Parse enum values from NixOS type strings like:
@@ -3460,14 +3474,18 @@ function renderField(container, key, val, path) {
   let unwrapAction = null;
 
   const pathKey = path.join('.');
-  const kernelExprStr = isExprPkg(val) && /^pkgs\./.test(val._expr) ? val._expr : null;
-  if (isKernelPath(path) && kernels.length && (!isExprPkg(val) || kernelExprStr)) {
-    const curVal = kernelExprStr ?? (typeof val === 'string' ? val : '');
+  // An option with values to choose from (choicesFor()) is a dropdown of them, the value it
+  // has first when it is not one of them. Where the values are expressions, one of them is
+  // shown chosen though it is stored as an expression; any other expression is the text
+  // field below, where it can be edited ("Convert to native" there brings the dropdown back).
+  const choice = type !== 'boolean' && !Array.isArray(val) ? choicesFor(path) : null;
+  const choiceExpr = choice && choice.expr && isExprPkg(val) && choice._items.some(i => i.value === val._expr) ? val._expr : null;
+  if (choice && (choice.expr ? !isExprPkg(val) || choiceExpr !== null : type === 'string' || type === 'null')) {
+    const curVal = choiceExpr ?? (typeof val === 'string' ? val : '');
     const items = [];
-    if (!curVal || !kernels.some(k => 'pkgs.' + k.name === curVal))
-      items.push({ value: curVal, label: curVal || '— select kernel —' });
-    kernels.forEach(k => items.push({ value: 'pkgs.' + k.name, label: 'pkgs.' + k.name, title: k.description }));
-    valEl.appendChild(makeCustomSelect(items, curVal, v => setAtPath(config, path, { _expr: v }), { search: false }));
+    if (!choice._items.some(i => i.value === curVal)) items.push({ value: curVal, label: curVal || '— select —' });
+    choice._items.forEach(i => items.push({ value: i.value, label: i.value, title: i.description }));
+    valEl.appendChild(makeCustomSelect(items, curVal, v => setAtPath(config, path, choice.expr ? { _expr: v } : v), { search: items.length > 30 }));
   } else if (isExprPkg(val)) {
     const wrap = document.createElement('div');
     wrap.className = 'expr-field-wrap';
@@ -3480,8 +3498,9 @@ function renderField(container, key, val, path) {
       setAtPath(config, path, { _expr: inp.value });
     });
     unwrapAction = () => {
-      // Kernel path: remove from expr set and store raw string to return to autocomplete mode.
-      if (isKernelPath(path)) {
+      // Where the values to choose from are expressions: the text as it is, which the dropdown
+      // then shows beside its own values.
+      if (choice && choice.expr) {
         setAtPath(config, path, inp.value.trim());
         renderAll();
         return;
@@ -3648,10 +3667,10 @@ function renderField(container, key, val, path) {
     }
   }
 
-  const canConvertExpr = !isExprPkg(val) && (isKernelPath(path) || type === 'string' || type === 'number' || type === 'null');
+  const canConvertExpr = !isExprPkg(val) && ((choice && choice.expr) || type === 'string' || type === 'number' || type === 'null');
   function convertToExpr() {
     const cur = getAtPath(config, path);
-    if (isKernelPath(path)) { setAtPath(config, path, { _expr: typeof cur === 'string' ? cur : '' }); }
+    if (choice && choice.expr) { setAtPath(config, path, { _expr: typeof cur === 'string' ? cur : '' }); }
     else {
       let expr;
       if (cur === null || cur === undefined) {
@@ -3691,10 +3710,6 @@ function renderField(container, key, val, path) {
 function isPkgArrayPath(path) {
   const opt = path.every(p => typeof p === 'string') ? findOption(path) : null;
   return !!opt && /^list of \(?package\b/.test(opt.type || '');
-}
-
-function isKernelPath(path) {
-  return path.length === 2 && path[0] === 'boot' && path[1] === 'kernelPackages';
 }
 
 // Puts the cursor in item `index` of the list at `path`, at the end of its text, after a
@@ -5703,18 +5718,14 @@ async function _toggleFolderDisabled(name, disable) {
 
 // Fetch the autocomplete data again and re-render with it.
 async function _reloadAutocompleteData() {
-  const [pkgRes, optRes, kernelRes, brewRes, caskRes] = await Promise.all([
+  const [pkgRes, optRes, choiceRes] = await Promise.all([
     fetch('autocomplete/packages.json?' + Date.now()).then(r => r.json()),
     fetch('autocomplete/options.json?' + Date.now()).then(r => r.json()),
-    fetch('autocomplete/kernels.json?' + Date.now()).then(r => r.json()).catch(() => null),
-    fetch('autocomplete/brews.json?' + Date.now()).then(r => r.json()).catch(() => null),
-    fetch('autocomplete/casks.json?' + Date.now()).then(r => r.json()).catch(() => null),
+    fetch('autocomplete/choices.json?' + Date.now()).then(r => r.json()).catch(() => null),
   ]);
   packages = pkgRes;
   options = optRes;
-  if (kernelRes) kernels = kernelRes;
-  if (brewRes) brews = brewRes;
-  if (caskRes) casks = caskRes;
+  if (choiceRes) choices = choiceRes;
   // renderField() bakes each field's option object into its hover-tooltip listener as a
   // closure (see _wireTooltipAnchor()) rather than looking it up fresh on every hover --
   // without a re-render here, every already-rendered row keeps showing whatever `options`
@@ -5871,10 +5882,10 @@ async function loadBackup(name, targetFile) {
 
 // ── Load files ────────────────────────────────────────────────────────────────
 // The suggestions, asked for by themselves so that they can be on their way while the files
-// are (see loadSiblingFiles()). Settles to the five results, never rejects.
+// are (see loadSiblingFiles()). Settles to the three results, never rejects.
 function _fetchAutocompleteData() {
   const get = name => fetch('autocomplete/' + name + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); });
-  return Promise.allSettled(['packages', 'options', 'kernels', 'brews', 'casks'].map(get));
+  return Promise.allSettled(['packages', 'options', 'choices'].map(get));
 }
 
 // Loads every tab's config up front (not just the active one) so Save can persist all of them
@@ -5898,7 +5909,7 @@ async function loadSiblingFiles(content, autocomplete) {
   });
   config = (files.length && fileConfigs[activeFile]) || {};
 
-  const [pkgResult, optResult, kernelResult, brewResult, caskResult] = await autocomplete;
+  const [pkgResult, optResult, choiceResult] = await autocomplete;
 
   if (!cfgOk) {
     document.getElementById('editor-area').innerHTML =
@@ -5917,9 +5928,7 @@ async function loadSiblingFiles(content, autocomplete) {
   else setStatus('packages.json not found', 4000, 'err');
   if (optResult.status === 'fulfilled') options = optResult.value;
   else setStatus('options.json not found', 4000, 'err');
-  if (kernelResult.status === 'fulfilled') kernels = kernelResult.value;
-  if (brewResult.status === 'fulfilled') brews = brewResult.value;
-  if (caskResult.status === 'fulfilled') casks = caskResult.value;
+  if (choiceResult.status === 'fulfilled') choices = choiceResult.value;
   return true;
 }
 
