@@ -26,7 +26,7 @@ rec {
     inherit version;
     src = pkgs.lib.fileset.toSource {
       root    = ../.;
-      fileset = pkgs.lib.fileset.unions [ ../bin/eznix.py ../webroot ];
+      fileset = pkgs.lib.fileset.unions [ ../bin/eznix.py ../webroot ../plugins ];
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     # pkgs.eznix.autocomplete, pkgs.eznix.terminal: the parts, for installing one by itself.
@@ -40,6 +40,7 @@ rec {
       mkdir -p $out/share/eznix
       cp bin/eznix.py $out/share/eznix/
       cp -r webroot $out/share/eznix/webroot
+      cp -r plugins $out/share/eznix/plugins
       # Run by hand (nix run), eznix starts its own terminal and looks for it next to itself.
       ln -s ${eznix-terminal}/share/eznix-terminal/eznix-terminal.py $out/share/eznix/eznix-terminal.py
       echo -n "${version}" > $out/share/eznix/webroot/VERSION

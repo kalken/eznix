@@ -21,8 +21,8 @@ All changes go to `develop` first. Only merge `develop` into `master`; never com
 Don't use subagents for work in this repo. Don't test changes in a real browser (headless
 Chrome, CDP, etc.) unless the user explicitly asks for it in that turn.
 
-**Local test server**: after any change the user can see (anything under `webroot/`, or
-`bin/eznix.py`), restart it before reporting back, without being asked. The server renders the
+**Local test server**: after any change the user can see (anything under `webroot/` or
+`plugins/`, or `bin/eznix.py`), restart it before reporting back, without being asked. The server renders the
 page once at start, so an edit shows nothing until it restarts; an open tab then reloads by
 itself (see "Page checksum"). Its data lives *outside* the checkout, in `../.eznix-test/`
 (`eznix.toml`, state, and usually a flake to edit; what `eznix.toml` points at can differ
@@ -98,7 +98,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `webroot/plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password` |
+| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12) |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
@@ -476,7 +476,7 @@ Nix modules, its options at the top level), and only its page code lives apart, 
 names anything in it. Don't turn features that need a service into plugins.
 
 A plugin is a folder with a `plugin.json`: `{"name", "styles": [], "scripts": [], "server":
-"x.py"}`, all but the name optional. Found in `webroot/plugins/` and in `plugins_dir`
+"x.py"}`, all but the name optional. Found in `plugins/` (beside `webroot/`) and in `plugins_dir`
 (`_load_plugins()`); `[plugin.NAME]` in the config holds its settings, `enabled = false`
 leaves it out. Nobody outside eznix depends on the interface yet, and the README says it may
 change, so it can be reshaped freely.
@@ -492,7 +492,11 @@ change, so it can be reshaped freely.
   `api.state_dir`, `api.page`, `api.login`, `api.ignore`). A handler returns JSON-able data or an
   `api.Download`, and raises `api.Error(status, message)`. Core checks the login first. A
   plugin whose server file fails to load is left out whole.
-- `.py` files and `plugin.json` are not served to the browser.
+- `.py` files, `plugin.json` and a plugin's `README.md` are not served to the browser.
+- Each shipped plugin has a `README.md` in its folder, for users: what it does and a table
+  of every setting, in the layout of the main one (the user's wish, 2026-10-12: "can you
+  put an md file in the plugin"). The main README's Plugins section links to them and no
+  longer describes them itself. Update the plugin's own page when a setting changes.
 
 **The panels on the side are the page's** (`eznix.sidePanel()`): a plugin's panels are tabs
 along the top of one window per `group` (the documents, the Nix files), and the windows
@@ -522,7 +526,8 @@ hanging up on the program with no question: an editor keeps what was unsaved in 
 recovery file (vim's swap file) and offers it at the next opening, which the user found
 enough ("i think thats enough then"), after a time with no cross and one that asked first. The open files slide out of the way on a press outside the side, as the terminal panel
 hides (`autoHide` in `eznix.sidePanel()`, `auto_hide` in the plugin, on by default; a
-handle at the window's edge brings them back), asked for by the user. No buttons without
+handle at the window's edge brings them back), asked for by the user. A second handle to
+hide by hand was added and taken out again the same day ("looks weird"). No buttons without
 a terminal. Its server half lists files and deletes one:
 each line of a menu ends in a cross, which removes the file at once after a question (and
 closes its tab), and "New file…" is a dialog of the page's kind with the flake's folders

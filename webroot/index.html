@@ -344,13 +344,16 @@ const eznix = {
       handle.onclick = () => this._sideShow();
       document.querySelector('.main').appendChild(handle);
       this._sideShow = () => { stack.classList.remove('side-hidden'); handle.classList.add('hidden'); };
+      const hide = () => { stack.classList.add('side-hidden'); handle.classList.remove('hidden'); };
       document.addEventListener('mousedown', e => {
         if (stack.classList.contains('side-hidden') || stack.contains(e.target) || e.target === handle) return;
         if (!this._sideWindows.some(w => w.panels.some(p => p.autoHide))) return;
         if (e.target.closest && e.target.closest('.context-menu, .modal-overlay, .hover-tooltip')) return;
-        stack.classList.add('side-hidden');
-        handle.classList.remove('hidden');
+        hide();
       }, true);
+      // (A handle to hide it by hand, the same one the other way round on the side's left
+      // edge, was tried and taken out the same day: it looked odd, and who switches the
+      // hiding off does not want it.)
       this.resizable(stack, { edge: 'left', key: 'eznix-side-panel-width', min: 260,
         apply: width => document.documentElement.style.setProperty('--side-panel-width', width) });
     }

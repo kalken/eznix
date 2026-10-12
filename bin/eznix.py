@@ -1120,8 +1120,11 @@ def _load_plugins(cfg):
     -- and the files it lists, served at /plugins/NAME/ and loaded into the page in that order,
     after the page's own script (the events it can listen for are listed there, under
     "Plugins" in index.html). Whatever [plugin.NAME] holds in the configuration reaches it as
-    eznix.config.NAME. Plugins come from WEBROOT/plugins (the ones eznix ships) and from
-    plugins_dir (your own); a folder there named like a shipped one is skipped.
+    eznix.config.NAME. Plugins come from the `plugins` folder beside WEBROOT (the ones eznix
+    ships; they were inside it, as WEBROOT/plugins, until 2026-10-12, from when a plugin was
+    page files only) and from plugins_dir (your own); a folder there named like a shipped
+    one is skipped. Nothing of a plugin is served but what the request names under
+    /plugins/NAME/, and never its server file, its plugin.json or its README.
 
     A plugin may also name a Python file as "server": it is loaded into this process and its
     setup(api) registers what it answers under /api/v1/plugin/NAME/ (see PluginApi). So a
@@ -1133,7 +1136,7 @@ def _load_plugins(cfg):
     TERMINAL_PANEL."""
     found = {}
     settings = cfg.get('plugin') if isinstance(cfg.get('plugin'), dict) else {}
-    for base in (os.path.join(WEBROOT, 'plugins'), cfg.get('plugins_dir')):
+    for base in (os.path.join(os.path.dirname(WEBROOT), 'plugins'), cfg.get('plugins_dir')):
         try:
             names = sorted(os.listdir(base)) if base else []
         except OSError:
@@ -1231,16 +1234,15 @@ def _render_index():
 
 def _compute_page_hash():
     """PAGE_HASH: one checksum of everything a browser gets from this server -- the page as
-    rendered (so every setting baked into it), every file under WEBROOT, the user themes and
-    plugins, and this program itself. The page is told the value it was built with and /api/v1/ping reports
+    rendered (so every setting baked into it), every file under WEBROOT, the user themes, the
+    plugins that are loaded, and this program itself. The page is told the value it was built with and /api/v1/ping reports
     the current one; a page seeing a different value reloads. That is the whole of update
     detection: nothing is compared field by field, so nothing can be forgotten. Autocomplete
     data is left out -- it changes while the server runs and has its own stamp in the ping."""
     h = hashlib.sha256()
     h.update(_render_index().encode('utf-8'))
     paths = [os.path.abspath(__file__)] + sorted(t['path'] for t in CUSTOM_THEMES.values())
-    outside = [p['dir'] for p in PLUGINS.values() if not p['dir'].startswith(WEBROOT + os.sep)]
-    for root, dirs, names in [w for top in [WEBROOT] + outside for w in os.walk(top)]:
+    for root, dirs, names in [w for top in [WEBROOT] + [p['dir'] for p in PLUGINS.values()] for w in os.walk(top)]:
         dirs[:] = sorted(d for d in dirs if d != 'autocomplete' and not d.startswith('.'))
         paths += [os.path.join(root, n) for n in sorted(names) if n != 'index.html']
     for path in paths:
@@ -1967,7 +1969,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             name, _, rel = parsed.path[len('/plugins/'):].partition('/')
             # Only what the plugin lists for the page, not its server code.
             rel = urllib.parse.unquote(rel)
-            listed = name in PLUGINS and not rel.endswith(('.py', 'plugin.json'))
+            listed = name in PLUGINS and not rel.endswith(('.py', '.md', 'plugin.json'))
             path = listed and _plugin_file(PLUGINS[name]['dir'], rel)
             if not path:
                 self.send_error(404); return

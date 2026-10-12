@@ -382,47 +382,21 @@ so it works the same everywhere and can be left out. Four ship with it:
 
 | Plugin | |
 |---|---|
-| `system` | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
-| `documents` | the Documents button: read the flake's Markdown files beside the editor |
-| `files` | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
-| `password` | log in with one configured password |
+| [`system`](plugins/system/README.md) | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
+| [`documents`](plugins/documents/README.md) | the Documents button: read the flake's Markdown files beside the editor |
+| [`files`](plugins/files/README.md) | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
+| [`password`](plugins/password/README.md) | log in with one configured password |
 
-Leave one out, or change its settings, by name:
+Each has a page of its own, linked above, with what it does and every setting. Leave one
+out, or change its settings, by name:
 
 ```nix
 services.eznix.plugins = {
   documents.enabled = false;
   system.backups    = 10;
+  files.editor      = "vim";      # what the Nix files open in; default: $EDITOR
 };
 ```
-
-**Nix files** lists the flake's `.nix` files and opens one in your editor (`$EDITOR`, or
-nano), in a terminal of its own that is a tab beside the configuration, apart from the
-terminal at the bottom. Leaving the editor closes the tab, and so does the tab's ✕ (an editor like vim keeps
-unsaved changes in its recovery file and offers them next time); New file… asks for a
-path, and the ✕ on a file's line deletes it. It is one menu of the `files` plugin, which can have others: each a button with a
-name, the kinds of file it lists and the command they open with.
-
-```nix
-services.eznix.plugins.files.menus = [
-  { name = "Nix files"; extensions = [ ".nix" ]; command = "${pkgs.neovim}/bin/nvim"; }
-  { name = "Notes";     extensions = [ ".md" ".txt" ]; }      # in $EDITOR
-];
-```
-
-To change only the editor, for every menu that names no command of its own:
-
-```nix
-services.eznix.plugins.files.editor = "vim";      # or "${pkgs.helix}/bin/hx", an editor you set up in Nix
-```
-
-A command is any program that runs in a terminal and takes the file as its last argument. An open file goes out of the way when you click outside it, as the terminal does, and a
-handle at the window's right edge brings it back (`files.auto_hide = false` keeps it in
-place). An empty list of menus leaves the plugin with nothing to show. `files.exclude` is a list read like the main `exclude`, `[ ".*" ]` by default. The
-buttons are only there when eznix has a terminal.
-
-An export of the flake leaves out dot-files and dot-folders. `system.exclude` changes that:
-a list read like the main `exclude`, `[ ".*" ]` by default.
 
 To write your own, make a folder with a `plugin.json` and add it with
 `services.eznix.extraPlugins.NAME = ./folder;` (or `plugins_dir` in `eznix.toml`):
@@ -434,7 +408,7 @@ To write your own, make a folder with a `plugin.json` and add it with
 The scripts run in the page, after eznix's own, and can add buttons and react to events
 (listed at the top of the script in `webroot/index.html`, under "Plugins"). The optional
 server file adds what the plugin answers under `/api/v1/plugin/NAME/` (see `PluginApi` in
-`bin/eznix.py`). The shipped plugins in `webroot/plugins/` are the examples; `documents` is
+`bin/eznix.py`). The shipped plugins in `plugins/` are the examples; `documents` is
 the smallest complete one.
 
 **A plugin runs with everything eznix can do**, in the page and on the machine. Install one
