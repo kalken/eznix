@@ -469,6 +469,11 @@ the user made that the default and null its value ("maybe unset collapse level s
 null actually"). The old setting still works, read as 3 or as not set
 (`mkChangedOptionModule` in the modules, and in `eznix.py`).
 
+**A right-click brings up the menu of what is under the pointer** (`_onRowItself()`): an
+option's for its name or its value, and for the empty part of its row the menu of what the
+option lies in, the section, the object in a list or the file. The user's rule, 2026-10-12;
+the whole row was the option's before.
+
 **Lists**: Nothing
 removes an item by itself: Backspace in an empty plain item, or in an empty text field of an
 object with nothing in it, and Delete on the menu. On 2026-10-11 an item just added and left
