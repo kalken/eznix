@@ -351,7 +351,7 @@ in
       type        = types.attrsOf (types.attrsOf types.anything);
       default     = { };
       example     = lib.literalExpression "{ system.backups = 10; documents.enabled = false; }";
-      description = "Settings for plugins, by name. enabled = false leaves one out. Shipped: system (export, import and restore of the whole flake), documents (the flake's Markdown files), nixfiles (the flake's .nix files, opened in your own editor in a terminal), password (set through password/passwordFile).";
+      description = "Settings for plugins, by name. enabled = false leaves one out. Shipped: system (export, import and restore of the whole flake), documents (the flake's Markdown files), files (menus of the flake's files by kind, each opened in a program of your choosing in a terminal; one of the Nix files unless set), password (set through password/passwordFile).";
     };
     extraPlugins = mkOption {
       type        = types.attrsOf types.path;

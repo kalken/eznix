@@ -854,9 +854,22 @@ eznix.on('init', () => {
 const _extraTerminals = new Set();
 function _extraTerminal(opts) {
   const { el, session, run, onExit } = opts;
-  const term = new Terminal(_termOptions());
+  // Rows that touch: the panel's terminal has a fifth more room per line, for reading output,
+  // and a program that draws frames (an editor's popups) then has each upright stroke stop
+  // short of the next row, a border of dashes. Seen by the user in a picture, 2026-10-12,
+  // with the drawing below already in, which was meant to cure it and did not by itself.
+  const term = new Terminal({ ..._termOptions(), lineHeight: 1 });
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
+  // Drawn as the panel's terminal is (initTerminal()): with it, the lines a program draws its
+  // frames with are drawn by the terminal to fill their cells and so join up; left to the
+  // font, each stops short of the next row, lines being taller than the font's own, and an
+  // editor's popup had a border of dashes (the user, 2026-10-12).
+  try {
+    const webgl = new WebglAddon.WebglAddon();
+    webgl.onContextLoss(() => webgl.dispose());
+    term.loadAddon(webgl);
+  } catch (_) {}
   term.open(el);
   let ws = null, exited = false, closed = false, tries = 0, fitTimer = null;
   const sendSize = () => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows })); };

@@ -98,7 +98,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `webroot/plugins/NAME/` | the shipped plugins: `documents`, `nixfiles`, `system`, `password` |
+| `webroot/plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password` |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
@@ -510,25 +510,33 @@ instead of a window per file, and then for the two windows "side by side" and no
 behind the other. A plugin fills a panel's body and header and keeps its own
 list of what is open.
 
-**`nixfiles`** (2026-10-12, the user's idea) lists the flake's `.nix` files and opens one in
-an editor of the user's own, in a terminal of its own that is a tab on the side
-(`openNixFile()`): a shell named after the file, started on `mkdir -p DIR && exec EDITOR
-'path'`, so leaving the editor ends the shell and closes the tab. That is the only way to close
-it: the tab has no cross (`closable: false`), since one hung up on the editor with whatever
-was unsaved in it. `editor` in `[plugin.nixfiles]`, otherwise `$EDITOR`, otherwise nano. No
-button without a terminal. Its server half only lists files.
-It went through a whole other shape that day before this one, which is why the terminal
-and the side panels are what they are: an editor of its own in the page, a text field with
-colouring drawn under it, suggestions of options and packages from a scanner of Nix written
-for it, Save and Delete (at once, then through the page's Save, then at once again), new
-files, backups and a parse check on the server. Once a file could be opened in a terminal,
-the user asked "if we have vim we dont need any of that right?" and had all of it taken
-out, knowing it meant no suggestions, no parse check and no backups: "then we get syntax
-coloring and everything from the editor, which could be installed and configured through
-the main config files ... the plugin would only have to know how to open the program in
-the terminal". None of that was ever committed. Seen by the user in the test server that day, on a Mac
-with vim, once the shell was started on the command: "wow that works perfect". What was
-tried beyond opening a file was not said.
+**`files`** (2026-10-12, the user's idea) is menus of the flake's files by their kind: each
+entry of `[plugin.files] menus` is a button with a `name`, the `extensions` it lists and the
+`command` a file opens with, in a terminal of its own that is a tab on the side
+(`openFlakeFile()`). With nothing set there is one, "Nix files" for `.nix` (the user went
+from that to an empty default and back within the hour). The command is `$EDITOR`, then
+nano, unless given; in Nix it can be a store path, which is how an editor set up in Nix is
+used. A shell named after the file is started on `mkdir -p DIR && exec COMMAND 'path'`, so
+leaving the program ends the shell and closes the tab. That is the only way to close it:
+the tab has no cross (`closable: false`), since one hung up on the editor with whatever
+was unsaved in it. No buttons without a terminal. Its server half lists files and deletes one:
+each line of a menu ends in a cross, which removes the file at once after a question (and
+closes its tab), and "New file…" is a dialog of the page's kind with the flake's folders
+offered under its path field.
+It went through several other shapes that day, which is why the terminal and the side
+panels are what they are, and none of which should be rebuilt without the user asking:
+- an editor of its own in the page (a text field with colouring drawn under it, suggestions
+  from a scanner of Nix written for it, Save and Delete, backups, a parse check), taken
+  out once a file could be opened in a terminal ("if we have vim we dont need any of that");
+- as `nixfiles`, the same for `.nix` only with one `editor` setting, committed as `539cf28`;
+- an editor shipped with the flake, `ezedit` (Neovim with nixd, a module, themes), built
+  twice and thrown away twice the same day, never committed: first with completion from
+  eznix's own data, then with only Neovim's standard parts. The user ended it with "lets
+  skip this completely and do a simple solution" and asked for this plugin, general by a
+  list. What they want from an editor they set up themselves, in Nix.
+Seen by the user in the test server, with vim: as `nixfiles` ("wow that works perfect"),
+and as this plugin the cross that deletes, with the tab closing ("thats good"). What else
+of the menus and the dialog they tried was not said.
 
 Core, not plugins, by decision: the terminal, Save, ordinary import/export of files, file backups on save,
 themes (a theme stays a plain CSS file anyone can install without trusting code), and support

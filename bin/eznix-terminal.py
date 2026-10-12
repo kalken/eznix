@@ -661,6 +661,9 @@ def _create_session(rows, cols, command=None):
                                            'XDG_RUNTIME_DIR', 'SSH_AUTH_SOCK') if os.environ.get(k)})
     env['SHELL'] = SHELL
     env['TERM'] = 'xterm-256color'
+    # The page's terminal shows any colour, which is how a terminal says so: a program
+    # with a colour scheme of its own (an editor) otherwise keeps to the 256 of TERM.
+    env['COLORTERM'] = 'truecolor'
 
     def _init_child():
         os.setsid()

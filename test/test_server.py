@@ -188,7 +188,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n'}.items():
+                           'conf.toml': f'interface = "{"lo0" if sys.platform == "darwin" else "lo"}"\nlisten = "127.0.0.1"\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n[plugin.files]\nexclude = [".*", "sub"]\n[[plugin.files.menus]]\nname = "Text"\nextensions = [".md", ".txt"]\ncommand = "nano -w"\n[[plugin.files.menus]]\nextensions = [".nix"]\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -327,9 +327,10 @@ def main():
             check('documents: reads', b.json('/api/v1/plugin/documents/content?name=README.md')[1] == {'content': '# Hi'})
             check('documents: nothing outside the flake', b.request('/api/v1/plugin/documents/content?name=../conf.toml')[0] == 400)
 
-            check('nixfiles: lists the Nix files, and that is all it answers',
-                  b.json('/api/v1/plugin/nixfiles/files')[1] == {'files': ['flake.nix']}
-                  and b.request('/api/v1/plugin/nixfiles/content?name=flake.nix')[0] == 404)
+            check('files: with nothing set, one menu of the Nix files, and listing is all it answers',
+                  b.json('/api/v1/plugin/files/files')[1] == {'menus': [['flake.nix']], 'folders': ['eznix']}
+                  and '"menus": [{"name": "Nix files", "extensions": [".nix"], "command": ""}]' in page
+                  and b.request('/api/v1/plugin/files/content?name=flake.nix')[0] == 404)
 
             status, data = b.request('/api/v1/plugin/system/export')
             names = sorted(zipfile.ZipFile(io.BytesIO(data)).namelist())
@@ -430,6 +431,18 @@ def main():
             made = ('notes.md', 'keep.md', 'sub/more.md', 'secret/key.nix', 'sub/secret/x.nix', '.hidden', '.shown')
             for name in made:
                 open(f'{tmp}/flake/{name}', 'w').write('x')
+            listed = b.json('/api/v1/plugin/files/files')[1]
+            check('files: the menus that are set, each with its kinds of file and its command, less what is excluded',
+                  listed['menus'] == [['README.md', 'keep.md', 'notes.md'], ['extra.nix', 'flake.nix', 'secret/key.nix']]
+                  and 'secret' in listed['folders'] and 'sub' not in listed['folders']
+                  and '"menus": [{"name": "Text", "extensions": [".md", ".txt"], "command": "nano -w"}, {"name": ".nix", "extensions": [".nix"], "command": ""}]' in page,
+                  listed)
+            dele = lambda name: b.request('/api/v1/plugin/files/delete?name=' + name, b'')[0]
+            check('files: a file of a menu is deleted when asked for, and nothing else is',
+                  dele('notes.md') == 200 and not os.path.exists(f'{tmp}/flake/notes.md')
+                  and dele('../conf.toml') == 400 and dele('eznix/a.json') == 400 and dele('.hidden') == 400
+                  and dele('sub/more.md') == 400 and os.path.exists(f'{tmp}/flake/sub/more.md'))
+            open(f'{tmp}/flake/notes.md', 'w').write('x')
             exported = set(zipfile.ZipFile(io.BytesIO(b.request('/api/v1/plugin/system/export')[1])).namelist())
             check("system: the export's own exclude is read like a .gitignore too, dot-files being entries of it",
                   exported & set(made) == {'keep.md', 'sub/secret/x.nix', '.shown'}, sorted(exported))

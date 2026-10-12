@@ -1,0 +1,11 @@
+{
+  "name": "files",
+  "description": "Menus of the flake's files by their kind, each opened in a program of your choosing in a terminal beside the configuration.",
+  "server": "files.py",
+  "styles": [
+    "files.css"
+  ],
+  "scripts": [
+    "files.js"
+  ]
+}

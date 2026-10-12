@@ -14,7 +14,7 @@ framework: just Python and a browser.
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself
 - Back up, restore, export and import the whole flake, and read its `.md` files beside the editor
-- Edit the flake's `.nix` files in the page too, in your own editor (vim, nano, …), in a terminal beside the configuration
+- Open the flake's other files in the page too, `.nix` or any kind you list, in your own editor (vim, nano, …) in a terminal beside the configuration
 - Themes: NixOS blue, gruvbox, and OS X, KDE Breeze and GNOME, each light or dark with the system; or your own
 
 ## 🚀 Quick Start
@@ -384,7 +384,7 @@ so it works the same everywhere and can be left out. Four ship with it:
 |---|---|
 | `system` | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
 | `documents` | the Documents button: read the flake's Markdown files beside the editor |
-| `nixfiles` | the Nix files button: open the flake's `.nix` files in your own editor, in a terminal beside the configuration |
+| `files` | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
 | `password` | log in with one configured password |
 
 Leave one out, or change its settings, by name:
@@ -396,12 +396,23 @@ services.eznix.plugins = {
 };
 ```
 
-**Nix files** opens a `.nix` file of the flake in an editor of your own, in a terminal of
-its own that is a tab beside the configuration, apart from the terminal at the bottom.
-Leaving the editor is what closes the tab. Which editor: `nixfiles.editor = "vim";` (or `nano`,
-`hx`, anything installed), otherwise what `$EDITOR` names, or nano. New file… asks for a
-path and opens the editor on it. `nixfiles.exclude` is a list read like the main `exclude`,
-`[ ".*" ]` by default. The button is only there when eznix has a terminal.
+**Nix files** lists the flake's `.nix` files and opens one in your editor (`$EDITOR`, or
+nano), in a terminal of its own that is a tab beside the configuration, apart from the
+terminal at the bottom. Leaving the editor is what closes the tab; New file… asks for a
+path, and the ✕ on a file's line deletes it. It is one menu of the `files` plugin, which can have others: each a button with a
+name, the kinds of file it lists and the command they open with.
+
+```nix
+services.eznix.plugins.files.menus = [
+  { name = "Nix files"; extensions = [ ".nix" ]; command = "${pkgs.neovim}/bin/nvim"; }
+  { name = "Notes";     extensions = [ ".md" ".txt" ]; }      # in $EDITOR
+];
+```
+
+`command` is any program that runs in a terminal and takes the file as its last argument,
+so it can be one you have set up in Nix. An empty list leaves the plugin with nothing to
+show. `files.exclude` is a list read like the main `exclude`, `[ ".*" ]` by default. The
+buttons are only there when eznix has a terminal.
 
 An export of the flake leaves out dot-files and dot-folders. `system.exclude` changes that:
 a list read like the main `exclude`, `[ ".*" ]` by default.

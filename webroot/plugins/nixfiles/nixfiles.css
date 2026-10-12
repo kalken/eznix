@@ -1,5 +1,0 @@
-/* The nixfiles plugin's own rules. */
-
-/* A file open in the user's editor, in a terminal (openNixFile()): the terminal fills the
-   panel, on the terminal's own background, and is the one thing that scrolls. */
-.side-panel-body.nixfiles-terminal { overflow: hidden; padding: var(--term-padding, 6px); background: var(--term-bg, var(--bg)); }

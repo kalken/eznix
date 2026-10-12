@@ -84,10 +84,14 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # password_file = "/path/to/file"
 # username      = "alice"             # default: whoever runs eznix
 
-# The flake's .nix files, opened in an editor of your own in a terminal on the side.
-# [plugin.nixfiles]
-# editor   = "vim"                    # default: what $EDITOR names there, or nano
-# exclude  = [".*"]                   # what not to list, read like `exclude` above
+# Menus of the flake's files, each a button; a file opens in a program of your choosing, in a
+# terminal of its own beside the configuration. With no menus set there is this one:
+# [plugin.files]
+# exclude  = [".*"]                   # what no menu lists, read like `exclude` above
+# [[plugin.files.menus]]
+# name       = "Nix files"            # what the button says
+# extensions = [".nix"]               # the files it lists, by how their names end
+# command    = "vim"                  # opened with this; default: $EDITOR in your shell, or nano
 
 # Export, import and restore of the whole flake.
 # [plugin.system]
