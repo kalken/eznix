@@ -45,7 +45,7 @@ let
     theme            = cfg.theme;
     themes_dir       = if cfg.themes != { } then "${themesDir}" else null;
     plugins_dir      = if cfg.extraPlugins != { } then "${pluginsDir}" else null;
-    sections         = cfg.sections;
+    collapse_level   = cfg.collapseLevel;
     mode             = cfg.mode;
     backups          = cfg.backups;
     debug            = if cfg.debug then true else null;
@@ -326,10 +326,13 @@ in
       example     = lib.literalExpression "{ mine = ./mine.css; }";
       description = "Your own themes, name -> CSS file. See THEMES.md.";
     };
-    sections = mkOption {
-      type        = types.enum [ "collapsed" "expanded" ];
-      default     = "collapsed";
-      description = "How foldable sections start out.";
+    collapseLevel = mkOption {
+      # 0 is taken as well as null, for "none": the editor itself starts a number it is
+      # asked to add at 0, which must not be a value the configuration fails on.
+      type        = types.nullOr types.ints.unsigned;
+      default     = null;
+      example     = 4;
+      description = "The level from which sections start out folded in the editor, a top-level section being level 1: with 4, services.openssh.settings is shown and what lies inside it is folded. Not set (or 0), nothing is folded. Sections can be folded from level 3 down, so 3 is the lowest number that does anything.";
     };
     mode = mkOption {
       type        = types.nullOr (types.enum [ "install" ]);

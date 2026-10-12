@@ -449,6 +449,18 @@ The bar's buttons and Add keep the cursor in the field, since the field's blur h
 Tried by the user in the test server that day, on `services.samba.settings.global` ("that
 works!"): the type chosen from the bar, and Add pressed with no type chosen.
 
+**Sections start out folded from a level**, `collapseLevel` (`collapse_level`): a number, a
+top-level section being 1; not set (null), the default, nothing is folded
+(`SECTIONS_LEVEL`, `_sectionStartsOpen()`). Until 2026-10-12 the setting was `sections`,
+collapsed or expanded, collapsed by default, with the level fixed at 3, the first level
+that can be folded at all (levels 1 and 2, the cards and the boxes in them, have no arrow).
+The user wanted the level settable. It went through 4 as the default ("collapse after level
+3"), one setting taking either word or a number (unclear, the user found), and one number
+with 0 for never (my suggestion), until, having seen everything open in the test server,
+the user made that the default and null its value ("maybe unset collapse level should be
+null actually"). The old setting still works, read as 3 or as not set
+(`mkChangedOptionModule` in the modules, and in `eznix.py`).
+
 **Lists**: Nothing
 removes an item by itself: Backspace in an empty plain item, or in an empty text field of an
 object with nothing in it, and Delete on the menu. On 2026-10-11 an item just added and left

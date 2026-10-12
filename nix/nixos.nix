@@ -60,7 +60,12 @@ in
 {
   # generateCert was the name of enableHttps until 2026-10; a configuration that still sets it
   # keeps working, with a note to rename it.
-  imports = [ (lib.mkRenamedOptionModule [ "services" "eznix" "generateCert" ] [ "services" "eznix" "enableHttps" ]) ];
+  imports = [
+    (lib.mkRenamedOptionModule [ "services" "eznix" "generateCert" ] [ "services" "eznix" "enableHttps" ])
+    # sections = "collapsed" | "expanded" became collapseLevel, a number, on 2026-10-12.
+    (lib.mkChangedOptionModule [ "services" "eznix" "sections" ] [ "services" "eznix" "collapseLevel" ]
+      (config: if config.services.eznix.sections == "expanded" then null else 3))
+  ];
 
   options.services.eznix = common.options // {
     openFirewall = lib.mkOption {

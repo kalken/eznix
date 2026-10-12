@@ -50,7 +50,8 @@ theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, 
                                       # system (osx-dark, osx-light and so on for one of the
                                       # two regardless); "osx" on macOS
 # themes_dir = "/path/to/themes"      # your own, <name>.css each
-sections = "collapsed"                # or "expanded"
+# collapse_level = 4                  # sections start out folded from this level down (a top-
+                                      # level one is 1); not set: nothing is folded
 # debug  = true                       # log what is only worth knowing while looking into
 #                                     # something: every request and what took long, and in
 #                                     # the browser's console what the page does

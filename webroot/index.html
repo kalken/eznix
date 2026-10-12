@@ -2829,15 +2829,24 @@ function renderEditor() {
 // clone appended to <body>, see makeDraggable()) carries its whole look along with it.
 
 // Which foldable sections have been switched away from how they start out, as "file\0path" --
-// everything else is in its starting state: hidden, or shown when SECTIONS_EXPANDED
-// (services.eznix.sectionsDefault / sections_default in eznix.toml). Kept here rather than
+// everything else is in its starting state (_sectionStartsOpen()): hidden from SECTIONS_LEVEL down
+// (services.eznix.collapseLevel / collapse_level in eznix.toml). Kept here rather than
 // read back from the DOM since every edit rebuilds the editor from scratch (renderAll()); in
 // memory only, so a page reload puts everything back to how it starts out.
 const _toggledSections = new Set();
 function _sectionOpenKey(el) { return activeFile + '\x00' + el.dataset.path; }
-function _isSectionOpen(el) { return SECTIONS_EXPANDED !== _toggledSections.has(_sectionOpenKey(el)); }
+// How a section starts out: shown above the level the collapseLevel setting names, folded
+// from that level down; with none set (0 here) all are shown. A top-level
+// section is level 1, so one more than its depth (--depth, from _setNestDepths()). The level
+// was fixed at 3, the first that can be folded at all, until the user asked for it to be a
+// setting (2026-10-12), with nothing folded unless it is set: with 4, `services.ezrouter.wan` is then open and
+// `services.ezrouter.wan.bridge` folded.
+function _sectionStartsOpen(el) {
+  return !SECTIONS_LEVEL || (parseInt(el.style.getPropertyValue('--depth'), 10) || 0) + 1 < SECTIONS_LEVEL;
+}
+function _isSectionOpen(el) { return _sectionStartsOpen(el) !== _toggledSections.has(_sectionOpenKey(el)); }
 function _setSectionOpen(el, open) {
-  if (open === SECTIONS_EXPANDED) _toggledSections.delete(_sectionOpenKey(el)); else _toggledSections.add(_sectionOpenKey(el));
+  if (open === _sectionStartsOpen(el)) _toggledSections.delete(_sectionOpenKey(el)); else _toggledSections.add(_sectionOpenKey(el));
   el.classList.toggle('collapsed', !open);
 }
 function _toggleSectionOpen(el) {
@@ -5165,7 +5174,7 @@ function initImportDrop() {
 // ── API auth ──────────────────────────────────────────────────────────────────
 const API_BASE = '/api/v1';
 const BACKUP_ENABLED    = %%EZNIX_BACKUP%%;
-const SECTIONS_EXPANDED = %%EZNIX_SECTIONS_EXPANDED%%; // services.eznix.sectionsDefault = "expanded" / sections_default in eznix.toml -- see _toggledSections
+const SECTIONS_LEVEL    = %%EZNIX_SECTIONS_LEVEL%%; // services.eznix.collapseLevel / collapse_level in eznix.toml: the level sections are folded from; 0 when it is not set, for never -- see _sectionStartsOpen()
 const EZNIX_MODE       = %%EZNIX_MODE%%; // null or "install" — services.eznix.mode / mode in eznix.toml, deploy-time only, no in-GUI toggle
 const INSTALL_MODE      = EZNIX_MODE === 'install';
 const NIXOS_TARGET      = '%%EZNIX_FLAKE%%'; // flake path GET /api/v1/system-export zips up

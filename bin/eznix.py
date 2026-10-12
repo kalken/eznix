@@ -57,7 +57,7 @@ Configuration (eznix.toml; every key optional unless noted):
   terminal_end_on_logout  end the shell when its user logs out (default true)
   [terminals.NAME]  port, key_file, dir, shell — a terminal run by something else, for NAME
 
-  theme, themes_dir, sections ("collapsed"/"expanded"), mode ("install"), terminal_auto_hide
+  theme, themes_dir, collapse_level (sections fold from it down; not set: never), mode ("install"), terminal_auto_hide
   plugins_dir     folder of your own plugins, one folder each (see _load_plugins())
   [plugin.NAME]   settings for the plugin NAME; enabled = false leaves it out
   backups         how many saved versions of each file to keep (0: none)
@@ -182,7 +182,7 @@ AUTO_THEMES      = {'osx': ('osx-light', 'osx-dark'), 'breeze': ('breeze-light',
 THEMES_DIR       = None          # folder of user themes, <name>.css each
 CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_custom_themes()
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
-SECTIONS_EXPANDED = False        # foldable sections start out shown
+SECTIONS_LEVEL   = 0             # the level from which sections start out folded (a top-level one is 1); 0: none do (collapse_level not set)
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
 STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
 PLUGINS          = {}            # name -> {dir, scripts, styles, config}; see _load_plugins()
@@ -1225,7 +1225,7 @@ def _render_index():
         .replace('%%EZNIX_BACKUP%%', 'true' if BACKUP_COUNT > 0 else 'false')
         .replace('%%EZNIX_MODE%%', json.dumps(EZNIX_MODE))
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
-        .replace('%%EZNIX_SECTIONS_EXPANDED%%', 'true' if SECTIONS_EXPANDED else 'false')
+        .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_VERSION%%', EZNIX_VERSION)
@@ -2479,7 +2479,7 @@ def main():
     global BIND_ADDR, INTERFACE, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_EXPANDED
+    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2579,7 +2579,12 @@ def main():
     EZNIX_MODE = cfg.get('mode') or None
     if EZNIX_MODE not in (None, 'install'):
         sys.exit(f'eznix: mode = "{EZNIX_MODE}": the only mode is "install"')
-    SECTIONS_EXPANDED = cfg.get('sections') == 'expanded'
+    # collapse_level: the level from which sections start out folded. Not set, none are.
+    # Until 2026-10-12 the setting was `sections`, "collapsed" or "expanded", with the level
+    # fixed at 3 and collapsed the default; a configuration that still says "collapsed" is
+    # read as that level.
+    level = cfg.get('collapse_level', 3 if cfg.get('sections') == 'collapsed' else None)
+    SECTIONS_LEVEL = level if isinstance(level, int) and not isinstance(level, bool) and level > 0 else 0
     TERMINAL_AUTO_HIDE = bool(cfg.get('terminal_auto_hide', True))
     STATIC_BUTTONS = [b for b in cfg.get('buttons', []) if isinstance(b, dict) and b.get('label') and b.get('command')]
     STATIC_MENUS = {name: m for name, m in (cfg.get('menus') or {}).items() if isinstance(m, dict)}
