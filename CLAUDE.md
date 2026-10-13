@@ -896,6 +896,8 @@ Suggestions are never generated automatically: it is the `eznix-autocomplete` co
 the user. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
 which only types that command into the terminal (it is part of `terminal-panel/`, so there is
 none without a terminal); before that the templates carried it as one of their buttons.
+It is there in install mode as well since 2026-10-13 (it was left out there, and the
+installer had one of its own in its row, now removed at the user's word).
 Its icon turns while the generator runs: the generator leaves `.generating`, with its
 process number, where the suggestions go, and the ping says whether that process is there
 (`_autocomplete_running()`). Whether the suggestions are *behind* the flake is not shown: a

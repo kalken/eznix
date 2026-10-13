@@ -785,8 +785,10 @@ function _runInTerminal(btn) {
 // are there to read. It was a button every template put in that bar ("Generate Autocomplete");
 // the user wanted it at the top, in front of System (the `order` in terminal.css). It is here
 // and not in the page because it needs the terminal, and what it types comes from the server
-// (_autocomplete_command() in eznix.py), which knows where the generator is. Not in install
-// mode, where the ordinary buttons are off as well. Its icon turns while the generator
+// (_autocomplete_command() in eznix.py), which knows where the generator is. In install
+// mode too, since 2026-10-13: it was left out there with the ordinary buttons, the
+// installer had one of its own in its row instead, and the user missed it at the top ("we
+// put it back"). Its icon turns while the generator
 // runs (.is-running): the generator leaves a mark where the suggestions go, and every ping
 // says whether one is at work (autocomplete_running, _autocomplete_running() in eznix.py), so
 // it turns too for a run started by hand or from another tab. A click starts it turning at
@@ -820,7 +822,7 @@ function _spinAutocomplete(running, stamp) {
   btn.classList.toggle('is-running', busy);
   btn.disabled = busy;
 }
-if (!INSTALL_MODE && _TERM_CONFIG.autocomplete) {
+if (_TERM_CONFIG.autocomplete) {
   eznix.addButton('header', {
     id: 'autocomplete-btn',
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
