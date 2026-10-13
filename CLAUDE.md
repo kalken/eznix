@@ -245,7 +245,19 @@ In that window the browser's download bubble comes up off the window's left edge
 right corner showing (the user's photo, 2026-10-13, NixOS with Plasma, after an export); in
 an ordinary window of the same browser it is where it belongs. The file arrives either
 way. My reading, not checked: the bubble hangs off the toolbar's download button and an
-app-mode window has no toolbar. Nothing was done about it but a line in the README.
+app-mode window has no toolbar. An app installed from the browser has the browser's own
+bar and shows it properly (the user, in Brave), so `programs.eznix.install` (NixOS only,
+in `nixos.nix`; `installed` in `options.nix`) has the browser install the same addresses
+by policy (`programs.chromium.extraOpts.WebAppInstallForceList`) in place of the entries,
+with `desktopIcon` for a shortcut on the desktop, the user's wish. Before it was built the
+user entered the policy by hand: a shortcut appeared on the desktop by itself after a
+rebuild, with Chromium and with Brave, and "starts correctly", but named for its address
+with a plain icon, which is what a browser makes when it has not read the page's name and
+logo; why was not found (the address was typed by hand, and http against https or the port
+was my guess). Not known: whether the browser lists it in the application menu by itself,
+which the option counts on, and what happens to the old app when the address changes. The
+option was evaluated for four combinations (the policy's text, the entries gone, the three
+policy files); not rebuilt by anyone.
 
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With

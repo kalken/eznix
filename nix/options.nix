@@ -128,8 +128,8 @@ let
     startupWMClass = class;
     categories     = [ "Settings" "System" ];
   };
-  appEntries =
-    lib.optional prog.enable (mkApp ({
+  wanted =
+    lib.optional prog.enable ({
       inherit (prog) url;
       # Named for the machine, as the page's own title is and as the entries of `apps` are:
       # its host name where the module knows it and the address is this machine's, else
@@ -138,14 +138,35 @@ let
       label = let host = hostOf prog.url; mine = host == "localhost" || builtins.elem host hostNames; in
         if mine && hostNames != [ ] then "eznix (${builtins.head hostNames})"
         else if host == "localhost" then "eznix" else "eznix (${host})";
-    } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; }))
-    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; label = "eznix (${name})"; }) prog.apps;
+    } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; })
+    ++ lib.mapAttrsToList (name: url: { inherit url; label = "eznix (${name})"; }) prog.apps;
+
+  # `install` (NixOS, where a browser can be given a policy): the same addresses, installed
+  # by the browser as apps of its own in place of these entries. An app-mode window has no
+  # toolbar, and the browser's note of a download came up off the window's edge there (the
+  # user's photo, 2026-10-13); an installed app has the browser's own bar with a place for
+  # it, and Nix cannot make one, only the browser can. The policy (WebAppInstallForceList)
+  # has it do so at its next start, and is written again at every rebuild, so it follows
+  # the address like the entry does. What the user saw of it that day, entered by hand:
+  # a shortcut on the desktop by itself after a rebuild, in Chromium and in Brave, opening
+  # a proper window, but named for its address with a plain icon, as a browser makes it
+  # when it has not read the page's own name and logo; why it had not was not found (the
+  # address had been typed by hand). `fallback_app_name` is the name for that case.
+  byPolicy = prog.install or false;
+  appEntries = lib.optionals (!byPolicy) (map mkApp wanted);
+  installed = lib.optionals byPolicy (map (a: {
+    inherit (a) url;
+    default_launch_container = "window";
+    create_desktop_shortcut  = prog.desktopIcon;
+    fallback_app_name        = a.label;
+  }) wanted);
 in
 {
   inherit isLocal certDir generateCert;
 
   # The application-menu entries, and the options they are set with (see classOf above).
   apps = appEntries;
+  inherit installed;
   programOptions = {
     enable = mkEnableOption "eznix in the application menu: a window of its own, with eznix's icon, opened at the address the editor is configured for";
     url = mkOption {

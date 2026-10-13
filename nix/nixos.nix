@@ -94,12 +94,26 @@ in
     };
   };
 
-  options.programs.eznix = common.programOptions;
+  options.programs.eznix = common.programOptions // {
+    install = lib.mkOption {
+      type        = lib.types.bool;
+      default     = false;
+      description = "Have the browser install eznix as an app of its own, in place of the entry made here: the same window, with the browser's own slim bar at its top, where a download shows properly (the plain entry's window has no such bar, and the browser's note of a download comes up half outside it). It is done by a browser policy, so every Chromium-family browser on the machine (Chromium, Chrome, Brave) installs it at its next start, for every user, and puts it in the application menu itself; `browser` and `windowClass` are then not used. It follows the address at each rebuild like the plain entry. This sets programs.chromium.extraOpts.WebAppInstallForceList: leave that alone when using it.";
+    };
+    desktopIcon = lib.mkOption {
+      type        = lib.types.bool;
+      default     = false;
+      description = "With `install`: have the browser put a shortcut on the desktop too.";
+    };
+  };
 
   config = lib.mkMerge [
    # By itself, so that a machine can have the entry for another machine's editor without
    # running one.
    (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
+   (lib.mkIf (common.installed != [ ]) {
+     programs.chromium = { enable = lib.mkDefault true; extraOpts.WebAppInstallForceList = common.installed; };
+   })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {
