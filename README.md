@@ -582,14 +582,10 @@ programs.eznix.apps = {
 Neither needs `services.eznix` on the machine itself. If the window or the task bar shows the browser's icon instead of
 eznix's, set `windowClass` to what your desktop calls the window.
 
-On NixOS the entry opens eznix as an app the browser has installed, which is told to do so
-by a policy and does it when it next starts: after the first rebuild with the entry, start
-the browser once and close it, then use the entry. `desktopIcon = true` has the browser
-put a shortcut on the desktop too.
-
-With home-manager, or with `install = false`, it is a plain window of the browser. That
-one has no toolbar, so the browser's note that a file was downloaded (an export) can come
-up half outside the window. The file is downloaded all the same.
+Such a window has no toolbar, so the browser's note that a file was downloaded (an export)
+can come up half outside the window. The file is downloaded all the same. An app installed
+from the browser's own menu ("Install page as app") shows it properly, but belongs to the
+address it was installed from.
 
 ## 📋 Options
 
@@ -618,7 +614,7 @@ The common ones, the same in all three modules:
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |
 
 Beside `services.eznix` there is `programs.eznix` (`enable`, `url`, `apps`, `browser`,
-`windowClass`, and on NixOS `install`, `desktopIcon`): see [In the application menu](#-in-the-application-menu).
+`windowClass`): see [In the application menu](#-in-the-application-menu).
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).

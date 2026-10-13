@@ -246,23 +246,20 @@ right corner showing (the user's photo, 2026-10-13, NixOS with Plasma, after an 
 an ordinary window of the same browser it is where it belongs. The file arrives either
 way. My reading, not checked: the bubble hangs off the toolbar's download button and an
 app-mode window has no toolbar. An app installed from the browser has the browser's own
-bar and shows it properly (the user, in Brave), so on NixOS (`programs.eznix.install`: the option in `nixos.nix`, the rest in `options.nix`, where the comment has the
-steps it took) the entry opens an app the browser has installed: a policy file of eznix's
-own for the one browser in `browser` (`WebAppInstallForceList`, `policyDir`), and an entry
-that starts the app by the identifier Chromium gives it (`--app-id`, `mkInstalled`),
-worked out from the address at build time. `desktopIcon` is the policy's shortcut on the
-desktop, the user's wish. The user's aim, said plainly after an hour of it: "i just want
-it to work like it did before but with possibility to download files and see the dialog".
-Seen by the user: the policy entered by hand makes the browser install the app by itself;
-through NixOS's own option every browser installed a copy; the browser lists the app on
-its apps page and not in the system's menu. Not seen by anyone: the entry opening the
-installed app (the identifier was checked against two public apps' known ones, the
-desktop file by running its build script on a Mac), its icon on the window, the app's
-name and logo (by hand it came out named for its address with a plain icon, cause not
-found), and what becomes of the old app when the address changes. `install` is on by
-default on NixOS, the user's wish ("why not programs.eznix.enable = true?"), so `enable`
-alone gives this there; `install = false` is the way back to the app-mode window, which
-is what home-manager always has.
+bar and shows it properly (the user, in Brave), and the README says so. Having the entry
+open such an app was built that evening and taken out again the same hour (commits
+`7123382` and `90ddda6`, `programs.eznix.install` and `desktopIcon`, NixOS only), at the
+user's word: "this seems to complicated just for the download dialog to be visible". Do
+not build it again unasked. What it took, and what was found on the user's VM (NixOS,
+Plasma, looked at over SSH): a browser policy (`WebAppInstallForceList`) does make the
+browser install the app by itself at its next start, with eznix's own name; written
+through `programs.chromium.extraOpts` it goes to Chromium, Chrome and Brave alike, so each
+installed a copy; the browser lists the app on its apps page, and writes a shortcut of its
+own into the home folder that starts the browser by its bare name, which is not on the
+PATH when the browser is only in the store, so the menu showed nothing, and that shortcut
+has the file name an entry of ours for the app would have, so it stands in front of it.
+The identifier Chromium gives the app can be worked out from its address (two rounds of
+SHA-256, sixteen bytes, in the letters a to p) and came out right for eznix.
 
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With

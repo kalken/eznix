@@ -94,26 +94,12 @@ in
     };
   };
 
-  options.programs.eznix = common.programOptions // {
-    install = lib.mkOption {
-      type        = lib.types.bool;
-      default     = true;
-      description = "Have the entry open eznix as an app the browser has installed, where it otherwise opens a plain window of the browser: the same thing to look at, with the browser's own slim bar at its top, where a download shows properly (in the plain window the browser's note of a download comes up half outside it). The browser in `browser` is told to install it by a policy, which it does when it next starts: after the first rebuild with the entry, start that browser once and close it. Set it to false for the plain window.";
-    };
-    desktopIcon = lib.mkOption {
-      type        = lib.types.bool;
-      default     = false;
-      description = "Have the browser put a shortcut on the desktop too (not with `install` off).";
-    };
-  };
+  options.programs.eznix = common.programOptions;
 
   config = lib.mkMerge [
    # By itself, so that a machine can have the entry for another machine's editor without
    # running one.
    (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
-   (lib.mkIf (common.installed != [ ]) {
-     environment.etc."${common.policyDir}/eznix.json".text = builtins.toJSON { WebAppInstallForceList = common.installed; };
-   })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {
