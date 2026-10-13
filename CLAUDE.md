@@ -760,7 +760,12 @@ folder, the page's ping taking a redirect as a reason to reload, and both redire
 The user had switched HTTPS off in the editor and rebuilt, and the page hung, as did the
 app when reopened; with the change "it just makes the app blink when i login". Why was not
 found: my guess is a browser that tries https first by itself, which the new answer then
-sent back to http, round and round. That hang is therefore still there. The TLS handshake
+sent back to http, round and round. That hang is therefore still there. A second try the
+same day gave HTTPS and plain HTTP a port each (9443 and 9090), the one not in use answering
+with a page that said where eznix was and to install the app again (commit `966b08f`, also
+reverted): the user found that "doesnt work in a good way either" and chose instead an
+application-menu entry made from the configuration (`programs.eznix.enable`, not built
+yet), which follows a change of address by a rebuild. The TLS handshake
 moved from the listening socket into each connection's thread for that, which also stops a
 silent client from holding up `accept()`. Not in `test_server.py`, which has no
 `cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
