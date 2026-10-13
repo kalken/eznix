@@ -4678,7 +4678,7 @@ function _updateDirty() {
   if (saveBtn) {
     saveBtn.classList.toggle('is-idle', !dirty);
     saveBtn.setAttribute('aria-disabled', String(!dirty));
-    saveBtn.dataset.tooltip = _shortcutText(dirty ? 'Save all changes (Ctrl+S)' : 'Nothing to save (Ctrl+S)');
+    saveBtn.dataset.tooltip = _shortcutText(dirty ? 'Save all files to disk (Ctrl+S)' : 'Nothing to save (Ctrl+S)');
   }
   eznix.emit('dirty', dirty);
   // A restart was seen while still dirty (onRestartDetected() couldn't reload immediately then)

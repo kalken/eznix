@@ -1,21 +1,35 @@
 /* OS X Dark — the macOS dark appearance: the system's own greys and status colours, with its
    Graphite accent. macOS has no file of colours to read; what it says of itself was asked on
    2026-10-13 (NSColor, macOS 26.6): one surface, #1e1e1e, for windows and what is in them,
-   which is the page here, and #282828 under a page. Bars and cards are a step up from that
-   and of one colour, as in every theme since that day; the cards were #323232 before, what a
-   window was up to macOS 15. */
+   and #282828 under a page. The greys here are instead measured in a screenshot of a Finder
+   window the user sent that day, asking for the theme to look more like it (colours only),
+   each part read as the user said it should be:
+   - the window's own grey, #232323, is the bars and the sections, of one colour as in
+     every theme, and the sidebar's darker #1a1a1a the editor's page behind them;
+   - the line round the sidebar is the line round a section: white at a tenth, which is
+     also the system's separator colour and Finder's line between columns (#3a3a3a on the
+     window), so every thin line here is that;
+   - a button of the toolbar, #272727 with a rim of about #434343, is a button;
+   - an entry of the sidebar is a tab: nothing behind its name, and the selected one a
+     shade lighter than its ground (#282828 on the sidebar, so #313131 on the bar, the same
+     step) with its name in the system's blue, #0091ff. That blue is nowhere else: the
+     accent stays Graphite;
+   - the dimmer text is #9f9f9f (the text itself, #dfdfdf, was already Finder's).
+   For a moment that day the page and the sections were the other way round, the sections
+   in the sidebar's grey on a page of the window's: the user had said it so and took it
+   back on seeing it. Before all this the page was #1e1e1e and the bars and cards #2a2a2a. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
-  --bg:   #1e1e1e;
-  --bg2:  #2a2a2a;
-  --bg3:  #323232;
-  --bg4:  #3d3d3d;
+  --bg:   #1a1a1a;
+  --bg2:  #232323;
+  --bg3:  #272727;
+  --bg4:  #3a3a3a;
   --text:  #dfdfdf;
-  --text2: color-mix(in srgb, #dfdfdf 62%, #2a2a2a);
-  --text3: color-mix(in srgb, #dfdfdf 40%, #2a2a2a);
+  --text2: #9f9f9f;
+  --text3: color-mix(in srgb, #dfdfdf 40%, #232323);
   --accent:  #b4b4b9;
   --accent2: #8e8e93;
   /* The NixOS logo, every other arm: the two Graphite greys. */
@@ -35,12 +49,12 @@
 
   /* ── Borders ── */
   --border:  #3a3a3a;
-  --border2: #4a4a4a;
+  --border2: #434343;
   --input-border: #3a3a3a;
-  --select-option-bg:    #2c2c2e;
+  --select-option-bg:    var(--bg2);
   --select-option-color: #dfdfdf;
   --select-option-hover: #4a4a4d;
-  --popup-bg: #2c2c2e; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour, the user's wish (2026-10-13) */
   --search-file-color: #5aa9ff; /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #636366;
@@ -57,16 +71,18 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #484848;
-  --tab-active-border: #565656;
-  --tab-active-text:   var(--text);
+  --tab-active-bg:     #313131;
+  --tab-active-border: #313131;
+  --tab-active-text:   #0091ff;
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Finder's sidebar */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
-  --required-bg:   color-mix(in srgb, #ff453a 16%, #2a2a2a);
+  --required-bg:   color-mix(in srgb, #ff453a 16%, #232323);
   --required-text: var(--red);
-  --error-bg:      color-mix(in srgb, #ff453a 10%, #2a2a2a);
-  --success-bg:    color-mix(in srgb, #32d74b 12%, #2a2a2a);
-  --success-border: color-mix(in srgb, #32d74b 35%, #2a2a2a);
+  --error-bg:      color-mix(in srgb, #ff453a 10%, #232323);
+  --success-bg:    color-mix(in srgb, #32d74b 12%, #232323);
+  --success-border: color-mix(in srgb, #32d74b 35%, #232323);
 
   /* ── Nix expression fields ── */
   --expr-border: #3a3a3a;
@@ -104,7 +120,7 @@
   --wildcard-bg:    #2c2c2e;
   --wildcard-hover: #363638;
   --shadow:         rgb(0 0 0 / 45%);
-  --panel-hairline: rgb(0 0 0 / 45%); /* 1px line along a panel edge */
+  --panel-hairline: rgb(255 255 255 / 10%); /* 1px line along a panel edge: lighter than what it lies on, as Finder's are */
   --panel-shadow:   rgb(0 0 0 / 30%); /* small soft shadow a panel casts beside that line */
   --overlay:        #00000099;
   --scrollbar:      #5a5a5a;

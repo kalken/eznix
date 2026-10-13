@@ -54,6 +54,8 @@
   --tab-active-bg:     var(--bg4);
   --tab-active-border: var(--border2);
   --tab-active-text:   var(--text);
+  --tab-bg:            var(--bg3);     /* a tab that is not the open one: a button's fill and line unless set */
+  --tab-border:        var(--border2);
 
   /* ── Semantic badges ── */
   --required-bg:   #5c1414;

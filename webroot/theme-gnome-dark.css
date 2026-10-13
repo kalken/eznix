@@ -61,6 +61,8 @@
   --tab-active-bg:     #434347;
   --tab-active-border: #55555a;
   --tab-active-text:   var(--text);
+  --tab-bg:            var(--bg3);     /* a tab that is not the open one: a button's fill and line unless set */
+  --tab-border:        var(--border2);
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #ff7b63 16%, #2e2e32);

@@ -1,20 +1,30 @@
-/* OS X Light — the macOS light appearance: the system's own greys and status colours, with
-   its Graphite accent. The counterpart of theme-osx-dark.css (see there for where the
-   colours are from): white, which a window and what is in it are on macOS 26, for the cards
-   and the bars alike, on a page of #ececec, a window's grey up to macOS 15. The bars were
-   #f6f6f6 until 2026-10-13. */
+/* OS X Light — the macOS light appearance, with its Graphite accent. The counterpart of
+   theme-osx-dark.css and made the same way (see there for how each part is read), from a
+   screenshot of the same Finder window in light mode that the user sent on 2026-10-13:
+   - the window's white is the bars and the sections, and the sidebar's #f6f6f6 the
+     editor's page behind them;
+   - every thin line is black at a tenth, the system's separator colour and Finder's line
+     between columns (#e7e7e7 on white);
+   - a button of the toolbar is white on a white bar, told apart there by a soft shadow, which
+     a colour cannot be: here it has a line of #dddddd, the line under Finder's column
+     titles, and #e6e6e6, the toolbar's selected button, under the pointer;
+   - a tab is a name with nothing behind it, and the open one a shade darker than its ground
+     (#ededed on the sidebar, so #f6f6f6 on the bar, the same step) with its name in the
+     system's blue, #0070fa;
+   - the text is #222222 and the dimmer text #818181.
+   Before, the page was #ececec, a window's grey up to macOS 15, and the buttons grey. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: only light;
   /* ── Base palette ── */
-  --bg:   #ececec;
+  --bg:   #f6f6f6;
   --bg2:  #ffffff;
-  --bg3:  #e4e4e4;
-  --bg4:  #d8d8d8;
-  --text:  #262626;
-  --text2: #595959;
-  --text3: color-mix(in srgb, #262626 45%, #ececec);
+  --bg3:  #ffffff;
+  --bg4:  #e6e6e6;
+  --text:  #222222;
+  --text2: #818181;
+  --text3: color-mix(in srgb, #222222 45%, #ffffff);
   --accent:  #6e6e73;
   --accent2: #8e8e93;
   /* The NixOS logo, every other arm: the two Graphite greys. */
@@ -33,13 +43,13 @@
   --term-padding: 4px;
 
   /* ── Borders ── */
-  --border:  #d9d9d9;
-  --border2: #c6c6c8;
+  --border:  #e6e6e6;
+  --border2: #dddddd;
   --input-border: #d1d1d6;
-  --select-option-bg:    #ffffff;
-  --select-option-color: #262626;
+  --select-option-bg:    var(--bg2);
+  --select-option-color: #222222;
   --select-option-hover: #e4e4e6;
-  --popup-bg: #ffffff; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour, the user's wish (2026-10-13) */
   --search-file-color: #0064d1; /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #6e6e73;
@@ -56,9 +66,11 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
-  --tab-active-bg:     #d0d0d4;
-  --tab-active-border: var(--border2);
-  --tab-active-text:   var(--text);
+  --tab-active-bg:     #f6f6f6;
+  --tab-active-border: #f6f6f6;
+  --tab-active-text:   #0070fa;
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Finder's sidebar */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #d70015 10%, #ffffff);
@@ -103,7 +115,7 @@
   --wildcard-bg:    #f2f2f7;
   --wildcard-hover: #e5e5ea;
   --shadow:         rgb(0 0 0 / 14%);
-  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
+  --panel-hairline: rgb(0 0 0 / 10%); /* 1px line along a panel edge */
   --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
   --overlay:        #00000055;
   --scrollbar:      #c7c7cc;
@@ -111,8 +123,8 @@
 
   /* ── Terminal theme ── */
   --term-bg:             var(--editor-bg);
-  --term-fg:             #262626;
-  --term-cursor:         #262626;
+  --term-fg:             #222222;
+  --term-cursor:         #222222;
   --term-cursor-style:          bar;
   --term-cursor-inactive-style: none;
   --term-cursor-blink:          0;

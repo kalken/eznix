@@ -73,12 +73,13 @@ comes from them.
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
 | Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
 | A top-level section's card | `--card-bg` (normally `var(--bg2)`) | The bars' colour in every built-in theme; must be told apart from the page it sits on |
+| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line; the `osx-*` and `breeze-*` themes have none, a tab there being a name until it is the open one |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 
 - **Page and card need visible contrast, and cards are the colour of the bars.** A dark theme
   has the page darkest and the bars and cards a step lighter; a light theme has a grey page
   with white bars and cards (`breeze-light` the other way round, white page and grey bars and
-  cards, since that is where Plasma has those two colours).
+  cards, since that is where Dolphin has those two colours).
 - **Or a line in place of the fill.** `--card-border` is the line around a card (normally
   `var(--panel-hairline)`), and `--value-border` one around a value strip (normally
   `transparent`, which is none). No built-in theme uses them that way; they are there for a
@@ -176,6 +177,40 @@ Each theme has a dot in the header. Paint it with the theme's own page backgroun
 give it a ring in the accent, or a neutral grey if the theme has no accent. Swatches are sorted
 from darkest to lightest by that colour every time the page loads, so there is no order to
 maintain — but a swatch painted with some other colour will sort into the wrong place.
+
+## A theme from a screenshot
+
+A theme that is to look like a desktop is made from a screenshot of that desktop's file
+manager (Finder, Dolphin, Files) in the appearance wanted. The colours are measured in the
+picture's pixels, never judged by eye and never taken from a list of named colours alone: a
+system's own names say what a surface is called, not what ends up on screen (macOS names
+`#1e1e1e` for a window that Finder draws as `#232323`). Each part of the window gives one
+thing here:
+
+| In the file manager | Becomes | Variable |
+|---|---|---|
+| The window's own surface, which the toolbar has too | the bars and the cards | `--bg2`, `--card-bg` |
+| A panel of another shade in the window: the sidebar | the editor's page | `--bg`, `--editor-bg` |
+| The line round that panel, and the lines between columns | the line round a card and every thin line | `--panel-hairline`, `--card-border` |
+| A button of the toolbar: its fill and its rim | a button | `--bg3`, `--border2` |
+| An entry of the sidebar that is not selected | a tab | `--tab-bg`, `--tab-border` |
+| The selected entry: its fill and the colour of its name | the open tab | `--tab-active-bg`, `--tab-active-border`, `--tab-active-text` |
+| A file's name | text | `--text` |
+| The dimmer column beside it (kind, date) | dimmer text | `--text2` |
+| What the selection or a link is coloured with | the accent, if the theme has one | `--accent` |
+
+That reading is the user's, given with a Finder window (2026-10-13). A fill measured on one
+ground and used on another keeps its distance from the ground, not its value (the selected
+entry is #282828 on Finder's #1a1a1a sidebar and #313131 on the #232323 bar here). A rim
+two pixels wide in a picture taken at double size is one line here, of the colour between
+the two.
+
+Everything else follows from those by the rules above: the value strip stays derived, the
+remaining greys are steps between the measured ones, and the signal colours are the
+system's own. Only colours come from the picture: the layout, the spacing and the shapes
+are the same in every theme. The `osx-*` and `breeze-*` themes were made this way, from Finder and from Dolphin; a
+scheme's own file, where there is one, is the check that the picture's colours are true
+(Breeze's Window, View and Header colours were in the screenshot to the digit).
 
 ## Adding a built-in theme
 

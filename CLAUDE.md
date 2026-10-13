@@ -533,6 +533,16 @@ tried and taken back. As it stands:
   settings surface by surface, until the user found the result horrible and had both rebuilt
   by the rules in `THEMES.md` like the others, with Plasma's colours.
 
+**A theme that copies a desktop is made from a screenshot of its file manager** (THEMES.md,
+"A theme from a screenshot"), the user's idea on 2026-10-13: the window's own surface is the
+bars and the sections, a panel of another shade the editor's page, a sidebar entry a tab
+(`--tab-bg`, `--tab-border`, new that day so a tab can be a bare name) and the selected one
+the open tab; popups have the bars' colour. Measured in the picture's pixels, converted to
+sRGB (a Mac's screenshot is in the display's profile; `sips -s format bmp` converts). Done
+for `osx-*` from Finder and `breeze-*` from Dolphin, each seen by the user in the test
+server but for `breeze-light`; `gnome-*` still wait for a screenshot and have libadwaita's
+values. Sections and bars are one colour in every theme, also the user's rule that day.
+
 One mistake worth knowing about: a block of these rules (the name column's width, the indent,
 the heading's padding) was deleted by an edit that replaced "everything between two comments"
 in `style.css`, was pushed, and was then papered over with workarounds for an hour before the

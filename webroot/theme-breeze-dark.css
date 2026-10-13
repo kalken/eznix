@@ -1,35 +1,39 @@
-/* Breeze Dark — KDE Plasma's dark colour scheme, put together by the rules every theme here
-   follows (THEMES.md): one ramp of neutrals with the page darkest, the bars a step lighter and
-   the cards a step lighter again, one accent, four signals, and nothing drawn that the other
-   themes fill. The greys are Plasma's own, each where a KDE program has it: its View colour
-   (#141618), what a program's content lies on, is the editor's page, and its Header and Button colour
-   (#292c30) the bars and the cards alike; its Window colour (#202326) is what else is the
-   window's own. Until 2026-10-13 the page was the Window colour and the cards a grey
-   that is not in the scheme (#31363b); the user saw that the editor was darker in KDE's
-   programs and asked for the source's values. The cards were the Window colour for a moment
-   then, darker than the bars, which the user took for a mistake: they are to look like the
-   bars. The accent
-   is the Plasma blue, the signal colours and the dimmed text are the scheme's, and the
-   terminal has Konsole's Breeze colours. The scheme's values are read from BreezeDark.colors
-   (breeze 6.7). What is marked (the open file's tab, a menu's entry under the pointer, a
-   drop target) is the dark blue Plasma fills a selected entry with, #1b4155, with no line
-   round it and its text unchanged: measured in a screenshot of Dolphin's sidebar the user
-   sent, where the scheme file only has the brighter #1e5774.
-   On 2026-10-11 it was first laid out to copy Plasma's System Settings surface by surface,
-   with lines round sections and value strips where the other themes have fills; after an
-   afternoon of that the user found it horrible and asked for it by the general rules. */
+/* Breeze Dark — KDE Plasma's dark colour scheme, made from a screenshot of a Dolphin window
+   the user sent on 2026-10-13, read as THEMES.md says ("A theme from a screenshot") and
+   checked against BreezeDark.colors (breeze 6.7), whose Window, View and Header colours the
+   picture has to the digit:
+   - the toolbar and the Places panel, the scheme's Window colour (#202326), are the bars
+     and the sections; the file list, its View colour (#141618), the editor's page;
+   - a button's and a field's line is Dolphin's line between panels, #4c4e51; the thin
+     lines of the page (round a section, inside one, along a bar) are dimmer, #35383c,
+     since the user found Dolphin's too bright for them;
+   - a button is the scheme's Button colour (#292c30); Dolphin's own toolbar buttons have
+     no fill at all, which a button here cannot be without changing more than colours;
+   - a tab is a name with nothing behind it, as an entry of Places, and the open one is
+     filled as the selected entry, #1b4155, its text unchanged. (What is marked anywhere
+     else has that blue too: a menu's entry under the pointer, a drop target. The scheme
+     file only has the brighter #1e5774.) The line round the open tab is the accent's:
+     Plasma has none, the user liked the tab better with one.
+   The accent is the Plasma blue, the signal colours and the dimmed text are the scheme's,
+   and the terminal has Konsole's Breeze colours.
+   How it got here: on 2026-10-11 it was laid out to copy Plasma's System Settings surface by
+   surface, with lines round sections and value strips where the other themes have fills;
+   after an afternoon of that the user found it horrible and asked for it by the general
+   rules. Until 2026-10-13 the page was the Window colour, the bars the Header colour
+   (#292c30, which is Dolphin's title bar and not its toolbar: the user saw that the grey was
+   not a KDE program's) and the cards a grey that is not in the scheme (#31363b). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
   --bg:   #202326;
-  --bg2:  #292c30;
-  --bg3:  #31363b;
+  --bg2:  #202326;
+  --bg3:  #292c30;
   --bg4:  #3b4045;
   --text:  #fcfcfc;
   --text2: #a1a9b1;
-  --text3: color-mix(in srgb, #a1a9b1 70%, #292c30);
+  --text3: color-mix(in srgb, #a1a9b1 70%, #202326);
   --accent:  #3daee9;
   --accent2: #1d99f3;
   /* The NixOS logo, every other arm: the two Breeze blues. */
@@ -49,12 +53,12 @@
 
   /* ── Borders ── */
   --border:  #35383c;
-  --border2: #45484c;
-  --input-border: #45484c;
-  --select-option-bg:    #2d3136;
+  --border2: #4c4e51;
+  --input-border: #4c4e51;
+  --select-option-bg:    var(--bg2);
   --select-option-color: #fcfcfc;
   --select-option-hover: #1b4155;
-  --popup-bg: #2d3136; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour, the user's wish (2026-10-13) */
   --search-file-color: var(--accent); /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
@@ -74,6 +78,8 @@
   --tab-active-bg:     #1b4155;
   --tab-active-border: #3daee9; /* the accent: Plasma has no line round a selected entry, the user liked the tab better with one */
   --tab-active-text:   #fcfcfc;
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Dolphin's Places */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #da4453 16%, #202326);
@@ -118,7 +124,7 @@
   --wildcard-bg:    #2d3136;
   --wildcard-hover: #353a3f;
   --shadow:         rgb(0 0 0 / 45%);
-  --panel-hairline: rgb(0 0 0 / 40%); /* 1px line along a panel edge */
+  --panel-hairline: #35383c; /* 1px line along a panel edge. Dolphin's line between panels is #4c4e51, which the user found too bright here, where there are many more lines than in Dolphin */
   --panel-shadow:   rgb(0 0 0 / 28%); /* small soft shadow a panel casts beside that line */
   --overlay:        #00000099;
   --scrollbar:      #4d5257;

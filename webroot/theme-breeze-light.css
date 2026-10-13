@@ -1,22 +1,24 @@
-/* Breeze Light — KDE Plasma's light colour scheme, by the same rules as theme-breeze-dark.css
-   (see there), each grey where a KDE program has it: a white page (the scheme's View colour),
-   the bars and the cards alike in its Header colour (#dee0e2), its Window colour (#eff0f1)
-   for what else is the window's own, the Plasma blue as the accent. Until 2026-10-13 the page
-   was the Window colour and the cards white; it follows the dark theme, changed that day. Buttons
-   are its Button colour (#fcfcfc), lighter than the bar they stand on as Plasma's are, and
-   darken a little under the pointer: as a step darker than the bar, which is what the other
-   light theme does, they looked wrong to the user here. What is marked (the open file's
-   tab, a menu's entry under the pointer, a drop target) is the light blue Plasma fills a
-   selected entry with, #c2e0f5, with no line round it and its text unchanged: measured in a
-   screenshot of Dolphin's sidebar the user sent, as #1b4155 was for the dark theme. The scheme's
-   values are read from BreezeLight.colors (breeze 6.7). */
+/* Breeze Light — KDE Plasma's light colour scheme, made as theme-breeze-dark.css is (see
+   there) from a screenshot of the same Dolphin window in the light scheme, sent by the user
+   on 2026-10-13 and checked against BreezeLight.colors (breeze 6.7):
+   - the toolbar and the Places panel, the scheme's Window colour (#eff0f1), are the bars
+     and the sections; the file list, its View colour (white), the editor's page;
+   - every thin line is Dolphin's, #c6c8c9, and so is a button's and a field's;
+   - a button is the scheme's Button colour (#fcfcfc), lighter than the bar it stands on as
+     Plasma's are, and darkens a little under the pointer: as a step darker than the bar,
+     which is what the other light themes did, they looked wrong to the user here;
+   - a tab is a name with nothing behind it, and the open one is filled as the selected
+     entry of Places, #c2e0f5, its text unchanged, as is whatever else is marked.
+   Until 2026-10-13 the page was the Window colour with white cards, and then for some hours
+   white with the bars and cards in the Header colour (#dee0e2), which is Dolphin's title bar
+   and not its toolbar. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: only light;
   /* ── Base palette ── */
   --bg:   #eff0f1;
-  --bg2:  #dee0e2;
+  --bg2:  #eff0f1;
   --bg3:  #fcfcfc;
   --bg4:  #eaecee;
   --text:  #232629;
@@ -41,12 +43,12 @@
 
   /* ── Borders ── */
   --border:  #cfd3d7;
-  --border2: #b8bdc2;
-  --input-border: #c4c9cd;
-  --select-option-bg:    #ffffff;
+  --border2: #c6c8c9;
+  --input-border: #c6c8c9;
+  --select-option-bg:    var(--bg2);
   --select-option-color: #232629;
   --select-option-hover: #c2e0f5;
-  --popup-bg: #ffffff; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour, the user's wish (2026-10-13) */
   --search-file-color: #1f72aa; /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #2980b9;
@@ -66,13 +68,15 @@
   --tab-active-bg:     #c2e0f5;
   --tab-active-border: #3daee9; /* the accent: Plasma has no line round a selected entry, the user liked the tab better with one */
   --tab-active-text:   #232629;
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Dolphin's Places */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
-  --required-bg:   color-mix(in srgb, #c7303f 10%, #dee0e2);
+  --required-bg:   color-mix(in srgb, #c7303f 10%, #eff0f1);
   --required-text: var(--red);
-  --error-bg:      color-mix(in srgb, #c7303f 8%, #dee0e2);
-  --success-bg:    color-mix(in srgb, #1e8e4e 12%, #dee0e2);
-  --success-border: color-mix(in srgb, #1e8e4e 40%, #dee0e2);
+  --error-bg:      color-mix(in srgb, #c7303f 8%, #eff0f1);
+  --success-bg:    color-mix(in srgb, #1e8e4e 12%, #eff0f1);
+  --success-border: color-mix(in srgb, #1e8e4e 40%, #eff0f1);
 
   /* ── Nix expression fields ── */
   --expr-border: #cfd3d7;
@@ -110,7 +114,7 @@
   --wildcard-bg:    #f7f7f7;
   --wildcard-hover: #e9eaeb;
   --shadow:         rgb(0 0 0 / 14%);
-  --panel-hairline: rgb(0 0 0 / 12%); /* 1px line along a panel edge */
+  --panel-hairline: #c6c8c9; /* 1px line along a panel edge: the line between Dolphin's panels */
   --panel-shadow:   rgb(0 0 0 / 14%); /* small soft shadow a panel casts beside that line */
   --overlay:        #00000055;
   --scrollbar:      #b8bdc2;
