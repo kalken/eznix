@@ -73,8 +73,11 @@
     transition: background-color 600000s 0s, color 600000s 0s;
   }
   .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
-  /* The button gets the cursor once a saved login is chosen (the script below), so it shows it. */
-  .login-card .btn:focus { outline: 2px solid var(--input-focus-border); outline-offset: 2px; }
+  /* The button gets the cursor once a saved login is chosen (the script below), so it shows it:
+     its one border in the colour of its text, which stands out from its fill in any theme. It
+     was a ring in the focus colour around the border, two lines, and the focus colour is the
+     button's own fill in some themes. */
+  .login-card .btn:focus { outline: none; border-color: currentColor; }
   .login-error { color: var(--red); font-size: 12px; margin-top: 14px; min-height: 18px; text-align: center; }
   .login-ca-link { text-align: center; margin-top: 14px; font-size: 11px; }
   .login-ca-link a { color: var(--text2); text-decoration: none; }
