@@ -123,6 +123,7 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # [[buttons]]
 # label       = "Rebuild"
 # command     = "sudo nixos-rebuild switch"
+# description = "Builds and switches"  # shown when the pointer rests on the button, above the command
 # save_first  = true                  # saves unsaved changes before it runs
 # clear_first = true
 # menu        = "System"              # buttons sharing a menu name become one dropdown; "A/B" nests

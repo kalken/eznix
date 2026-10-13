@@ -673,6 +673,12 @@ and refuses the whole zip when a path resolves outside the flake, as through a l
 `test_server.py` now imports zips made to get out, both ways. Not looked at in that pass:
 what a zip can do other than by its paths (its size, say), and anything in the page.
 
+**A button can say what it does** (`description` on an entry of `services.eznix.buttons`,
+`_buttonTip()` in `terminal-panel/terminal.js`): its tooltip then has that on a line above
+the command, in the bar and in a menu alike, and above the "Saves your changes first" of a
+`save_first` button. The user's wish, 2026-10-13. Checked by running the function and the
+save mark's, lifted out of the page; not in a browser.
+
 **A tab can be given a place** (`_tabOrders()`, `_tabSort()`, `services.eznix.paths.PATH = {
 order }`, the option in `options.nix`): lowest first, a tab without a number counting as 0,
 equals by name as before; a folder among the folders, a file among the files of its row.

@@ -288,10 +288,14 @@ under `services.eznix.buttons` in any of your files, and they appear straight aw
 
 ```json
 { "services": { "eznix": { "buttons": [
-  { "label": "Rebuild", "command": "sudo nixos-rebuild switch", "save_first": true },
+  { "label": "Rebuild", "command": "sudo nixos-rebuild switch", "save_first": true,
+    "description": "Builds the system and switches to it" },
   { "label": "Update",  "command": "nix flake update", "menu": "Flake" }
 ] } } }
 ```
+
+Resting the pointer on a button shows its command, and above it the `description`, if you
+gave it one: what the button does, in your own words.
 
 A button with `save_first` saves any unsaved changes before it runs its command; the small
 Save icon on it is greyed until there is something to save. Buttons with the same

@@ -66,7 +66,7 @@ Configuration (eznix.toml; every key optional unless noted):
   backups         how many saved versions of each file to keep (0: none)
   debug           true: log what is only worth knowing while looking into something, each
                   request and what took long among it (default false; also --debug)
-  [[buttons]]     label, command, save_first, clear_first, menu, mode, static, separator
+  [[buttons]]     label, command, description, save_first, clear_first, menu, mode, static, separator
   [menus.NAME]    order, separator: where the menu NAME of those buttons stands, and a line beside it
 
 The HTTP API the page uses is documented where it is handled, in Handler.do_GET/do_POST.
