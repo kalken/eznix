@@ -100,7 +100,7 @@
           description = "A nix-darwin flake edited in eznix, for ~/.config/nix-darwin";
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your macOS user name.
-            2. sudo nix run nix-darwin -- switch --flake "$HOME/.config/nix-darwin#default"
+            2. sudo nix run nix-darwin/nix-darwin-26.05#darwin-rebuild -- switch --flake "$HOME/.config/nix-darwin#default"
             3. Open http://localhost:9090 and log in with your macOS name and password.
           '';
         };
@@ -119,7 +119,7 @@
           welcomeText = ''
             1. In eznix/home.json, replace YOUR-USER-NAME (three times) with your user name.
             2. Put a password for the editor in ~/.config/eznix-password (chmod 600).
-            3. nix run home-manager/master -- switch --flake "$HOME/.config/home-manager#default"
+            3. nix run home-manager/release-26.05 -- switch --flake "$HOME/.config/home-manager#default"
             4. Open http://localhost:9090 and log in with your name and that password.
           '';
         };

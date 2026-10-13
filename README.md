@@ -85,7 +85,7 @@ have the newest packages, the comment at its top names what to put there instead
 **Try it**, nothing installed:
 
 ```sh
-nix run github:kalken/eznix -- --flake /path/to/your/flake --password something
+nix run --no-write-lock-file github:kalken/eznix -- --flake /path/to/your/flake --password something
 ```
 
 Open http://localhost:9090 and log in as yourself with that password.

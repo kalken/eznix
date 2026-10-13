@@ -436,11 +436,16 @@ the time (nixpkgs and, where there is one, the branch of nix-darwin or home-mana
 with it), with the rolling ones named in a comment for whoever wants them, and so does
 eznix's own `flake.nix`: the user's choice on 2026-10-12, after a test install showed the
 Quick Start taking a fresh 26.05 machine to 26.11 ("go against stable", "people who are more
-advanced" can change it). The number is in each `templates/*/flake.nix`, in `flake.nix` and
+advanced" can change it). The number is in each `templates/*/flake.nix`, in `flake.nix` (its
+own nixpkgs, and the first-switch commands in the templates' `welcomeText`, which named the
+rolling nix-darwin and home-manager until 2026-10-13) and
 in the README's first-switch commands for the Mac and other Linux, and has to be raised by
 hand when a release comes out, in May and November. There is no `flake.lock` in the
 repository, also by the user's choice ("i dont want to update the lock-file manually"), so
-`nix flake init -t` prints a harmless "not writing modified lock file". The one thing to fill in is
+`nix flake init -t` prints a harmless "not writing modified lock file", and running or
+building straight from GitHub needs `--no-write-lock-file`, without which Nix stops with
+"cannot write modified lock file" (the user's catch, 2026-10-13; the README's "Try it" had
+the bare command until then, as had the installer's Quick Start). The one thing to fill in is
 `YOUR-USER-NAME`; an assertion in `options.nix` catches it left in. They name
 `github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
 checkout, `--override-input eznix path:.`.
