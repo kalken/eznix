@@ -764,6 +764,10 @@ function _runInTerminal(btn) {
         if (_termWs) _termWs.send('clear\r');
       }
       if (_termWs) _termWs.send(btn.command + '\r');
+      // The keys go to the terminal from here on: what was started may ask for something,
+      // sudo for its password first of all (the user, 2026-10-13). The cursor stayed on the
+      // button, and the password was typed at nothing.
+      if (_term) _term.focus();
     });
   });
 }
