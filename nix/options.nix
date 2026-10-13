@@ -130,7 +130,13 @@ let
   appEntries =
     lib.optional prog.enable (mkApp ({
       inherit (prog) url;
-      label = if hostOf prog.url == "localhost" then "eznix" else "eznix (${hostOf prog.url})";
+      # Named for the machine, as the page's own title is and as the entries of `apps` are:
+      # its host name where the module knows it and the address is this machine's, else
+      # the address's host. (It was plain "eznix" for localhost at first; the user asked
+      # for the name, 2026-10-13.)
+      label = let host = hostOf prog.url; mine = host == "localhost" || builtins.elem host hostNames; in
+        if mine && hostNames != [ ] then "eznix (${builtins.head hostNames})"
+        else if host == "localhost" then "eznix" else "eznix (${host})";
     } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; }))
     ++ lib.mapAttrsToList (name: url: mkApp { inherit url; label = "eznix (${name})"; }) prog.apps;
 in
