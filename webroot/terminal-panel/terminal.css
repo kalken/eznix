@@ -2,7 +2,12 @@
    (--term-* in each theme file). */
 
 /* ── Terminal Panel ── */
+/* The panel's place in the page: as tall as its row of buttons (--below-bar, measured by
+   terminal.js) and no more. The panel is pinned to its bottom edge and grows upwards out of
+   it, in front of the editor, which keeps its size (see the top of terminal.js). */
+.terminal-slot { position: relative; z-index: 30; flex-shrink: 0; height: var(--below-bar, 37px); }
 .terminal-panel {
+  position: absolute; left: 0; right: 0; bottom: 0;
   background: var(--bg2);
   /* Same panel edge as the top bar (see .tab-bar-row), along its top; z-index so it's drawn
      over the editor above it rather than under it. */
@@ -13,7 +18,7 @@
   flex-direction: column;
   height: 25vh;
   transition: height .18s ease;
-  position: relative; /* anchor for .terminal-header-group, pinned to the bottom edge below */
+  /* (positioned, above: also the anchor for .terminal-header-group, pinned to its bottom edge) */
   /* How tall one row of buttons is (.terminal-header): 26px of button, 3px under it and 8px
      above it, the 1px line among those. (10px, what the top bar's buttons have to that bar's
      lower edge, was tried and was too much.) Everything that makes room for a row uses this. */
@@ -21,7 +26,7 @@
 }
 /* No line between the panel and the status bar under it: the two read as one strip at the
    bottom of the page. Without a terminal the status bar keeps its line, against the editor. */
-.terminal-panel + .statusbar { border-top: none; }
+.terminal-slot + .statusbar { border-top: none; }
 .terminal-panel.collapsed { height: var(--term-bar) !important; }
 /* Its top edge is dragged to size it (eznix.resizable()), which a hidden terminal has no use for. */
 .terminal-panel.collapsed > .resize-handle { display: none; }

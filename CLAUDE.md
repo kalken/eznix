@@ -150,6 +150,16 @@ message), never the panel's. Tried with a small WebSocket client through the tes
 are two shells, coming back to a name is the same shell, `end` ends a named one and leaves
 the panel's alone. The terminal in the page was not looked at.
 
+**The terminal panel comes up in front of the editor and takes no room from it**
+(`.terminal-slot` in `terminal-panel/`, `--covered-below` in `style.css`), since 2026-10-13:
+its place in the page is its row of buttons and the panel grows upwards out of that. Before,
+the editor shrank and grew with it, and with the panel hiding on a click outside it a click
+in the editor resized the editor under the pointer; the user reported the page scrolling
+"sometimes" on a click and on a right-click, and said the editor "should not be affected at
+all by the terminal". That this was the cause of those reports is my reading, not something
+seen: none of it was looked at in a browser. The editor gets as much room under its last
+line as the open panel covers, so a file's end can still be scrolled into view.
+
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
 false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch and reloads a

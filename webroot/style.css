@@ -198,6 +198,10 @@ input[type=text].key-rename-input {
 /* The editor's two surfaces are named by the themes: --editor-bg is the page, --card-bg the
    filled block each top-level section gets. */
 .editor-area { background: var(--editor-bg); flex: 1; overflow-y: auto; padding: 10px 12px; scroll-padding-top: 8px; scroll-padding-bottom: 8px; }
+/* Room under the last line for whatever stands in front of the editor's lower part
+   (--covered-below, set by what does: the open terminal panel), so that the end of a file can
+   be scrolled up above it. Room only: nothing that is on screen moves when it changes. */
+.editor-area { padding-bottom: calc(10px + var(--covered-below, 0px)); scroll-padding-bottom: calc(8px + var(--covered-below, 0px)); }
 
 /* ── Sections ── */
 /* Nesting is shown by indentation and colour only, no rules or bars: a top-level section is a

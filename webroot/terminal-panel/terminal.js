@@ -9,7 +9,14 @@ const TERMINAL_AUTO_HIDE = _TERM_CONFIG.auto_hide !== false; // terminal_auto_hi
 const STATIC_BUTTONS     = _TERM_CONFIG.buttons || [];       // from [[buttons]] in eznix.toml — not tied to any tab
 const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME] in eznix.toml, see getMenus()
 
-// The panel sits between the editor and the status bar. The restart notice is fixed to the
+// The panel stands on the status bar and comes up in front of the editor: its place in the
+// page (.terminal-slot) is only as tall as its row of buttons, whatever the panel's own
+// height, so that showing and hiding it changes nothing about the editor. Until 2026-10-13
+// it took its height from the editor, which grew and shrank with it; with the panel set to
+// hide on a click outside it, a click in the editor resized the editor under the pointer,
+// and near the end of a file what was clicked on moved (the user: "sometimes when i click
+// in the editor the page scrolls", "the editor window should not be affected at all by the
+// terminal"). The restart notice is fixed to the
 // right corner of the screen, right above wherever the terminal bar starts (bottom set fresh
 // by _updateTermRestartPopup()): that edge is a constant screen position whatever the panel's
 // size, while the panel's own top edge moves -- anchoring there made the notice jump.
@@ -18,7 +25,7 @@ const _RELOAD_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none
 document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
 <div class="term-restart-popup hidden" id="term-restart-popup" onclick="restartTerminal()">Terminal has changed - click to restart</div>
 
-<div class="terminal-panel collapsed" id="terminal-panel">
+<div class="terminal-slot"><div class="terminal-panel collapsed" id="terminal-panel">
   <div class="terminal-body">
     <div id="term-output"></div>
     <div class="term-status-banner hidden" id="term-status-banner"></div>
@@ -38,7 +45,7 @@ document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
       <div class="terminal-cmd-btns" id="terminal-cmd-btns-install"></div>
     </div>
   </div>
-</div>
+</div></div>
 `);
 
 function _buildTermTheme() {
@@ -933,6 +940,13 @@ eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme
   const publish = () => document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
   new ResizeObserver(publish).observe(bars);
   publish();
+  // And how much of the editor the open panel stands in front of (--covered-below): the
+  // editor has that much room under its last line, so the end of a file can still be
+  // brought into view above the panel.
+  const panel = document.getElementById('terminal-panel');
+  const covered = () => document.documentElement.style.setProperty('--covered-below', Math.max(0, panel.offsetHeight - bars.offsetHeight) + 'px');
+  new ResizeObserver(covered).observe(panel);
+  covered();
 }
 
 // The panel's top edge can be dragged to any height between the three the buttons give. That

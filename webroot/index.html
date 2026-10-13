@@ -755,10 +755,13 @@ function _toSystemClipboard(text) {
     ta.value = text;
     ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
     document.body.appendChild(ta);
+    // Without moving the page: taking the cursor, a field asks to be brought into view, the
+    // one off the screen here and the one the cursor goes back to after.
+    ta.focus({ preventScroll: true });
     ta.select();
     try { document.execCommand('copy'); } catch (e) {}
     ta.remove();
-    if (had && had.focus) had.focus();
+    if (had && had.focus) had.focus({ preventScroll: true });
   };
   try {
     if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).catch(byField); return; }
