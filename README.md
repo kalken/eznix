@@ -193,6 +193,9 @@ off without deleting it (right-click, Disable). Nothing is written until you pre
 every save keeps the previous version of the file (right-click a tab, Restore; Backup there
 keeps a copy of the file as it is on disk right now).
 
+To take one section or option to another computer, right-click it and choose Copy: it is
+also put on the clipboard as text, which you paste into Import in the editor there.
+
 Importing and exporting files is on right-click too: a tab for one file, a folder for its
 files, and the empty part of the tab bar for all of them (Import, Export all). The System
 button at the top is the whole flake instead; see [plugins](#-plugins).

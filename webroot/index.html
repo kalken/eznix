@@ -733,10 +733,44 @@ function pathStr(path) { return path.length ? path.join('.') : 'root'; }
 // the paste that consumes it.
 let _clipboard = null; // { path, value, sourceFile }
 
+// What is copied is also put on the computer's own clipboard, as text: JSON, the value inside
+// the sections it lies in, so that pasted into Import, in this editor or one on another
+// computer, it lands where it came from. The user asked how to take a section to another
+// computer (2026-10-13); the page's own clipboard above only reaches the files of this page.
+// Something in a list is put there bare: wrapped, it would be a list of that one item, and
+// an import puts a list in the place of the one that is there.
+function _asImportText(path, value) {
+  let out = value;
+  for (let i = path.length - 1; i >= 0; i--) {
+    if (Array.isArray(_contentAt(path.slice(0, i)))) return JSON.stringify(value, null, 2);
+    out = { [path[i]]: out };
+  }
+  return JSON.stringify(out, null, 2);
+}
+// navigator.clipboard is only there on https and on localhost; the page is also opened by
+// plain http from another machine, where the old way, copying out of a field, still works.
+function _toSystemClipboard(text) {
+  const byField = () => {
+    const ta = document.createElement('textarea'), had = document.activeElement;
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    ta.remove();
+    if (had && had.focus) had.focus();
+  };
+  try {
+    if (navigator.clipboard && window.isSecureContext) { navigator.clipboard.writeText(text).catch(byField); return; }
+  } catch (e) {}
+  byField();
+}
+
 function copyPath(path) {
   const val = getAtPath(config, path);
   if (val === undefined) return;
   _clipboard = { path: path.slice(), value: JSON.parse(JSON.stringify(val)), sourceFile: activeFile };
+  _toSystemClipboard(_asImportText(path, val));
   setStatus('Copied ' + pathStr(path), 2000, 'ok');
 }
 
