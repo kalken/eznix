@@ -1091,7 +1091,9 @@ function _onRowItself(event) {
 //   convert    Convert to Nix, Convert to native
 //   clipboard  Copy, Cut, Paste
 //   view       Expand all, Collapse all
-//   transfer   Export, Import, Backup, Reload
+//   transfer   Import, Export: by themselves and in that order (the user, 2026-10-13; they
+//              stood with Backup and Reload, Export first, for some hours)
+//   disk       Backup, Reload
 //   restore    a file's backups
 // The user's rule, 2026-10-13 ("options that belong together show up in the same in the
 // right click menues", "add option should always be on top", "next group would be disable,
@@ -1100,7 +1102,7 @@ function _onRowItself(event) {
 // and without one on the editor's blank space, a file's menu began with Export, and a
 // plain list item had no line at all. A menu takes any number of such sets of groups (its
 // own, the shared ones, the file's), and a new kind of entry is a name in this list.
-const _MENU_GROUPS = ['add', 'item', 'convert', 'clipboard', 'view', 'transfer', 'restore'];
+const _MENU_GROUPS = ['add', 'item', 'convert', 'clipboard', 'view', 'transfer', 'disk', 'restore'];
 function _menu(...sets) {
   const out = [];
   for (const group of _MENU_GROUPS) {
@@ -5510,14 +5512,13 @@ function _folderLabel(name) {
 async function _fileMenuItems(name) {
   const disabled = _isFileDisabled(name);
   const ownDisabled = name.endsWith('.json.disabled');
-  // Export, Import and then the rest: the order of the system plugin's menu too, which the user
-  // set for both.
   const transfer = [
-    { label: 'Export', onclick: () => exportFile(name) },
     { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) },
+    { label: 'Export', onclick: () => exportFile(name) },
   ];
-  if (BACKUP_ENABLED) transfer.push({ label: 'Backup', title: 'Back this file up now, as it is on disk', onclick: () => backupFile(name) });
-  transfer.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
+  const disk = [];
+  if (BACKUP_ENABLED) disk.push({ label: 'Backup', title: 'Back this file up now, as it is on disk', onclick: () => backupFile(name) });
+  disk.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
   // With Clear and Delete: the three that take the file, or what is in it, out of use.
   // If the file is only disabled because it sits in a disabled folder, toggling its own
   // state here would have no visible effect until the folder itself is re-enabled — so the
@@ -5554,7 +5555,7 @@ async function _fileMenuItems(name) {
       onclick: () => loadBackup(b.name, name),
     }));
   }
-  return { item, transfer, restore };
+  return { item, transfer, disk, restore };
 }
 
 function _makeTab(name) {

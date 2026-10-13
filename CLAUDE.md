@@ -578,7 +578,8 @@ browser, and `options.nix` was only parsed.
 `index.html`): a menu says what it offers in named groups and the groups come out in one
 order with a line between them: `add` (Add option…, New file), `item` (Rename, Disable or
 Enable, Clear, Delete), `convert`, `clipboard`, `view` (Expand and Collapse all), `transfer`
-(Export, Import, Backup, Reload), `restore`. The user's rule, 2026-10-13: entries that belong
+(Import, Export, by themselves and in that order, the user's wish the same day), `disk`
+(Backup, Reload), `restore`. The user's rule, 2026-10-13: entries that belong
 together stand together, Add first, the thing's own entries next. Before, each menu was a
 list written out where it was shown, and the same entry stood in different places. What it
 moved: Delete from the end of an option's menu up beside Rename and Disable; on a file's
