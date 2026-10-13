@@ -550,8 +550,11 @@ reorder) goes through `_contentAt()` and `_setContentAt()`, which keep the wrapp
 by running those functions, lifted out of the page, on made-up data (reads, set, delete,
 rename, reorder and add, in a disabled section, a list in one, and ordinary ones); not in a
 browser. "Add option…" is on a disabled section's menu since then, like any other's
-(`_addMenuItems()`); it was kept off while adding there wrote into the wrapper. Not covered: pasting or dragging a section onto one that is switched off in the
-other file (`_mergeOrReplace()`), which still merges into the wrapper itself.
+(`_addMenuItems()`); it was kept off while adding there wrote into the wrapper. Merging follows the same
+rule (`_mergeOrReplace()`, which `_nixDeepMerge()` comes back to at every depth): a paste, a
+drag onto another file's tab or an import onto something switched off merges with what it
+holds, and the result is switched off if either side was, so nothing that was off comes on
+that way. That last part is my choice, not something the user said. Checked the same way.
 
 **Lists**: Nothing
 removes an item by itself: Backspace in an empty plain item, or in an empty text field of an

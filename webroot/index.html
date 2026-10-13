@@ -753,8 +753,17 @@ function cutPath(path) {
 // already has an unrelated "hardware.nvidia" section keeps that section instead of replacing
 // the whole "hardware" key. Anything that isn't a mergeable object on both sides (scalars,
 // arrays, _expr) just gets replaced outright, with the incoming value winning either way.
+// What is switched off is merged as what it holds, on either side and at every depth
+// (_nixDeepMerge() comes back here for each name both sides have), as a path goes on inside
+// it (getAtPath()); and the result is switched off if either side was, so that nothing that
+// was off comes on by being pasted onto, or by having something pasted onto it. Until
+// 2026-10-13 a wrapper was merged as the object it is stored as: a section pasted or dragged
+// onto one that was switched off in the other file, or imported into a file that had it
+// switched off, landed in the wrapper beside its value.
 function _mergeOrReplace(existing, incoming) {
-  return (_isPlainObj(existing) && _isPlainObj(incoming)) ? _nixDeepMerge(existing, incoming) : incoming;
+  const a = _enabledValue(existing), b = _enabledValue(incoming);
+  const merged = (_isPlainObj(a) && _isPlainObj(b)) ? _nixDeepMerge(a, b) : b;
+  return isDisabled(existing) || isDisabled(incoming) ? { _disabled: true, _value: merged } : merged;
 }
 
 function pastePath() {
@@ -1415,7 +1424,7 @@ function normalizeConfig(val) {
 function _nixDeepMerge(base, overlay) {
   const result = Object.assign({}, base);
   for (const k of Object.keys(overlay)) {
-    result[k] = (_isPlainObj(result[k]) && _isPlainObj(overlay[k])) ? _nixDeepMerge(result[k], overlay[k]) : overlay[k];
+    result[k] = k in result ? _mergeOrReplace(result[k], overlay[k]) : overlay[k];
   }
   return result;
 }
