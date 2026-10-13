@@ -753,7 +753,14 @@ name, and the old one is kept as a renamed option in each module. Nothing instal
 into browsers or the keychain unless `trustCert` is set; the README gives the command.
 
 With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
-`_redirect_to_https()`): the first byte of a connection says which it is. The TLS handshake
+`_redirect_to_https()`): the first byte of a connection says which it is. The reverse was
+built on 2026-10-13 and taken out within the hour (commit `1ad76b6`, reverted): with HTTPS
+switched off, https answered by a redirect to http with the certificate left in the state
+folder, the page's ping taking a redirect as a reason to reload, and both redirects a 307.
+The user had switched HTTPS off in the editor and rebuilt, and the page hung, as did the
+app when reopened; with the change "it just makes the app blink when i login". Why was not
+found: my guess is a browser that tries https first by itself, which the new answer then
+sent back to http, round and round. That hang is therefore still there. The TLS handshake
 moved from the listening socket into each connection's thread for that, which also stops a
 silent client from holding up `accept()`. Not in `test_server.py`, which has no
 `cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
