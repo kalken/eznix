@@ -499,6 +499,8 @@ Open it by the machine's address, `https://192.168.1.2:9090`, or on the machine 
 `https://localhost:9090`. eznix itself takes nothing that arrives through another interface,
 whatever the firewall says, which is what you want on a router.
 
+- `openFirewall` has to be told where: it needs `interfaces` or `listenAddresses` to be set,
+  or the rebuild stops. With only addresses it opens the port on every interface.
 - leave `"lo"` out and the machine itself is shut out too
 - an empty list, `[ ]`, is every interface, for where their names are not known
 - a name that is not an interface of the machine is left out, with a line in the log, and
@@ -592,13 +594,18 @@ The common ones, the same in all three modules:
 | `port` | `9090` | the editor's port |
 | `listenAddresses` | `[ ]` | addresses to answer on, and no others: through any interface when `interfaces` is not set, else of those the interfaces have; empty: all |
 | `interfaces` | `[ "lo" ]`, or `[ ]` with `listenAddresses` set | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |
+| `openFirewall` | `false` | NixOS: open the port in the firewall, where `interfaces` or `listenAddresses` say; see [HTTPS](#-https) |
+| `paths` | `{ }` | where a tab stands, see [How the configuration is stored](#-how-the-configuration-is-stored) |
 | `terminal` | `true` | the terminal panel |
-| `buttons` | `[ ]` | command buttons, see [Buttons](#-buttons) |
+| `buttons`, `menus` | | command buttons and their menus, see [Buttons](#-buttons) |
 | `theme`, `themes` | | see [Themes](#-themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#-plugins) |
 | `enableHttps`, `trustCert`, `certNames`, `cert`, `key` | | see [HTTPS](#-https) |
 | `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`1` folds them all, `4` what is inside `services.openssh.settings`); not set, nothing is folded |
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |
+
+Beside `services.eznix` there is `programs.eznix` (`enable`, `url`, `apps`, `browser`,
+`windowClass`): see [In the application menu](#-in-the-application-menu).
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
