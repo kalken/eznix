@@ -88,7 +88,7 @@ in
   config = lib.mkMerge [
    # By itself, so that a machine can have the entry for another machine's editor without
    # running one.
-   (lib.mkIf config.programs.eznix.enable { environment.systemPackages = [ common.app ]; })
+   (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {

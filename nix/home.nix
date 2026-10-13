@@ -49,7 +49,7 @@ in
   options.programs.eznix = common.programOptions;
 
   config = lib.mkMerge [
-   (lib.mkIf config.programs.eznix.enable { home.packages = [ common.app ]; })
+   (lib.mkIf (common.apps != [ ]) { home.packages = common.apps; })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {

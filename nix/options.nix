@@ -102,32 +102,43 @@ let
   # out here and was not seen on a real desktop when this was written: `windowClass` is there
   # to set it right by hand (the window's own name: on Plasma, `qdbus org.kde.KWin /KWin
   # queryWindowInfo` and a click on the window; resourceClass).
-  appHost = let rest = lib.last (lib.splitString "://" prog.url); in
+  #
+  # One entry is this machine's own editor (enable, url); `apps` adds one for each other
+  # editor named there, so that one desktop has every machine it looks after in its menu
+  # (the user, 2026-10-13: "can i add more programs.eznix to other machines?"). An entry is
+  # named for its window, and a window for its host alone, so two addresses on one host
+  # would be one name twice: the port is not part of it.
+  hostOf = url: let rest = lib.last (lib.splitString "://" url); in
     builtins.head (lib.splitString ":" (builtins.head (lib.splitString "/" rest)));
-  appPath = let rest = lib.last (lib.splitString "://" prog.url);
-                parts = lib.splitString "/" rest; in
-    "/" + lib.concatStringsSep "/" (builtins.tail parts);
-  appClass = if prog.windowClass != null then prog.windowClass else
-    "${if lib.hasInfix "brave" (lib.getName prog.browser) then "brave" else "chrome"}-${appHost}_${builtins.replaceStrings [ "/" ] [ "_" ] appPath}-Default";
+  pathOf = url: let rest = lib.last (lib.splitString "://" url); in
+    "/" + lib.concatStringsSep "/" (builtins.tail (lib.splitString "/" rest));
+  classOf = url:
+    "${if lib.hasInfix "brave" (lib.getName prog.browser) then "brave" else "chrome"}-${hostOf url}_${builtins.replaceStrings [ "/" ] [ "_" ] (pathOf url)}-Default";
   appIcon = pkgs.runCommand "eznix-icon" { } ''
     mkdir -p $out/share/icons/hicolor/scalable/apps
     ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
   '';
-  appEntry = pkgs.makeDesktopItem {
-    name           = appClass;
-    desktopName    = if appHost == "localhost" then "eznix" else "eznix (${appHost})";
+  mkApp = { url, label, class ? classOf url }: pkgs.makeDesktopItem {
+    name           = class;
+    desktopName    = label;
     comment        = "Nix configuration editor";
     icon           = "${appIcon}/share/icons/hicolor/scalable/apps/eznix.svg";
-    exec           = "${lib.getExe prog.browser} --app=${prog.url} --class=${appClass}";
-    startupWMClass = appClass;
+    exec           = "${lib.getExe prog.browser} --app=${url} --class=${class}";
+    startupWMClass = class;
     categories     = [ "Settings" "System" ];
   };
+  appEntries =
+    lib.optional prog.enable (mkApp ({
+      inherit (prog) url;
+      label = if hostOf prog.url == "localhost" then "eznix" else "eznix (${hostOf prog.url})";
+    } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; }))
+    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; label = "eznix (${name})"; }) prog.apps;
 in
 {
   inherit isLocal certDir generateCert;
 
-  # The application-menu entry, and the options it is set with (see appClass above).
-  app = appEntry;
+  # The application-menu entries, and the options they are set with (see classOf above).
+  apps = appEntries;
   programOptions = {
     enable = mkEnableOption "eznix in the application menu: a window of its own, with eznix's icon, opened at the address the editor is configured for";
     url = mkOption {
@@ -142,6 +153,12 @@ in
       defaultText = lib.literalExpression "the editor of this machine, by its own settings: http or https, localhost or the machine's name, its port";
       example     = "https://router.lan:9090/";
       description = "The address the entry opens. By itself it is this machine's own editor, worked out from services.eznix, so it follows a change of port or of HTTPS at the next rebuild. Set it to have the entry open the editor of another machine.";
+    };
+    apps = mkOption {
+      type        = types.attrsOf types.str;
+      default     = { };
+      example     = { router = "https://router.lan:9090/"; };
+      description = "More entries in the application menu, one for each name: the address of another machine's editor. Each is shown as eznix (NAME). They are there whether or not enable is set, which is the entry for this machine's own editor.";
     };
     browser = mkOption {
       type        = types.package;

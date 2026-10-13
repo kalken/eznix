@@ -564,8 +564,16 @@ programs.eznix = {
 };
 ```
 
-It works without `services.eznix` too, for a desktop that only opens the editor of another
-machine (set `url`). If the window or the task bar shows the browser's icon instead of
+For the editors of other machines, add an entry each, shown as "eznix (NAME)":
+
+```nix
+programs.eznix.apps = {
+  router = "https://router.lan:9090/";
+  pi     = "https://pi.lan:9090/";
+};
+```
+
+Neither needs `services.eznix` on the machine itself. If the window or the task bar shows the browser's icon instead of
 eznix's, set `windowClass` to what your desktop calls the window.
 
 ## 📋 Options
