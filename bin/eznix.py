@@ -2419,13 +2419,6 @@ class _Server(http.server.ThreadingHTTPServer):
     # (a Raspberry Pi, where accepting is slowest). It was never an attack.
     request_queue_size = 128
     tls = None
-    # HTTPS switched off, with the certificate it had still in the state folder: a browser
-    # that goes on asking over https is answered with it, by a redirect to http (see
-    # finish_request()). Without this a page open when HTTPS was switched off, in the
-    # editor itself and rebuilt, got no answer at all from then on and hung, and so did a
-    # bookmark of the https address (the user, 2026-10-13). The other way round has always
-    # been answered, by the redirect to https.
-    was_tls = None
 
     def server_bind(self):
         """Bind, and no more. http.server's own goes on to look its address up in DNS
@@ -2469,21 +2462,6 @@ class _Server(http.server.ThreadingHTTPServer):
 
     def finish_request(self, request, client_address):
         if not self.tls:
-            if self.was_tls:
-                try:
-                    request.settimeout(10)
-                    first = request.recv(1, socket.MSG_PEEK)
-                    request.settimeout(None)
-                    if first == b'\x16':
-                        self.accepted.pop(client_address, None)
-                        secure = self.was_tls.wrap_socket(request, server_side=True)
-                        try:
-                            secure.settimeout(10)
-                            return _redirect(secure, 'http')
-                        finally:
-                            self.shutdown_request(secure)
-                except (OSError, ssl.SSLError):
-                    return
             return super().finish_request(request, client_address)
         try:
             request.settimeout(10)
@@ -2493,7 +2471,7 @@ class _Server(http.server.ThreadingHTTPServer):
                 return
             if first != b'\x16':             # not a TLS record: a request in plain HTTP
                 self.accepted.pop(client_address, None)
-                return _redirect(request, 'https')
+                return _redirect_to_https(request)
             secure = self.tls.wrap_socket(request, server_side=True)
             secure.settimeout(None)
         except (OSError, ssl.SSLError) as e:
@@ -2512,13 +2490,10 @@ class _Server(http.server.ThreadingHTTPServer):
             self.shutdown_request(secure)
 
 
-def _redirect(sock, scheme):
-    """Answer one request that came the wrong way, in plain HTTP to a server with HTTPS or
-    the reverse, with a redirect to the same host and path the right way (`scheme`).
+def _redirect_to_https(sock):
+    """Answer one plain-HTTP request with a redirect to the same host and path over https.
     The host and path are the request's own, and go back out only when they hold nothing that
-    could end the header line or start another. Not to be kept by the browser (307, no-store):
-    it was a 301, which a browser remembers for good, and with HTTPS switched off and on
-    again each way would have been remembered as leading to the other."""
+    could end the header line or start another."""
     head = b''
     while b'\r\n\r\n' not in head and len(head) < 8192:
         chunk = sock.recv(4096)
@@ -2532,8 +2507,8 @@ def _redirect(sock, scheme):
         host = f'localhost:{WEB_PORT}'
     if not re.fullmatch(r'/[\x21-\x7e]*', target):
         target = '/'
-    sock.sendall((f'HTTP/1.1 307 Temporary Redirect\r\nLocation: {scheme}://{host}{target}\r\n'
-                  'Cache-Control: no-store\r\nContent-Length: 0\r\nConnection: close\r\n\r\n').encode('ascii'))
+    sock.sendall((f'HTTP/1.1 301 Moved Permanently\r\nLocation: https://{host}{target}\r\n'
+                  'Content-Length: 0\r\nConnection: close\r\n\r\n').encode('ascii'))
 
 
 def _bind_to_interface(sock, name):
@@ -2776,17 +2751,6 @@ def main():
         for server in servers:
             server.tls = tls
         USE_TLS = True
-    else:
-        # The certificate eznix made for itself while HTTPS was on, if it is still there.
-        old = [os.path.join(STATE_DIR, n) for n in ('localhost.pem', 'localhost-key.pem')]
-        if all(os.path.isfile(p) for p in old):
-            try:
-                was = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                was.load_cert_chain(*old)
-                for server in servers:
-                    server.was_tls = was
-            except (OSError, ssl.SSLError):
-                pass
     for server in servers[1:]:
         threading.Thread(target=server.serve_forever, daemon=True).start()
 
