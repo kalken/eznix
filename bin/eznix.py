@@ -38,9 +38,7 @@ Configuration (eznix.toml; every key optional unless noted):
                   listen_addresses set; []: any)
   listen_addresses  addresses to answer on, and no others: through any interface when
                   interfaces is not set, else those of what the interfaces have (default: all)
-  port            the port for plain HTTP (default 9090)
-  https_port      the port for HTTPS (default 9443). eznix is served on the one that goes
-                  with whether HTTPS is on (cert, key); the other says where it is
+  port            the port (default 9090)
   hosts           extra host names to accept in requests; ["*"] accepts any. Behind a proxy
                   that changes the Host header, also the page's address ("https://name")
   cert, key       serve HTTPS with these (ca: the CA to offer for download on the login page)
@@ -143,8 +141,7 @@ BACKUP_COUNT     = 5
 
 INTERFACES       = None          # `interfaces`: the network interfaces to be reached through, and no other; []: any
 LISTEN           = []            # `listen_addresses`: the addresses answered on, of those the interfaces have; []: all
-WEB_PORT         = 9090          # plain HTTP
-HTTPS_PORT       = 9443          # HTTPS; which of the two eznix is on: see _ElsewhereHandler
+WEB_PORT         = 9090
 TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(), and origins by _valid_origin(); "*" accepts any
 CERT_FILE        = None          # HTTPS when both are set
 KEY_FILE         = None
@@ -2404,9 +2401,12 @@ def _start_terminal_for_self(cfg):
 
 
 class _Server(http.server.ThreadingHTTPServer):
-    """The web server. With a certificate (`tls` set) it speaks HTTPS, and nothing else: a
-    connection that doesn't open with a TLS handshake is closed. Plain HTTP has a port of its
-    own (see _ElsewhereHandler for the two ports and what the one not in use answers).
+    """The web server. With a certificate (`tls` set), HTTPS and plain HTTP share the one port:
+    a connection that doesn't open with a TLS handshake is plain HTTP, and is answered with a
+    redirect to the same address over https. So a bookmark or a typed address from before
+    HTTPS was switched on still arrives, and nothing is ever served in the clear -- the
+    redirect is all a plain request gets, and the session cookie is marked Secure, so the
+    browser doesn't send it along with one.
 
     The handshake is done here, in the connection's own thread, and not by wrapping the
     listening socket as before: there it happened inside accept(), where one client that
@@ -2469,9 +2469,9 @@ class _Server(http.server.ThreadingHTTPServer):
             if not first:
                 self.accepted.pop(client_address, None)
                 return
-            if first != b'\x16':             # not a TLS record: plain HTTP, which has its own port
+            if first != b'\x16':             # not a TLS record: a request in plain HTTP
                 self.accepted.pop(client_address, None)
-                return
+                return _redirect_to_https(request)
             secure = self.tls.wrap_socket(request, server_side=True)
             secure.settimeout(None)
         except (OSError, ssl.SSLError) as e:
@@ -2490,58 +2490,25 @@ class _Server(http.server.ThreadingHTTPServer):
             self.shutdown_request(secure)
 
 
-class _ElsewhereHandler(http.server.BaseHTTPRequestHandler):
-    """What the port eznix is *not* served on answers, whatever is asked: a page saying where
-    it is, with a link. Plain HTTP has one port and HTTPS another (`port`, `https_port`), and
-    eznix is served on the one that goes with whether HTTPS is on; the other answers this.
-    So an address from before HTTPS was switched on or off still arrives somewhere that
-    says what happened, a bookmark as much as an installed app, which belongs to its address
-    and has to be installed again from the new one.
-
-    Until 2026-10-13 both shared one port, the first byte of a connection saying which it
-    was, and plain HTTP was redirected to https. The other way had no answer: with HTTPS
-    switched off in the editor and rebuilt, the open page hung and the app could not be
-    opened again (the user). Answering https on that same port by a redirect to http was
-    built and reverted within the hour (commit 1ad76b6): "it just makes the app blink when
-    i login", my guess being a browser that tries https first by itself and was sent back
-    each time. Two ports, the user's idea, leave nothing to guess: a browser trying https on
-    the http port finds no HTTPS there and goes back to http by itself.
-
-    It is a page and no redirect, and a 410: the open page's ping takes that status as news
-    and loads itself again, which lands here (initRestartWatcher() in index.html)."""
-    protocol_version = 'HTTP/1.1'
-    timeout = 20
-
-    def _answer(self):
-        scheme, port = self.server.elsewhere
-        host = self.headers.get('Host', '').rsplit(':', 1)[0] if not self.headers.get('Host', '').startswith('[') else ''
-        if not re.fullmatch(r'[A-Za-z0-9.\-]+', host):
-            host = 'localhost'
-        url = f'{scheme}://{host}:{port}/'
-        name = html.escape(HOSTNAME)
-        body = (f'<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
-                f'<meta name="viewport" content="width=device-width,initial-scale=1"><title>eznix ({name})</title>'
-                f'<style>body{{font:15px/1.5 system-ui,sans-serif;max-width:34em;margin:15vh auto;padding:0 1.5em;'
-                f'color-scheme:light dark}}a{{font-weight:600}}</style></head><body>'
-                f'<h1>eznix ({name}) has moved</h1>'
-                f'<p>HTTPS was switched {"on" if scheme == "https" else "off"}, and eznix is now at</p>'
-                f'<p><a href="{url}">{url}</a></p>'
-                f'<p>If you use eznix as an installed app, remove that app and install it again from the new address: '
-                f'an app belongs to the address it was installed from.</p></body></html>').encode()
-        self.send_response(410)
-        self.send_header('Content-Type', 'text/html; charset=utf-8')
-        self.send_header('Cache-Control', 'no-store')
-        self.send_header('X-Eznix-At', url)
-        self.send_header('Content-Length', str(len(body)))
-        self.send_header('Connection', 'close')
-        self.end_headers()
-        if self.command != 'HEAD':
-            self.wfile.write(body)
-
-    do_GET = do_POST = do_HEAD = do_PUT = do_DELETE = do_OPTIONS = _answer
-
-    def log_message(self, fmt, *args):
-        _debug(f'{self.client_address[0]} - (moved) ' + fmt % args)
+def _redirect_to_https(sock):
+    """Answer one plain-HTTP request with a redirect to the same host and path over https.
+    The host and path are the request's own, and go back out only when they hold nothing that
+    could end the header line or start another."""
+    head = b''
+    while b'\r\n\r\n' not in head and len(head) < 8192:
+        chunk = sock.recv(4096)
+        if not chunk:
+            break
+        head += chunk
+    lines = head.decode('iso-8859-1').split('\r\n')
+    target = (lines[0].split(' ') + ['', ''])[1]
+    host = next((l.split(':', 1)[1].strip() for l in lines[1:] if l.lower().startswith('host:')), '')
+    if not re.fullmatch(r'[A-Za-z0-9.\-:\[\]]+', host):
+        host = f'localhost:{WEB_PORT}'
+    if not re.fullmatch(r'/[\x21-\x7e]*', target):
+        target = '/'
+    sock.sendall((f'HTTP/1.1 301 Moved Permanently\r\nLocation: https://{host}{target}\r\n'
+                  'Content-Length: 0\r\nConnection: close\r\n\r\n').encode('ascii'))
 
 
 def _bind_to_interface(sock, name):
@@ -2562,7 +2529,7 @@ def _bind_to_interface(sock, name):
 def main():
     global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
-    global INTERFACES, LISTEN, WEB_PORT, HTTPS_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
+    global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL
@@ -2581,8 +2548,7 @@ def main():
                          'more than once ("lo": this machine itself, the default unless an address is given; "any": every one)')
     ap.add_argument('--listen-address', metavar='ADDR', action='append',
                     help='answer on this address alone, through any interface unless one is named; may be given more than once')
-    ap.add_argument('--port', type=int, help='port for plain HTTP (default 9090)')
-    ap.add_argument('--https-port', type=int, help='port for HTTPS (default 9443)')
+    ap.add_argument('--port', type=int, help='port to listen on (default 9090)')
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
     ap.add_argument('--debug', action='store_true', help='log what is only worth knowing while looking into something')
@@ -2656,9 +2622,6 @@ def main():
         if name not in INTERFACES:
             INTERFACES.append(name)
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
-    HTTPS_PORT = int(args.https_port or cfg.get('https_port') or HTTPS_PORT)
-    if HTTPS_PORT == WEB_PORT:
-        sys.exit('eznix: "port" and "https_port" have to be two different ports')
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
     if args.https and not CERT_FILE:
@@ -2760,27 +2723,21 @@ def main():
     # One that cannot be listened on (an interface that is not there, an address the machine
     # does not have) is left out and said so, as long as another can: of several ways in,
     # one that is missing must not close the rest. With none left it is the end.
-    def listen(port, handler):
-        servers, failed = [], []
-        for name in INTERFACES or [None]:
-            for addr in LISTEN or ['127.0.0.1' if name == loopback else '0.0.0.0']:
-                where = f'{addr}:{port}' + (f' through {name}' if name else '')
-                try:
-                    server = _Server((addr, port), handler, bind_and_activate=False)
-                    if name:
-                        if sys.platform == 'darwin':
-                            server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-                        _bind_to_interface(server.socket, name)
-                    server.server_bind()
-                    server.server_activate()
-                    servers.append(server)
-                except OSError as e:
-                    failed.append(f'eznix: cannot listen on {where}: {e}')
-        return servers, failed
-
-    # eznix itself, on the port that goes with whether HTTPS is on.
-    served = HTTPS_PORT if CERT_FILE else WEB_PORT
-    servers, failed = listen(served, StaticHandler)
+    servers, failed = [], []
+    for name in INTERFACES or [None]:
+        for addr in LISTEN or ['127.0.0.1' if name == loopback else '0.0.0.0']:
+            where = f'{addr}:{WEB_PORT}' + (f' through {name}' if name else '')
+            try:
+                server = _Server((addr, WEB_PORT), StaticHandler, bind_and_activate=False)
+                if name:
+                    if sys.platform == 'darwin':
+                        server.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    _bind_to_interface(server.socket, name)
+                server.server_bind()
+                server.server_activate()
+                servers.append(server)
+            except OSError as e:
+                failed.append(f'eznix: cannot listen on {where}: {e}')
     if not servers:
         sys.exit('\n'.join(failed))
     for line in failed:
@@ -2794,32 +2751,11 @@ def main():
         for server in servers:
             server.tls = tls
         USE_TLS = True
-    # The other port, which only says where eznix is (_ElsewhereHandler). With HTTPS off
-    # that takes a certificate to say it with: the one eznix made for itself while HTTPS was
-    # on, if it is still in the state folder; without one that port is not listened on. A
-    # port that cannot be had is no reason not to start.
-    was = None
-    if not CERT_FILE:
-        old = [os.path.join(STATE_DIR, n) for n in ('localhost.pem', 'localhost-key.pem')]
-        if all(os.path.isfile(p) for p in old):
-            try:
-                was = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-                was.load_cert_chain(*old)
-            except (OSError, ssl.SSLError):
-                was = None
-    others = []
-    if CERT_FILE or was:
-        others, failed = listen(WEB_PORT if CERT_FILE else HTTPS_PORT, _ElsewhereHandler)
-        for line in failed:
-            print(line + ' -- left out', file=sys.stderr)
-        for server in others:
-            server.tls = was
-            server.elsewhere = ('https' if CERT_FILE else 'http', served)
-    for server in servers[1:] + others:
+    for server in servers[1:]:
         threading.Thread(target=server.serve_forever, daemon=True).start()
 
     n = len(list_config_files())
-    print(f'eznix → {"https" if USE_TLS else "http"}://localhost:{served}')
+    print(f'eznix → {"https" if USE_TLS else "http"}://localhost:{WEB_PORT}')
     print(f'flake → {FLAKE_DIR}')
     print(f'files → {CONFIG_DIR} ({n} file{"" if n == 1 else "s"})')
     print(f'state → {STATE_DIR}')

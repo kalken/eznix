@@ -45,7 +45,6 @@ let
     interfaces       = cfg.interfaces;
     listen_addresses = if cfg.listenAddresses == [ ] then null else cfg.listenAddresses;
     port             = cfg.port;
-    https_port       = cfg.httpsPort;
     # The address itself, when it is one in particular: the certificate is made for it (see
     # generateCa), so it is a name the browser will use. Without it a save is refused (403).
     hosts            = cfg.hosts ++ cfg.certNames
@@ -240,12 +239,7 @@ in
     port = mkOption {
       type        = types.port;
       default     = 9090;
-      description = "Port of the editor over plain HTTP: where it is opened while HTTPS is off. With HTTPS on, this port only answers with a page saying where the editor is.";
-    };
-    httpsPort = mkOption {
-      type        = types.port;
-      default     = 9443;
-      description = "Port of the editor over HTTPS: where it is opened while HTTPS is on (enableHttps). The two have a port each, so switching HTTPS on or off changes the editor's address; the port it left says where it went.";
+      description = "Port of the editor.";
     };
     terminalPort = mkOption {
       type        = types.port;

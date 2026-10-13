@@ -4640,10 +4640,6 @@ function initRestartWatcher() {
     catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); return; } // still down -- next tick retries
     finally { clearTimeout(timer); }
     if (performance.now() - asked > 1000) eznix.debug('ping answered after', Math.round(performance.now() - asked), 'ms');
-    // HTTPS was switched on or off under this page, and eznix is at another address now:
-    // what answers here is the port it left, with a page that says where it is (410, see
-    // _ElsewhereHandler in eznix.py). Loading this page again shows that.
-    if (res.status === 410 && res.headers.get('X-Eznix-At')) { onRestartDetected(); return; }
     if (res.status === 401) { onRestartDetected(); return; }
     if (res.ok) {
       try { handlePayload(await res.json()); } catch (err) { /* malformed body — ignore, next tick retries */ }

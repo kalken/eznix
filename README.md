@@ -129,7 +129,7 @@ services.eznix = {
 };
 ```
 
-Rebuild, and open eznix: `https://192.168.1.2:9443` with HTTPS, http://localhost:9090 without.
+Rebuild, and open eznix on port 9090: `https://192.168.1.2:9090`, or http://localhost:9090.
 
 **No flake yet?** The [Quick Start](#-quick-start) writes one for you.
 
@@ -494,8 +494,8 @@ services.eznix = {
 };
 ```
 
-Open it by the machine's address, `https://192.168.1.2:9443`, or on the machine itself as
-`https://localhost:9443`. eznix itself takes nothing that arrives through another interface,
+Open it by the machine's address, `https://192.168.1.2:9090`, or on the machine itself as
+`https://localhost:9090`. eznix itself takes nothing that arrives through another interface,
 whatever the firewall says, which is what you want on a router.
 
 - leave `"lo"` out and the machine itself is shut out too
@@ -511,17 +511,15 @@ itself. The machine's host name is in the certificate without being listed (also
 domain, and as `NAME.local`), on NixOS and macOS, and so are the addresses in
 `listenAddresses`. List anything else you open it by, and the certificate matches. Without it:
 
-- opened by its address (`https://192.168.1.2:9443`), eznix works, and the browser warns
+- opened by its address (`https://192.168.1.2:9090`), eznix works, and the browser warns
   about the certificate each time. That is all a machine with an address from DHCP needs.
 - opened by a host name that is not listed, saving is refused, and the page says which
   name to add.
 
 An address in `listenAddresses` is included by itself.
 
-HTTPS and plain HTTP have a port each, `httpsPort` (9443) and `port` (9090), and eznix is on
-the one that goes with whether HTTPS is on. Switching it on or off therefore changes the
-address; the port eznix left answers with a page that says where it is now. An installed app
-belongs to its address, so remove it and install it again from the new one.
+With HTTPS on, an `http://` address on the same port is answered with a redirect to
+`https://`.
 
 ### A browser on another computer
 
@@ -564,8 +562,7 @@ The common ones, the same in all three modules:
 | `session.days` | | days a login lasts, 400 at most; unset, until the page has been closed for 15 minutes, and a day at most |
 | `session.renew` | `false` | count those days from the last visit instead of from the login |
 | `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
-| `port` | `9090` | the editor's port over plain HTTP |
-| `httpsPort` | `9443` | the editor's port over HTTPS; see [HTTPS](#-https) |
+| `port` | `9090` | the editor's port |
 | `listenAddresses` | `[ ]` | addresses to answer on, and no others: through any interface when `interfaces` is not set, else of those the interfaces have; empty: all |
 | `interfaces` | `[ "lo" ]`, or `[ ]` with `listenAddresses` set | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |
 | `terminal` | `true` | the terminal panel |
