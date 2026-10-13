@@ -100,13 +100,22 @@ function parseMarkdown(text) {
       continue;
     }
 
+    // One item of a list: its line without the marker, and with it the lines that follow
+    // indented, which are the rest of a sentence that was broken to fit a width. Such a line
+    // used to end the list, so the next item began a new one: a numbered list written that
+    // way came out as 1, a paragraph, 1, 1, a paragraph (the user, 2026-10-13, on an
+    // INSTALL.md: "a strange numbering on things"). An indented line that is itself the
+    // start of something (an item of a list inside this one, a code block) is left alone.
+    const takeItem = marker => {
+      let text = lines[i++].replace(marker, '');
+      while (i < lines.length && /^\s+\S/.test(lines[i]) && !isBlock(lines[i].trim())) text += ' ' + lines[i++].trim();
+      return `<li>${inline(text)}</li>`;
+    };
+
     // Unordered list
     if (/^[-*+]\s/.test(line)) {
       const items = [];
-      while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
-        items.push(`<li>${inline(lines[i].replace(/^[-*+]\s/, ''))}</li>`);
-        i++;
-      }
+      while (i < lines.length && /^[-*+]\s/.test(lines[i])) items.push(takeItem(/^[-*+]\s/));
       out.push(`<ul>${items.join('')}</ul>`);
       continue;
     }
@@ -114,10 +123,7 @@ function parseMarkdown(text) {
     // Ordered list
     if (/^\d+\.\s/.test(line)) {
       const items = [];
-      while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
-        items.push(`<li>${inline(lines[i].replace(/^\d+\.\s/, ''))}</li>`);
-        i++;
-      }
+      while (i < lines.length && /^\d+\.\s/.test(lines[i])) items.push(takeItem(/^\d+\.\s/));
       out.push(`<ol>${items.join('')}</ol>`);
       continue;
     }
