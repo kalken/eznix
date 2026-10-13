@@ -1,14 +1,17 @@
-/* GNOME Light — Adwaita's light style: a near-white page with white cards, the GNOME blue as
-   the accent. The counterpart of theme-gnome-dark.css, checked against the same file: window
-   #fafafb for the page, white cards, and its sidebar colour #ebebed for the bars (its header
-   bar is white, which would not set the bars off from the cards here). */
+/* GNOME Light — Adwaita's light style: a grey page with white cards, the GNOME blue as the
+   accent. The counterpart of theme-gnome-dark.css, checked against the same file, whose
+   colours these are: its sidebar's #ebebed for the page, white cards, and its window's
+   #fafafb for the bars. The two were the other way round until 2026-10-13, the page
+   near-white as an Adwaita window is: a white card could hardly be told from it, and an
+   option's value, halfway between the two (--value-bg), not at all from its card (the user:
+   "its very hard to see what is an input field"). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: only light;
   /* ── Base palette ── */
-  --bg:   #fafafb;
-  --bg2:  #ebebed;
+  --bg:   #ebebed;
+  --bg2:  #fafafb;
   --bg3:  #e0e0e3;
   --bg4:  #d3d3d7;
   --text:  #333338;
