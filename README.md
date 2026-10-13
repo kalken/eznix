@@ -559,7 +559,7 @@ HTTPS is followed at the next rebuild.
 ```nix
 programs.eznix = {
   enable  = true;
-  browser = "brave";      # or chromium, google-chrome-stable: a Chromium-family browser
+  browser = pkgs.brave;   # default: pkgs.chromium; any Chromium-family browser
   # url   = "https://router.lan:9090/";   # another machine's editor instead of this one's
 };
 ```

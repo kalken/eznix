@@ -108,7 +108,7 @@ let
                 parts = lib.splitString "/" rest; in
     "/" + lib.concatStringsSep "/" (builtins.tail parts);
   appClass = if prog.windowClass != null then prog.windowClass else
-    "${if lib.hasInfix "brave" prog.browser then "brave" else "chrome"}-${appHost}_${builtins.replaceStrings [ "/" ] [ "_" ] appPath}-Default";
+    "${if lib.hasInfix "brave" (lib.getName prog.browser) then "brave" else "chrome"}-${appHost}_${builtins.replaceStrings [ "/" ] [ "_" ] appPath}-Default";
   appIcon = pkgs.runCommand "eznix-icon" { } ''
     mkdir -p $out/share/icons/hicolor/scalable/apps
     ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
@@ -118,7 +118,7 @@ let
     desktopName    = if appHost == "localhost" then "eznix" else "eznix (${appHost})";
     comment        = "Nix configuration editor";
     icon           = "${appIcon}/share/icons/hicolor/scalable/apps/eznix.svg";
-    exec           = "${prog.browser} --app=${prog.url} --class=${appClass}";
+    exec           = "${lib.getExe prog.browser} --app=${prog.url} --class=${appClass}";
     startupWMClass = appClass;
     categories     = [ "Settings" "System" ];
   };
@@ -144,10 +144,11 @@ in
       description = "The address the entry opens. By itself it is this machine's own editor, worked out from services.eznix, so it follows a change of port or of HTTPS at the next rebuild. Set it to have the entry open the editor of another machine.";
     };
     browser = mkOption {
-      type        = types.str;
-      default     = "chromium";
-      example     = "brave";
-      description = "The browser the window is opened with: a command, or the path of one. It has to be of the Chromium family (Chromium, Chrome, Brave), which is what can open a page as a window of its own (--app); eznix does not install it.";
+      type        = types.package;
+      default     = pkgs.chromium;
+      defaultText = lib.literalExpression "pkgs.chromium";
+      example     = lib.literalExpression "pkgs.brave";
+      description = "The browser the window is opened with, as a package: the entry starts it from there, so it need not be installed otherwise. It has to be of the Chromium family (Chromium, Chrome, Brave), which is what can open a page as a window of its own (--app). It was a command to be found on the PATH for an hour, with chromium as the default, which was not found where only another browser was installed.";
     };
     windowClass = mkOption {
       type        = types.nullOr types.str;

@@ -222,7 +222,9 @@ address, this one is told the address at every rebuild. It is separate from
 (`url`). The icon on the window and in the task bar depends on the entry carrying the name
 the browser gives the window, taken to be `PREFIX-HOST__-Default` (`brave` for Brave,
 `chrome` otherwise); that is from memory of how Chromium names such windows, not seen, and
-`windowClass` overrides it. ezconf's entry (`programs.ezconf`) is not the model: the user
+`windowClass` overrides it. `browser` is a package, Chromium unless set, started from its
+own path: for the first hour it was a command looked up on the PATH, and the user's first
+try, with only `enable` set, did not find chromium. ezconf's entry (`programs.ezconf`) is not the model: the user
 said its icons were wrong. Checked: `eznix --icon` gives valid SVG; the option evaluated on
 a copy of the installer's template (the address, the entry's name, the desktop file's text,
 the system's derivation). Not built, not installed, not seen on a desktop.
