@@ -514,9 +514,13 @@ null actually"). The old setting still works, read as 3 or as not set
 (`mkChangedOptionModule` in the modules, and in `eznix.py`).
 
 **A right-click brings up the menu of what is under the pointer** (`_onRowItself()`): an
-option's for its name or its value, and for the empty part of its row the menu of what the
-option lies in, the section, the object in a list or the file. The user's rule, 2026-10-12;
-the whole row was the option's before.
+option's for the text of its name or its value, and for the empty part of its row the menu
+of what the option lies in, the section, the object in a list or the file. The user's rule,
+2026-10-12; the whole row was the option's before. The name is its text (`.tt-anchor`) since
+2026-10-13: the test went by `.key-label`, which is as wide as the name's column, so the
+room beside a short name still brought up the option's menu. Tried by the user in the test
+server that day ("i think this works for everything. hard to test everything though"); not
+in a browser by me.
 
 **Lists**: Nothing
 removes an item by itself: Backspace in an empty plain item, or in an empty text field of an

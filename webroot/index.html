@@ -1001,14 +1001,18 @@ function showContextMenu(event, items, opts = {}) {
 }
 
 // Whose menu a right-click brings up: that of what is under the pointer. An option's is for
-// a press on the option itself, its name or its value; the empty part of its row (beside a
-// short name, before an indented one) is not the option but the place it lies in, and the
-// press is left for that: the section, the object in a list, or the file. One rule for every
-// row, the user's (2026-10-12: "if its outside that it should show the right click menu for
-// the object that contains it"). The whole row was the option's until then, so there was
-// hardly anywhere to press for the section's own menu but its heading.
+// a press on the option itself, the text of its name or its value; the empty part of its row
+// (beside a short name, before an indented one) is not the option but the place it lies in,
+// and the press is left for that: the section, the object in a list, or the file. One rule
+// for every row, the user's (2026-10-12: "if its outside that it should show the right click
+// menu for the object that contains it"). The whole row was the option's until then, so
+// there was hardly anywhere to press for the section's own menu but its heading. The name
+// is its text, the .tt-anchor in it, as for the tooltip: for the first day the test went by
+// .key-label, which is as wide as the name's column, so the room beside a short name was
+// still the option's and only the indent was not, which the user found on 2026-10-13.
 function _onRowItself(event) {
-  return !!(event.target.closest && event.target.closest('.key-label, .field-value'));
+  const part = event.target.closest && event.target.closest('.field-key .tt-anchor, .field-value');
+  return !!part && part.closest('.field-row') === event.currentTarget;
 }
 
 // Shared "Disable" / "Enable" + "Copy" / "Cut" + "Delete" items every row's menu ends with.
