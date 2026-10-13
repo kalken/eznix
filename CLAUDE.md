@@ -531,18 +531,21 @@ there bare. Over plain http `navigator.clipboard` is not there and the text is c
 of a hidden field instead. The text was checked by running the function, lifted out of the
 page; that it arrives on a clipboard was not, in either way, by anyone.
 
-**A folder's tab can be given a place** (`_folderOrders()`, `services.eznix.folders.NAME =
-{ order }`, the option in `options.nix`): lowest first, a folder without a number counting as
-0, equals by name as before. Asked for by the user on 2026-10-13 as "order number on folders
-as we did for buttons", and made the way a menu's `order` is: by the name shown, read by the
-page straight from every file, a later file's over an earlier one's, nothing switched off.
-The bar is drawn again when the numbers change, also while one is typed. Not for files,
-which stay by name in their row, and not in `eznix.toml`. Checked by running the function
-and the sort, lifted out of the page, on made-up files; not in a browser by me. Seen by the
-user the same day on a real flake with three folders ("that works perfectly"), after an
-entry named for a folder that was not there (`user` for `users`) had seemed to do nothing:
-a name that matches no folder is ignored without a word. Whether a rebuild with the option
-set went through there was not said; here `options.nix` was only parsed.
+**A tab can be given a place** (`_tabOrders()`, `_tabSort()`, `services.eznix.paths.PATH = {
+order }`, the option in `options.nix`): lowest first, a tab without a number counting as 0,
+equals by name as before; a folder among the folders, a file among the files of its row.
+PATH is the tab's path as the tabs show it, a folder's name or a file's path without
+`.json` (`_folderLabel()`, `_filePathLabel()`). Made the way a menu's `order` is: read by the
+page straight from every file, a later file's over an earlier one's, nothing switched off;
+the bar is drawn again when the numbers change, also while one is typed. Not in
+`eznix.toml`. It was `services.eznix.folders`, for folders only, for some hours on
+2026-10-13 (commit `016e800`), asked for by the user as "order number on folders as we did
+for buttons"; the user then wanted files too and one setting for both, and the first name
+was dropped without being kept. A path that matches nothing is ignored without a word: the
+user's first try had `user` for a folder `users` and seemed to do nothing. Folders were seen
+working by the user that day on a real flake ("that works perfectly"). The version by path
+was checked by running the functions, lifted out of the page, on made-up files; not in a
+browser, and `options.nix` was only parsed.
 
 **Every right-click menu is laid out by one rule** (`_menu()`, `_MENU_GROUPS` in
 `index.html`): a menu says what it offers in named groups and the groups come out in one

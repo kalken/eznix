@@ -5407,17 +5407,23 @@ function _folderMenuItems(folder) {
 // "name.disabled" there (".name.disabled" until 2026-10, which put it in front of its row the
 // moment it was disabled) and a disabled file "name.json.disabled".
 const _byFolderLabel = (a, b) => _folderLabel(a).localeCompare(_folderLabel(b)) || a.localeCompare(b);
-// ...except that a folder with an `order` stands by it: services.eznix.folders.NAME = { order },
-// lowest first, where a folder without one counts as 0, and folders that come out equal are
-// by name as before. So 10 puts one after the rest and -10 before them. Said and read as a
-// menu of buttons has its place (getMenus() in terminal-panel/terminal.js): by the name
-// shown, in any file, a later file's over an earlier one's, and nothing that is switched
-// off. The user asked for it on 2026-10-13 ("order number on folders as we did for
-// buttons"). Only the folders: the files in a row are by name.
-function _folderOrders() {
+// ...except that a tab with an `order` stands by it: services.eznix.paths.PATH = { order },
+// lowest first, where a tab without one counts as 0 and tabs that come out equal are by
+// name as before. So 10 puts one after the rest of its row and -10 before them. PATH is the
+// tab's place in the folder of files as the tabs show it, so without ".json" and without
+// what marks something as switched off: a folder's name ("system") or a file's path
+// ("software", "system/boot"). A folder is placed among the folders and a file among the
+// files of its row; a folder and a file of one name beside each other share a number, which
+// places each in its own half of the row. Said and read as a menu of buttons has its place
+// (getMenus() in terminal-panel/terminal.js): in any file, a later file's over an earlier
+// one's, and nothing that is switched off.
+// It was services.eznix.folders, for folders alone, for some hours on 2026-10-13 ("order
+// number on folders as we did for buttons"), until the user asked for files too and saw
+// that one setting by path covers both; nothing was kept of the first name.
+function _tabOrders() {
   const orders = {};
   files.forEach(f => {
-    const set = fileConfigs[f]?.services?.eznix?.folders;
+    const set = fileConfigs[f]?.services?.eznix?.paths;
     if (!set || typeof set !== 'object' || isDisabled(set)) return;
     for (const [name, m] of Object.entries(set)) {
       if (!m || typeof m !== 'object' || isDisabled(m) || isDisabled(m.order)) continue;
@@ -5427,11 +5433,18 @@ function _folderOrders() {
   });
   return orders;
 }
+// How to sort tabs, with the numbers read once: `folders` for folder names, `files` for file
+// names. Whatever puts tabs in a row, or asks which one comes first or next, sorts by these.
+function _tabSort() {
+  const orders = _tabOrders();
+  const by = (key, byName) => (a, b) => (orders[key(a)] || 0) - (orders[key(b)] || 0) || byName(a, b);
+  return { orders, folders: by(_folderLabel, _byFolderLabel), files: by(_filePathLabel, _byTabLabel) };
+}
 // The tabs follow an order as it is typed: the bar is drawn again when what the files say
-// about the folders' places is no longer what it was drawn with (_folderOrdersShown, set by
+// about the tabs' places is no longer what it was drawn with (_tabOrdersShown, set by
 // renderFileSelector()), as the bar of buttons follows its settings.
-let _folderOrdersShown = '{}';
-eznix.on('render', () => { if (JSON.stringify(_folderOrders()) !== _folderOrdersShown) renderFileSelector(); });
+let _tabOrdersShown = '{}';
+eznix.on('render', () => { if (JSON.stringify(_tabOrders()) !== _tabOrdersShown) renderFileSelector(); });
 const _byTabLabel = (a, b) => _tabLabel(a).localeCompare(_tabLabel(b)) || a.localeCompare(b);
 
 // A folder's tab in the first row. `inside` is the files in it.
@@ -5451,7 +5464,7 @@ function _makeFolderTab(folder, inside) {
   tab.addEventListener('click', () => {
     if (tab.querySelector('input')) return;
     const last = _lastFileIn[folder];
-    const open = inside.includes(last) ? last : inside.slice().sort(_byTabLabel)[0];
+    const open = inside.includes(last) ? last : inside.slice().sort(_tabSort().files)[0];
     if (open && open !== activeFile) switchFile(open);
     else { viewFolder = folder; renderFileSelector(); }
   });
@@ -5776,23 +5789,23 @@ function renderFileSelector() {
   const rootRow = document.createElement('div');
   rootRow.className = 'tab-row tab-row-root';
   _wireHoverTooltip(rootRow, 'Right-click for New file / New folder');
-  const orders = _folderOrders(), place = f => orders[_folderLabel(f)] || 0;
-  _folderOrdersShown = JSON.stringify(orders);
-  Array.from(topFolders).sort((a, b) => place(a) - place(b) || _byFolderLabel(a, b)).forEach(folder =>
+  const sort = _tabSort();
+  _tabOrdersShown = JSON.stringify(sort.orders);
+  Array.from(topFolders).sort(sort.folders).forEach(folder =>
     rootRow.appendChild(_makeFolderTab(folder, filesByFolder[folder] || [])));
   if (topFolders.size && rootFiles.length) {
     const sep = document.createElement('div');
     sep.className = 'tab-row-sep';
     rootRow.appendChild(sep);
   }
-  rootFiles.sort(_byTabLabel).forEach(name => rootRow.appendChild(_makeTab(name)));
+  rootFiles.sort(sort.files).forEach(name => rootRow.appendChild(_makeTab(name)));
   bar.appendChild(rootRow);
 
   // No folders, no second row: a flat set of files stays one line. With folders the row is
   // always there, empty when the open file is in none, so the bar keeps its height while
   // switching (the hint is what holds an empty row to a tab's height).
   if (topFolders.size) {
-    const inside = (filesByFolder[viewFolder] || []).slice().sort(_byTabLabel);
+    const inside = (filesByFolder[viewFolder] || []).slice().sort(sort.files);
     const row = document.createElement('div');
     row.className = 'tab-row tab-row-files';
     row.dataset.folder = viewFolder;
@@ -5916,7 +5929,7 @@ async function deleteFile(name) {
   // a file threw the user out of the folder they were working in. A folder left empty stays
   // the one shown, as an empty folder is when clicked.
   const folder = _topFolder(name);
-  const beside = files.filter(f => _topFolder(f) === folder).sort(_byTabLabel);
+  const beside = files.filter(f => _topFolder(f) === folder).sort(_tabSort().files);
   const at = beside.indexOf(name);
   const next = beside[at + 1] || beside[at - 1];
   files = files.filter(f => f !== name);

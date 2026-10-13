@@ -141,12 +141,13 @@ beside them on top, and under it the files of the folder you are in. Drag a file
 folder to move it there, and a setting onto another file's tab to move it to that file; held
 over a folder, the drag brings up that folder's files to drop on.
 
-Folders stand by name. To move one, give it an `order` under `services.eznix.folders`, by
-its name: a number, lowest first, where a folder without one counts as 0. So -10 puts it
-first and 10 last.
+Tabs stand by name, the folders first. To move one, give it an `order` under
+`services.eznix.paths`, by its path as the tabs show it: a folder's name, or a file's path
+without `.json`. A number, lowest first, where a tab without one counts as 0. So -10 puts it
+first in its row and 10 last.
 
 ```json
-{ "services": { "eznix": { "folders": { "network": { "order": -10 } } } } }
+{ "services": { "eznix": { "paths": { "network": { "order": -10 }, "network/wan": { "order": -10 } } } } }
 ```
 
 Import the folder once from your

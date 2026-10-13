@@ -323,13 +323,13 @@ in
         };
       });
     };
-    folders = mkOption {
+    paths = mkOption {
       default     = { };
-      description = "Settings of a folder of configuration files, by its name. Like the buttons, read by the editor straight from the *.json files.";
-      example     = lib.literalExpression ''{ network = { order = -10; }; }'';
+      description = "Settings of a tab, by its path in the folder of configuration files as the tabs show it: a folder's name, or a file's path without .json (system, software, system/boot). Like the buttons, read by the editor straight from the *.json files.";
+      example     = lib.literalExpression ''{ system = { order = -10; }; "system/boot" = { order = -10; }; }'';
       type        = types.attrsOf (types.submodule {
         options = {
-          order = mkOption { type = types.int; default = 0; description = "Where the folder's tab stands among the folders: lowest first, where a folder without a number counts as 0, and folders with the same number are by name. So 10 puts it after the others and -10 before them."; };
+          order = mkOption { type = types.int; default = 0; description = "Where the tab stands in its row, a folder among the folders and a file among the files: lowest first, where a tab without a number counts as 0, and tabs with the same number are by name. So 10 puts it after the others and -10 before them."; };
         };
       });
     };
