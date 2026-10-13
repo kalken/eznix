@@ -139,7 +139,17 @@ eznix edits `*.json` files in one folder inside your flake (`<flake>/eznix` by d
 file is a tab in the editor. With subfolders the tabs are two rows: the folders and the files
 beside them on top, and under it the files of the folder you are in. Drag a file onto a
 folder to move it there, and a setting onto another file's tab to move it to that file; held
-over a folder, the drag brings up that folder's files to drop on. Import the folder once from your
+over a folder, the drag brings up that folder's files to drop on.
+
+Folders stand by name. To move one, give it an `order` under `services.eznix.folders`, by
+its name: a number, lowest first, where a folder without one counts as 0. So -10 puts it
+first and 10 last.
+
+```json
+{ "services": { "eznix": { "folders": { "network": { "order": -10 } } } } }
+```
+
+Import the folder once from your
 configuration, through the function eznix's flake provides:
 
 ```nix

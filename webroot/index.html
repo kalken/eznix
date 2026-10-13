@@ -5373,6 +5373,31 @@ function _folderMenuItems(folder) {
 // "name.disabled" there (".name.disabled" until 2026-10, which put it in front of its row the
 // moment it was disabled) and a disabled file "name.json.disabled".
 const _byFolderLabel = (a, b) => _folderLabel(a).localeCompare(_folderLabel(b)) || a.localeCompare(b);
+// ...except that a folder with an `order` stands by it: services.eznix.folders.NAME = { order },
+// lowest first, where a folder without one counts as 0, and folders that come out equal are
+// by name as before. So 10 puts one after the rest and -10 before them. Said and read as a
+// menu of buttons has its place (getMenus() in terminal-panel/terminal.js): by the name
+// shown, in any file, a later file's over an earlier one's, and nothing that is switched
+// off. The user asked for it on 2026-10-13 ("order number on folders as we did for
+// buttons"). Only the folders: the files in a row are by name.
+function _folderOrders() {
+  const orders = {};
+  files.forEach(f => {
+    const set = fileConfigs[f]?.services?.eznix?.folders;
+    if (!set || typeof set !== 'object' || isDisabled(set)) return;
+    for (const [name, m] of Object.entries(set)) {
+      if (!m || typeof m !== 'object' || isDisabled(m) || isDisabled(m.order)) continue;
+      const n = Number(m.order);
+      if (m.order != null && Number.isFinite(n)) orders[name] = n;
+    }
+  });
+  return orders;
+}
+// The tabs follow an order as it is typed: the bar is drawn again when what the files say
+// about the folders' places is no longer what it was drawn with (_folderOrdersShown, set by
+// renderFileSelector()), as the bar of buttons follows its settings.
+let _folderOrdersShown = '{}';
+eznix.on('render', () => { if (JSON.stringify(_folderOrders()) !== _folderOrdersShown) renderFileSelector(); });
 const _byTabLabel = (a, b) => _tabLabel(a).localeCompare(_tabLabel(b)) || a.localeCompare(b);
 
 // A folder's tab in the first row. `inside` is the files in it.
@@ -5717,7 +5742,9 @@ function renderFileSelector() {
   const rootRow = document.createElement('div');
   rootRow.className = 'tab-row tab-row-root';
   _wireHoverTooltip(rootRow, 'Right-click for New file / New folder');
-  Array.from(topFolders).sort(_byFolderLabel).forEach(folder =>
+  const orders = _folderOrders(), place = f => orders[_folderLabel(f)] || 0;
+  _folderOrdersShown = JSON.stringify(orders);
+  Array.from(topFolders).sort((a, b) => place(a) - place(b) || _byFolderLabel(a, b)).forEach(folder =>
     rootRow.appendChild(_makeFolderTab(folder, filesByFolder[folder] || [])));
   if (topFolders.size && rootFiles.length) {
     const sep = document.createElement('div');

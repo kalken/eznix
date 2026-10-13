@@ -323,6 +323,16 @@ in
         };
       });
     };
+    folders = mkOption {
+      default     = { };
+      description = "Settings of a folder of configuration files, by its name. Like the buttons, read by the editor straight from the *.json files.";
+      example     = lib.literalExpression ''{ network = { order = -10; }; }'';
+      type        = types.attrsOf (types.submodule {
+        options = {
+          order = mkOption { type = types.int; default = 0; description = "Where the folder's tab stands among the folders: lowest first, where a folder without a number counts as 0, and folders with the same number are by name. So 10 puts it after the others and -10 before them."; };
+        };
+      });
+    };
 
     theme = mkOption {
       # The ones that ship, as choices in the editor, or any other name: one of your own.

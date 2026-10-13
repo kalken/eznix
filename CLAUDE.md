@@ -522,6 +522,16 @@ room beside a short name still brought up the option's menu. Tried by the user i
 server that day ("i think this works for everything. hard to test everything though"); not
 in a browser by me.
 
+**A folder's tab can be given a place** (`_folderOrders()`, `services.eznix.folders.NAME =
+{ order }`, the option in `options.nix`): lowest first, a folder without a number counting as
+0, equals by name as before. Asked for by the user on 2026-10-13 as "order number on folders
+as we did for buttons", and made the way a menu's `order` is: by the name shown, read by the
+page straight from every file, a later file's over an earlier one's, nothing switched off.
+The bar is drawn again when the numbers change, also while one is typed. Not for files,
+which stay by name in their row, and not in `eznix.toml`. Checked by running the function
+and the sort, lifted out of the page, on made-up files; not in a browser. The option in
+`options.nix` was only parsed, not evaluated in a module or built.
+
 **Every right-click menu is laid out by one rule** (`_menu()`, `_MENU_GROUPS` in
 `index.html`): a menu says what it offers in named groups and the groups come out in one
 order with a line between them: `add` (Add option…, New file), `item` (Rename, Disable or
