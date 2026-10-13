@@ -157,8 +157,9 @@ async function showSystemMenu(event) {
     clientX: rect.left, clientY: rect.bottom + 2,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
-  // Export, Import, Backup, then the backups to restore: the order the user asked for (a
-  // file's menu starts the same way), which also puts the one part whose length varies last.
+  // Import, Export, Backup, then the backups to restore: the order the user asked for, as a
+  // file's right-click menu has the first two (Export stood first until 2026-10-13), which
+  // also puts the one part whose length varies last.
   const items = [];
   let systemBackups = [];
   if (SYSTEM_BACKUP_ENABLED) {
@@ -167,8 +168,8 @@ async function showSystemMenu(event) {
       if (res.ok) systemBackups = (await res.json()).backups || [];
     } catch (e) { /* falls through to the empty-state item below */ }
   }
-  items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
   items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
+  items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
   if (SYSTEM_BACKUP_ENABLED) {
     items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
     items.push({ separator: true });

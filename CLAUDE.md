@@ -379,7 +379,10 @@ plugin, `prepare(zf, keeping=True)`): what the setting names, `hardware-configur
 unless set, is neither replaced by the zip's nor removed for not being in it; a machine
 without one takes the zip's. The user's wish on 2026-10-13, about to import a template made
 on a VM onto another box; generating a new one was the first idea and is not something an
-unprivileged eznix can do. A restore keeps nothing back. In `test_server.py`.
+unprivileged eznix can do. A restore keeps nothing back. In `test_server.py`. An import
+through the page was tried by the user the same day: export, one Markdown file removed,
+the export imported again, which brought the file back, with the backup taken first the
+smaller for it ("it seems to work"); on which system was not said.
 
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
@@ -592,7 +595,8 @@ list written out where it was shown, and the same entry stood in different place
 moved: Delete from the end of an option's menu up beside Rename and Disable; on a file's
 and a folder's menu Export from the top to below Disable and Delete, which undoes "Export,
 Import and then the rest" as the user had set it for a file (that order still holds inside
-the group, and in the system plugin's menu, which is not one of these); a file's Clear and
+the group; the system plugin's menu, which is not one of these, has Import before Export
+since 2026-10-13 as well); a file's Clear and
 Delete now say "file", since on the editor's blank space they stand near the top. A
 disabled option has Copy and Cut like any other. The menus of buttons (the terminal's, the
 plugins') do not go through it. Checked by running the builder and the functions that feed
