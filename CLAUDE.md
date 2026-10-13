@@ -227,7 +227,12 @@ own path: for the first hour it was a command looked up on the PATH, and the use
 try, with only `enable` set, did not find chromium. ezconf's entry (`programs.ezconf`) is not the model: the user
 said its icons were wrong. Checked: `eznix --icon` gives valid SVG; the option evaluated on
 a copy of the installer's template (the address, the entry's name, the desktop file's text,
-the system's derivation). Not built, not installed, not seen on a desktop.
+the system's derivation). Built, installed and opened by the user the same day, on NixOS
+with Plasma: "the app works and has the right icon!"; with which browser was not said, so
+the window's name is confirmed for one of the two prefixes only. Switching HTTPS off and
+rebuilding was tried with it too ("yes that works"): the entry opens the new address. The
+window that was open through the switch goes on showing the terminal reconnecting until it
+is closed and opened again, which the user found possibly acceptable ("it might be ok").
 
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With
@@ -297,6 +302,14 @@ answer; the user called it hacky and had it removed ("i need it to be secure"), 
 the list with `lo` in it, asked what nginx does (addresses only, the interface left to the
 firewall: what ezconf did, and the weak spot on a router), and chose the model that names
 interfaces once told that dnsmasq and Samba are it.
+On 2026-10-13, on NixOS: `openFirewall` is refused unless it is told where, by `interfaces`
+written (naming something other than `lo`, or `[ ]` for every one) or by `listenAddresses`
+(then one rule for every interface, eznix answering on those addresses alone). It used to
+open nothing, silently, with the defaults. The user's reason: whoever opens a port should
+have to understand what the settings do. `"all"` as a name in the list for every interface
+was built the same day and dropped again, since a word among interface names looked strange
+to the user; `[ ]` stays. Evaluated on a copy of the installer's template for eight
+combinations, with the ports each one opens; nothing was rebuilt with it.
 Later that day the user, about to set `listenAddresses` alone, asked whether that would
 work. It would not have: the address was tied to `lo`, the default, so nothing arrived from
 the network and `localhost` was gone as well. Now `interfaces` not set is `[ ]` when there

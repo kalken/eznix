@@ -10,7 +10,7 @@
 #
 # Evaluated, never run: no part of this has been started on a real NixOS machine yet.
 self:
-{ config, lib, pkgs, ... }:
+{ config, lib, pkgs, options, ... }:
 let
   cfg      = config.services.eznix;
   packages = import ./packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
@@ -74,7 +74,7 @@ in
     openFirewall = lib.mkOption {
       type        = lib.types.bool;
       default     = false;
-      description = "Open the editor's port in the firewall, on the interfaces eznix is reached through (`interfaces`), or on every one when that list is empty. The terminals' ports are never opened.";
+      description = "Open the editor's port in the firewall, on the interfaces eznix is reached through. It has to be told where, by `interfaces` (the ones to open it on, or an empty list for every one) or by `listenAddresses` (then on every interface, eznix answering on those addresses alone); with neither set the build stops. The terminals' ports are never opened.";
     };
     flakeWritable = lib.mkOption {
       type        = lib.types.bool;
@@ -91,6 +91,20 @@ in
    (lib.mkIf config.programs.eznix.enable { environment.systemPackages = [ common.app ]; })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
+      {
+        # Opening the firewall is said together with where, so that whoever opens a port
+        # has read what these two settings do: interfaces written (the ones to open it on,
+        # or [ ] for every one) or listenAddresses. With only addresses it is one rule for
+        # every interface, which is what naming an address and no interface asks for, eznix
+        # itself answering on that address alone. Left to the defaults it opened nothing,
+        # the machine itself having no firewall, and said nothing. Settled with the user on
+        # 2026-10-13; "all" as a name in the list for every interface was built that day
+        # and dropped again, a word in a list of names looking strange.
+        assertion = !cfg.openFirewall
+          || ((options.services.eznix.interfaces.highestPrio < 1500 || cfg.listenAddresses != [ ])
+              && (cfg.interfaces == [ ] || lib.any (i: i != "lo") cfg.interfaces));
+        message   = "services.eznix.openFirewall needs to be told where: set services.eznix.interfaces (the interfaces to open the port on, or [ ] for every one) or services.eznix.listenAddresses.";
+      }
       {
         assertion = cfg.users != [ ];
         message   = "services.eznix.users needs at least one name: they are who can log in, and whose terminals it runs.";
