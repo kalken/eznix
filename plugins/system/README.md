@@ -5,7 +5,8 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 ## ✨ What it does
 
 - **Export** the flake as a zip
-- **Import** a zip over the flake: the files end up exactly as in the zip
+- **Import** a zip over the flake: the files end up exactly as in the zip, except this
+  machine's own `hardware-configuration.nix`, which stays
 - **Backup** the flake now, and **restore** any backup from the list
 - A backup is made by itself before every import and restore
 
@@ -15,6 +16,7 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 services.eznix.plugins.system = {
   backups = 10;
   exclude = [ ".*" "result" "*.key" ];
+  keep    = [ "hardware-configuration.nix" ];
 };
 ```
 
@@ -22,6 +24,7 @@ services.eznix.plugins.system = {
 |---|---|---|
 | `backups` | `5` | how many backups are kept; `0` for none |
 | `exclude` | `[ ".*" ]` | what an export leaves out, read like the lines of a `.gitignore` |
+| `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 📝 Notes

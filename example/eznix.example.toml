@@ -113,6 +113,8 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # .gitignore, as `exclude` above is. Default [".*"]:
 #                                     # dot-files and dot-folders; a list of your own
 #                                     # replaces it
+# keep     = ["hardware-configuration.nix"]
+#                                     # what an import leaves as it is on this machine
 
 # [plugin.documents]
 # enabled = false

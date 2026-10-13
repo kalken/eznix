@@ -374,6 +374,13 @@ down. Before 2026-10-13 any zip was taken, and since the tree is made to match t
 that was not a system removed every file of the flake that it did not hold (the backup
 taken first was the only way back). The user asked for the check. In `test_server.py`.
 
+**A system import leaves the machine's own hardware file alone** (`keep` in the system
+plugin, `prepare(zf, keeping=True)`): what the setting names, `hardware-configuration.nix`
+unless set, is neither replaced by the zip's nor removed for not being in it; a machine
+without one takes the zip's. The user's wish on 2026-10-13, about to import a template made
+on a VM onto another box; generating a new one was the first idea and is not something an
+unprivileged eznix can do. A restore keeps nothing back. In `test_server.py`.
+
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
 change any one of the rest, it refuses before the snapshot and before the first write. On
@@ -589,7 +596,9 @@ the group, and in the system plugin's menu, which is not one of these); a file's
 Delete now say "file", since on the editor's blank space they stand near the top. A
 disabled option has Copy and Cut like any other. The menus of buttons (the terminal's, the
 plugins') do not go through it. Checked by running the builder and the functions that feed
-it, lifted out of the page, and reading the order of each menu; not in a browser.
+it, lifted out of the page, and reading the order of each menu; not in a browser by me. Seen
+by the user in the page that day ("rightclick menu order is good now, import and export are
+its own with dividers"); which of the menus were opened was not said.
 
 **A path goes on inside what is switched off** (`_enabledValue()`, `getAtPath()`,
 `_holderOf()`, `traverseForSet()`): a disabled option or section is stored as `{_disabled,
@@ -603,7 +612,8 @@ reorder) goes through `_contentAt()` and `_setContentAt()`, which keep the wrapp
 by running those functions, lifted out of the page, on made-up data (reads, set, delete,
 rename, reorder and add, in a disabled section, a list in one, and ordinary ones); not in a
 browser. "Add option…" is on a disabled section's menu since then, like any other's
-(`_addMenuItems()`); it was kept off while adding there wrote into the wrapper. Merging follows the same
+(`_addMenuItems()`); it was kept off while adding there wrote into the wrapper. Adding an
+option to a disabled section was tried by the user in the page that day ("that works"). Merging follows the same
 rule (`_mergeOrReplace()`, which `_nixDeepMerge()` comes back to at every depth): a paste, a
 drag onto another file's tab or an import onto something switched off merges with what it
 holds, and the result is switched off if either side was, so nothing that was off comes on

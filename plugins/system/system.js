@@ -113,6 +113,7 @@ function initSystemImportButton() {
       const parts = [`Imported ${data.written.length} file(s) into ${NIXOS_TARGET}`];
       if (data.removed && data.removed.length) parts.push(`removed ${data.removed.length}`);
       if (data.skipped && data.skipped.length) parts.push(`skipped ${data.skipped.length}`);
+      if (data.kept && data.kept.length) parts.push(`kept this machine's ${data.kept.join(', ')}`);
       // This writes straight into NIXOS_TARGET on disk, which CONFIG_DIR lives under — the
       // in-memory files/fileConfigs state has no way to know its tab list or content might now
       // be stale, so a reload is the only way to pick that up. Same "don't clobber unsaved

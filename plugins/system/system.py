@@ -24,6 +24,13 @@ Settings ([plugin.system] in eznix.toml):
             replaces that, so it has to say ".*" itself to keep them out.
             Until 2026-10-12 it was two settings, a switch `dotfiles` and a list of exact
             file names; the user wanted the one list, with the dot-files as its default.
+  keep      what an import leaves as it is on this machine, read the same way: a file that
+            is there is neither replaced by the zip's nor removed for not being in it; one
+            that is not there is taken from the zip. Default ["hardware-configuration.nix"]:
+            that file describes the machine, and a system brought from another one came
+            with the other machine's (the user, 2026-10-13, about to import a template
+            made on a VM). eznix cannot make a new one, which takes root. A restore keeps
+            nothing back: a backup is this machine's own.
 """
 import datetime
 import io
@@ -39,6 +46,7 @@ def setup(api):
     backup_dir = os.path.join(api.state_dir, 'system-backups')
     keep = int(api.config.get('backups', 5))
     excluded = api.ignore(api.config.get('exclude', ['.*']))
+    stays = api.ignore(api.config.get('keep', ['hardware-configuration.nix']))
     api.page = {'backups': keep > 0}
 
     def tree_files():
@@ -107,10 +115,11 @@ def setup(api):
             folder = os.path.dirname(folder)
         return os.access(folder, os.W_OK | os.X_OK)
 
-    def prepare(zf):
+    def prepare(zf, keeping=False):
         """What making the tree match the zip takes, decided before anything is touched (the
         snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
-        'unchanged'}.
+        'unchanged', 'kept'}. `keeping`, for an import: what the `keep` setting names stays
+        as it is on this machine ('kept').
 
         An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
         that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
@@ -134,7 +143,7 @@ def setup(api):
             deeper = sorted(n for n in tops if n.endswith('/flake.nix'))
             hint = f': its flake.nix is in {os.path.dirname(deeper[0])}/, not at the top' if deeper else ': there is no flake.nix at its top'
             raise api.Error(400, 'that zip is not a system' + hint + '; nothing was changed')
-        write, skipped, unchanged, names = [], [], 0, set()
+        write, skipped, unchanged, names, kept = [], [], 0, set(), []
         for info in zf.infolist():
             if info.is_dir():
                 continue
@@ -146,18 +155,22 @@ def setup(api):
             if os.path.commonpath([flake, target]) != flake:
                 # Not expected after the check above; abort before writing anything.
                 raise api.Error(400, 'invalid entry path: ' + info.filename)
-            names.add(os.path.relpath(target, flake).replace(os.sep, '/'))
-            if same(target, zf, info):
+            name = os.path.relpath(target, flake).replace(os.sep, '/')
+            names.add(name)
+            if keeping and stays(name) and os.path.exists(target):
+                kept.append(name)
+            elif same(target, zf, info):
                 unchanged += 1
             else:
                 write.append((target, info))
-        remove = [(full, arcname) for full, arcname in tree_files() if arcname not in names]
+        remove = [(full, arcname) for full, arcname in tree_files()
+                  if arcname not in names and not (keeping and stays(arcname))]
         denied = ([os.path.relpath(t, flake) for t, _ in write if not writable(t)]
                   + [name for full, name in remove if not os.access(os.path.dirname(full), os.W_OK | os.X_OK)])
         if denied:
             raise api.Error(403, f'eznix may not change {len(denied)} of the files this would change '
                                  f'({", ".join(denied[:3])}{", ..." if len(denied) > 3 else ""}); nothing was changed')
-        return {'write': write, 'remove': remove, 'skipped': skipped, 'unchanged': unchanged}
+        return {'write': write, 'remove': remove, 'skipped': skipped, 'unchanged': unchanged, 'kept': kept}
 
     def apply(zf, plan):
         """Carry out what prepare() decided."""
@@ -175,7 +188,7 @@ def setup(api):
             except OSError:
                 pass
         return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
-                'unchanged': plan['unchanged']}
+                'unchanged': plan['unchanged'], 'kept': plan['kept']}
 
     def export(req):
         buf = io.BytesIO()
@@ -190,7 +203,7 @@ def setup(api):
         except zipfile.BadZipFile:
             raise api.Error(400, 'not a valid zip file')
         with zf:
-            plan = prepare(zf)
+            plan = prepare(zf, keeping=True)
             backup()
             return apply(zf, plan)
 

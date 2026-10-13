@@ -370,6 +370,22 @@ def main():
                   status == 200 and result.get('written') == ['eznix/a.json'] and result.get('unchanged') == 3
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 9}, result)
             os.chmod(f'{tmp}/flake/flake.nix', 0o644)
+            # What describes the machine stays the machine's through an import, not a restore.
+            now['eznix/a.json'] = '{"a": 9}'       # as the import above left it
+            with open(f'{tmp}/flake/hardware-configuration.nix', 'w') as f:
+                f.write('this machine')
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
+            check("system: an import leaves this machine's hardware file as it is, and says so",
+                  status == 200 and result.get('kept') == ['hardware-configuration.nix']
+                  and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'this machine', result)
+            status, result = b.json('/api/v1/plugin/system/import', zipped(now), 'POST')
+            check('system: nor is it removed by a zip that has none',
+                  status == 200 and result.get('removed') == [] and os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
+            os.remove(f'{tmp}/flake/hardware-configuration.nix')
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
+            check('system: a machine without one takes the zip\'s',
+                  status == 200 and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'another machine', result)
+            os.remove(f'{tmp}/flake/hardware-configuration.nix')
             # A zip that is not a system at all would, taken for one, remove the whole flake.
             tree = lambda: sorted(os.path.relpath(os.path.join(d, f), f'{tmp}/flake') for d, _, fs in os.walk(f'{tmp}/flake') for f in fs)
             had, snapshots = tree(), len(b.json('/api/v1/plugin/system/backups')[1]['backups'])
