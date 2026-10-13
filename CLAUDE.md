@@ -539,9 +539,9 @@ bars and the sections, a panel of another shade the editor's page, a sidebar ent
 (`--tab-bg`, `--tab-border`, new that day so a tab can be a bare name) and the selected one
 the open tab; popups have the bars' colour. Measured in the picture's pixels, converted to
 sRGB (a Mac's screenshot is in the display's profile; `sips -s format bmp` converts). Done
-for `osx-*` from Finder and `breeze-*` from Dolphin, each seen by the user in the test
-server but for `breeze-light`; `gnome-*` still wait for a screenshot and have libadwaita's
-values. Sections and bars are one colour in every theme, also the user's rule that day.
+for `osx-*` from Finder, `breeze-*` from Dolphin and `gnome-*` from Files (run under
+Plasma with `nix run 'nixpkgs#nautilus'`); the first two pairs were seen by the user in the
+test server, but for `breeze-light`. Sections and bars are one colour in every theme, also the user's rule that day.
 
 One mistake worth knowing about: a block of these rules (the name column's width, the indent,
 the heading's padding) was deleted by an edit that replaced "everything between two comments"

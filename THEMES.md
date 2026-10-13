@@ -73,7 +73,7 @@ comes from them.
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
 | Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
 | A top-level section's card | `--card-bg` (normally `var(--bg2)`) | The bars' colour in every built-in theme; must be told apart from the page it sits on |
-| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line; the `osx-*` and `breeze-*` themes have none, a tab there being a name until it is the open one |
+| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line; the `osx-*`, `breeze-*` and `gnome-*` themes have none, a tab there being a name until it is the open one |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 
 - **Page and card need visible contrast, and cards are the colour of the bars.** A dark theme
@@ -208,7 +208,8 @@ the two.
 Everything else follows from those by the rules above: the value strip stays derived, the
 remaining greys are steps between the measured ones, and the signal colours are the
 system's own. Only colours come from the picture: the layout, the spacing and the shapes
-are the same in every theme. The `osx-*` and `breeze-*` themes were made this way, from Finder and from Dolphin; a
+are the same in every theme. The `osx-*`, `breeze-*` and `gnome-*` themes were made this way, from Finder, Dolphin and
+GNOME's Files; a
 scheme's own file, where there is one, is the check that the picture's colours are true
 (Breeze's Window, View and Header colours were in the screenshot to the digit).
 

@@ -1,12 +1,18 @@
 /* GNOME Light — Adwaita's light style: a grey page with white cards, the GNOME blue as the
-   accent. The counterpart of theme-gnome-dark.css, checked against the same file, whose
-   colours these are: its sidebar's #ebebed for the page, and white for the cards and the bars
-   alike, which is its card and its header bar both (the bars were its window's #fafafb until
-   2026-10-13, when the user asked for cards and bars of one colour in every theme). The page
-   and the window colour were the other way round until 2026-10-13, the page
-   near-white as an Adwaita window is: a white card could hardly be told from it, and an
-   option's value, halfway between the two (--value-bg), not at all from its card (the user:
-   "its very hard to see what is an input field"). */
+   accent. The counterpart of theme-gnome-dark.css, made as that one is from a screenshot of
+   Files in the light style (2026-10-13):
+   - white, which the files and the toolbar above them lie on, is the bars and the sections;
+   - the page is grey, as the sidebar is, but darker than it: #ebebed (libadwaita's own
+     sidebar colour in _colors.scss) where Files shows #f2f2f4. Earlier that day the page
+     was near-white, as an Adwaita window is, and a white card could hardly be told from it,
+     nor an option's value, halfway between the two (--value-bg), from its card (the user:
+     "its very hard to see what is an input field"); the measured grey would bring half of
+     that back;
+   - a tab is a name with nothing behind it, and the open one is as much darker than the
+     bar as the selected entry is than the sidebar (#dfdfe1 on #f2f2f4, so #ececee on white);
+   - a button is the grey of one in Files, #f5f5f5, and the selected entry's #dfdfe1 under
+     the pointer.
+   The lines were already those of Files (black at 12% is its #e1e1e3 on white). */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
@@ -14,8 +20,8 @@
   /* ── Base palette ── */
   --bg:   #ebebed;
   --bg2:  #ffffff;
-  --bg3:  #e0e0e3;
-  --bg4:  #d3d3d7;
+  --bg3:  #f5f5f5;
+  --bg4:  #dfdfe1;
   --text:  #333338;
   --text2: #5e5e66;
   --text3: color-mix(in srgb, #333338 45%, #ffffff);
@@ -40,10 +46,10 @@
   --border:  #dcdcdf;
   --border2: #c8c8cc;
   --input-border: #cfcfd3;
-  --select-option-bg:    #ffffff;
+  --select-option-bg:    var(--bg2);
   --select-option-color: #333338;
   --select-option-hover: #ebebed;
-  --popup-bg: #ffffff; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour */
   --search-file-color: var(--accent); /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #3584e4;
@@ -60,11 +66,11 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
-  --tab-active-bg:     #d3d3d7;
-  --tab-active-border: var(--border2);
+  --tab-active-bg:     #ececee;
+  --tab-active-border: #ececee;
   --tab-active-text:   var(--text);
-  --tab-bg:            var(--bg3);     /* a tab that is not the open one: a button's fill and line unless set */
-  --tab-border:        var(--border2);
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of the sidebar in Files */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
   --required-bg:   color-mix(in srgb, #c01c28 10%, #ffffff);

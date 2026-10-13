@@ -1,22 +1,31 @@
-/* GNOME Dark — Adwaita's dark style: its window, view and header-bar greys, the GNOME blue as
-   the accent, its signal colours, and the GNOME palette in the terminal. The surfaces are
-   libadwaita's named colours, checked against its _colors.scss (1.9.3): view #1d1d20 for the
-   page, and header bar #2e2e32 for the bars and the cards alike (its own card, white at 8% on
-   the window colour, #343437, was the cards' until 2026-10-13, when the user asked for cards
-   and bars of one colour in every theme; read again that day, in the file as it is now). The signal colours are the fixed ones of earlier versions; it now derives them
-   from the palette by a formula, to much the same. The terminal's colours are from memory. */
+/* GNOME Dark — Adwaita's dark style, made from a screenshot of Files (Nautilus) the user sent
+   on 2026-10-13, read as THEMES.md says ("A theme from a screenshot"), with the GNOME blue
+   as the accent and the GNOME palette in the terminal:
+   - the sidebar, #28282c, is the bars and the sections, and what the files lie on,
+     #1d1d20 (libadwaita's view colour), the editor's page;
+   - a tab is a name with nothing behind it, as an entry of that sidebar, and the open one
+     has the selected entry's fill, #3e3e42, with no line and its text unchanged;
+   - a button is as much lighter than its bar as one in Files is than what it lies on
+     (#29292b on #1d1d20, so #343437 here);
+   - popups have the bars' colour, as in the other themes made this way.
+   The lines and the text are as they were: Files draws a dark line between its two halves,
+   which the line here already is. Before that day the bars and cards were libadwaita's
+   header bar colour, #2e2e32, from its _colors.scss (1.9.3), which is not what its sidebar
+   comes out as in Files. The signal colours are the fixed ones of earlier versions; it now
+   derives them from the palette by a formula, to much the same. The terminal's colours are
+   from memory. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: dark;
   /* ── Base palette ── */
   --bg:   #1d1d20;
-  --bg2:  #2e2e32;
+  --bg2:  #28282c;
   --bg3:  #343437;
   --bg4:  #414145;
   --text:  #ffffff;
-  --text2: color-mix(in srgb, #ffffff 62%, #2e2e32);
-  --text3: color-mix(in srgb, #ffffff 40%, #2e2e32);
+  --text2: color-mix(in srgb, #ffffff 62%, #28282c);
+  --text3: color-mix(in srgb, #ffffff 40%, #28282c);
   --accent:  #78aeed;
   --accent2: #3584e4;
   /* The NixOS logo, every other arm: the two Adwaita blues. */
@@ -38,10 +47,10 @@
   --border:  #3d3d41;
   --border2: #4f4f53;
   --input-border: #44444a;
-  --select-option-bg:    #36363a;
+  --select-option-bg:    var(--bg2);
   --select-option-color: #ffffff;
   --select-option-hover: #46464a;
-  --popup-bg: #36363a; /* dialogs and tooltips */
+  --popup-bg: var(--bg2); /* dialogs and tooltips: the bars' colour */
   --search-file-color: var(--accent); /* the file a search result is in: readable on --popup-bg, unlike the path and the value */
   /* ── Button states ── */
   --btn-primary-bg:     #3584e4;
@@ -50,7 +59,7 @@
   --btn-primary-text:   #ffffff;
 
   /* ── Selection / highlight ── */
-  --selected-bg:   color-mix(in srgb, #3584e4 30%, #2e2e32);
+  --selected-bg:   color-mix(in srgb, #3584e4 30%, #28282c);
   --toggle-on-bg:  #3584e4;
   --toggle-on-knob:   #ffffff;
   --toggle-on-border: #3584e4;
@@ -58,18 +67,18 @@
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text);
-  --tab-active-bg:     #434347;
-  --tab-active-border: #55555a;
+  --tab-active-bg:     #3e3e42;
+  --tab-active-border: #3e3e42;
   --tab-active-text:   var(--text);
-  --tab-bg:            var(--bg3);     /* a tab that is not the open one: a button's fill and line unless set */
-  --tab-border:        var(--border2);
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of the sidebar in Files */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
-  --required-bg:   color-mix(in srgb, #ff7b63 16%, #2e2e32);
+  --required-bg:   color-mix(in srgb, #ff7b63 16%, #28282c);
   --required-text: var(--red);
-  --error-bg:      color-mix(in srgb, #ff7b63 10%, #2e2e32);
-  --success-bg:    color-mix(in srgb, #8ff0a4 12%, #2e2e32);
-  --success-border: color-mix(in srgb, #8ff0a4 35%, #2e2e32);
+  --error-bg:      color-mix(in srgb, #ff7b63 10%, #28282c);
+  --success-bg:    color-mix(in srgb, #8ff0a4 12%, #28282c);
+  --success-border: color-mix(in srgb, #8ff0a4 35%, #28282c);
 
   /* ── Nix expression fields ── */
   --expr-border: #3d3d41;
