@@ -531,6 +531,17 @@ there bare. Over plain http `navigator.clipboard` is not there and the text is c
 of a hidden field instead. The text was checked by running the function, lifted out of the
 page; that it arrives on a clipboard was not, in either way, by anyone.
 
+**A suggestions file that is not there is answered with 204, and one outside their folder
+not at all** (`_serve_autocomplete()`, the `/autocomplete/` branch of `do_GET()`). Nothing is
+generated until somebody runs the generator, so a missing file is an ordinary state: it was
+a 404, which a browser writes in its console at every load, where the user found one for
+`choices.json` (2026-10-13). While changing that I tried an address with `..` in it and got
+`/etc/hosts` back: the path was only tidied with `normpath`, which leaves leading `..` in,
+so anyone logged in could read whatever the eznix process can, its state folder included.
+It is now resolved (`realpath`) and has to lie inside the folder. In `test_server.py`, both.
+The other places that make a path from an address (`/terminal-panel/`, `/theme-*.css`,
+`/plugins/`) were read and are not open the same way; they were not attacked beyond that.
+
 **A tab can be given a place** (`_tabOrders()`, `_tabSort()`, `services.eznix.paths.PATH = {
 order }`, the option in `options.nix`): lowest first, a tab without a number counting as 0,
 equals by name as before; a folder among the folders, a file among the files of its row.

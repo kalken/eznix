@@ -472,6 +472,15 @@ def main():
             running = lambda: b.json('/api/v1/ping')[1]['autocomplete_running']
             marker = f'{tmp}/state/autocomplete/.generating'
             os.makedirs(os.path.dirname(marker), exist_ok=True)
+            with open(f'{tmp}/state/autocomplete/options.json', 'w') as f:
+                f.write('[]')
+            check('suggestions: a file that was generated is served', b.request('/autocomplete/options.json') == (200, b'[]'))
+            check('suggestions: one that was not is answered with nothing, not as an error',
+                  b.request('/autocomplete/choices.json') == (204, b''), b.request('/autocomplete/choices.json'))
+            outside = [b.request(p)[0] for p in ('/autocomplete/../sessions.json', '/autocomplete/../../conf.toml',
+                                                 '/autocomplete/%2e%2e/sessions.json', '/autocomplete//etc/hosts')]
+            check('suggestions: no way out of their folder (the state beside it, the config, an absolute path)',
+                  os.path.exists(f'{tmp}/state/sessions.json') and outside in ([404] * 4, [404, 404, 204, 404]), outside)
             check('no generator at work: the ping says so', ping['autocomplete_running'] is False, ping)
             with open(marker, 'w') as f:
                 f.write(f'{os.getpid()}\n')

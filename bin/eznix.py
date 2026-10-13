@@ -1993,9 +1993,18 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_error(404); return
             self._serve_static_gzip(None, path); return
         if parsed.path.startswith('/autocomplete/'):
-            rel = os.path.normpath(parsed.path[len('/autocomplete/'):]).lstrip('/')
-            base = AUTOCOMPLETE_DIR or os.path.join(WEBROOT, 'autocomplete')
-            self._serve_autocomplete(os.path.join(base, rel)); return
+            # A file in that folder and nowhere else: where the address leads is worked out
+            # with every ".." and link followed, and has to lie inside. Until 2026-10-13 the
+            # ".." were only tidied (normpath), which leaves the leading ones in: anyone
+            # logged in could read whatever eznix can, by /autocomplete/../../..., its own
+            # state included. A browser tidies such an address away before sending it, so it
+            # took a request written by hand; found while this was being changed for the
+            # 204 below, by trying it.
+            base = os.path.realpath(AUTOCOMPLETE_DIR or os.path.join(WEBROOT, 'autocomplete'))
+            path = os.path.realpath(os.path.join(base, parsed.path[len('/autocomplete/'):]))
+            if not path.startswith(base + os.sep):
+                self.send_error(404); return
+            self._serve_autocomplete(path); return
         super().do_GET()
 
     def do_HEAD(self):
@@ -2026,7 +2035,17 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         try:
             mtime = int(os.stat(path).st_mtime)
         except OSError:
-            self.send_error(404); return
+            # Not there is an ordinary state and not a mistake: nothing is generated until
+            # somebody runs the generator, and a kind of list it has since learned to write
+            # is missing until it runs again. So the answer is "nothing" (204), which the
+            # page takes as it took the 404 before, without the browser writing an error in
+            # its console at every load, where the user found one for choices.json
+            # (2026-10-13) on a machine whose suggestions were older than that file.
+            self._no_default_cache_control = True
+            self.send_response(204)
+            self.send_header('Cache-Control', 'no-cache')
+            self.end_headers()
+            return
         last_modified = self.date_time_string(mtime)
         ims = self.headers.get('If-Modified-Since')
         if ims:

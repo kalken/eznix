@@ -5415,7 +5415,7 @@ const _byFolderLabel = (a, b) => _folderLabel(a).localeCompare(_folderLabel(b)) 
 // ("software", "system/boot"). A folder is placed among the folders and a file among the
 // files of its row; a folder and a file of one name beside each other share a number, which
 // places each in its own half of the row. Said and read as a menu of buttons has its place
-// (getMenus() in terminal-panel/terminal.js): in any file, a later file's over an earlier
+// (getMenus(), in the terminal panel's script): in any file, a later file's over an earlier
 // one's, and nothing that is switched off.
 // It was services.eznix.folders, for folders alone, for some hours on 2026-10-13 ("order
 // number on folders as we did for buttons"), until the user asked for files too and saw
@@ -6289,7 +6289,8 @@ async function loadBackup(name, targetFile) {
 // The suggestions, asked for by themselves so that they can be on their way while the files
 // are (see loadSiblingFiles()). Settles to the three results, never rejects.
 function _fetchAutocompleteData() {
-  const get = name => fetch('autocomplete/' + name + '.json').then(r => { if (!r.ok) throw r.status; return r.json(); });
+  // 204: that file has not been generated (the server's answer for one that is not there).
+  const get = name => fetch('autocomplete/' + name + '.json').then(r => { if (!r.ok || r.status === 204) throw r.status; return r.json(); });
   return Promise.allSettled(['packages', 'options', 'choices'].map(get));
 }
 
