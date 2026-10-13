@@ -522,6 +522,37 @@ room beside a short name still brought up the option's menu. Tried by the user i
 server that day ("i think this works for everything. hard to test everything though"); not
 in a browser by me.
 
+**Every right-click menu is laid out by one rule** (`_menu()`, `_MENU_GROUPS` in
+`index.html`): a menu says what it offers in named groups and the groups come out in one
+order with a line between them: `add` (Add option…, New file), `item` (Rename, Disable or
+Enable, Clear, Delete), `convert`, `clipboard`, `view` (Expand and Collapse all), `transfer`
+(Export, Import, Backup, Reload), `restore`. The user's rule, 2026-10-13: entries that belong
+together stand together, Add first, the thing's own entries next. Before, each menu was a
+list written out where it was shown, and the same entry stood in different places. What it
+moved: Delete from the end of an option's menu up beside Rename and Disable; on a file's
+and a folder's menu Export from the top to below Disable and Delete, which undoes "Export,
+Import and then the rest" as the user had set it for a file (that order still holds inside
+the group, and in the system plugin's menu, which is not one of these); a file's Clear and
+Delete now say "file", since on the editor's blank space they stand near the top. A
+disabled option has Copy and Cut like any other. The menus of buttons (the terminal's, the
+plugins') do not go through it. Checked by running the builder and the functions that feed
+it, lifted out of the page, and reading the order of each menu; not in a browser.
+
+**A path goes on inside what is switched off** (`_enabledValue()`, `getAtPath()`,
+`_holderOf()`, `traverseForSet()`): a disabled option or section is stored as `{_disabled,
+_value}` in its place and drawn as its value, so every path of something shown in a disabled
+section passes through a wrapper. What lies at the end of a path is still given as stored,
+wrapper and all. Until 2026-10-13 no path went through one: the user saw "[object Object]"
+in the dropdown of a disabled option, asked whether there were more of the kind, and inside
+a disabled section there were: nothing was found by its path, Delete did nothing and
+Disable wrote an entry into the wrapper. Whatever replaces a section's content (rename,
+reorder) goes through `_contentAt()` and `_setContentAt()`, which keep the wrapper. Checked
+by running those functions, lifted out of the page, on made-up data (reads, set, delete,
+rename, reorder and add, in a disabled section, a list in one, and ordinary ones); not in a
+browser. "Add option…" is on a disabled section's menu since then, like any other's
+(`_addMenuItems()`); it was kept off while adding there wrote into the wrapper. Not covered: pasting or dragging a section onto one that is switched off in the
+other file (`_mergeOrReplace()`), which still merges into the wrapper itself.
+
 **Lists**: Nothing
 removes an item by itself: Backspace in an empty plain item, or in an empty text field of an
 object with nothing in it, and Delete on the menu. On 2026-10-11 an item just added and left

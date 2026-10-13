@@ -608,29 +608,53 @@ let fileSaved = {};   // filename -> JSON string snapshot of the last-saved-to-d
 // ── Input auto-sizer ──────────────────────────────────────────────────────────
 function bindAutosize(_inp) { /* no-op: inputs fill their container */ }
 // ── Utilities ─────────────────────────────────────────────────────────────────
+// A path is that of what is shown, and what is switched off is shown as what it holds
+// (renderDisabled()): stored, it is { _disabled, _value } in the same place. So a path that
+// goes on past such a thing goes on inside its value, here and wherever else a path is
+// walked (traverseForSet()). What lies at the *end* of a path is given as it is stored, the
+// wrapper too, for whoever asks whether it is switched off; _enabledValue() is what it
+// holds either way. Until 2026-10-13 no path went through a wrapper: nothing in a section
+// that was switched off could be found, an option's dropdown in one was drawn without its
+// value, Delete on one did nothing, and Disable wrote an entry into the wrapper beside its
+// value, to be saved with the file (found when the user asked whether a dropdown that read
+// "[object Object]" for a disabled option was the only bug of its kind).
+function _enabledValue(v) { return isDisabled(v) ? v._value : v; }
 function getAtPath(obj, path) {
   let cur = obj;
   for (const k of path) {
+    cur = _enabledValue(cur);
     if (cur == null || typeof cur !== 'object') return undefined;
     cur = Array.isArray(cur) ? cur[parseInt(k)] : cur[k];
   }
   return cur;
 }
-function setAtPath(obj, path, val) {
-  let cur = obj;
+// What holds the last part of a path: the object or list to set it in or take it out of.
+function _holderOf(obj, path) {
+  let cur = _enabledValue(obj);
   for (let i = 0; i < path.length - 1; i++)
-    cur = Array.isArray(cur) ? cur[parseInt(path[i])] : cur[path[i]];
+    cur = _enabledValue(Array.isArray(cur) ? cur[parseInt(path[i])] : cur[path[i]]);
+  return cur;
+}
+function setAtPath(obj, path, val) {
+  const cur = _holderOf(obj, path);
   const last = path[path.length - 1];
   if (Array.isArray(cur)) cur[parseInt(last)] = val;
   else cur[last] = val;
 }
 function deleteAtPath(obj, path) {
-  let cur = obj;
-  for (let i = 0; i < path.length - 1; i++)
-    cur = Array.isArray(cur) ? cur[parseInt(path[i])] : cur[path[i]];
+  const cur = _holderOf(obj, path);
   const last = path[path.length - 1];
   if (Array.isArray(cur)) cur.splice(parseInt(last), 1);
   else delete cur[last];
+}
+// What is in the object or list at a path, and putting another in its place: for the ones
+// that give a section its options again in another order or under another name. Switched
+// off, it stays so, with the new content in its wrapper.
+function _contentAt(path) { return path.length ? _enabledValue(getAtPath(config, path)) : config; }
+function _setContentAt(path, content) {
+  const stored = getAtPath(config, path);
+  if (isDisabled(stored)) stored._value = content;
+  else setAtPath(config, path, content);
 }
 // Renames the key at path's last segment, preserving the sibling ordering and the value —
 // a plain delete+re-set would instead move the entry to the end of the object. Used for
@@ -640,7 +664,7 @@ function renameKeyAtPath(path, newKey) {
   const oldKey = path[path.length - 1];
   if (newKey === oldKey) return true;
   const parentPath = path.slice(0, -1);
-  const parent = parentPath.length ? getAtPath(config, parentPath) : config;
+  const parent = _contentAt(parentPath);
   if (!parent || typeof parent !== 'object' || Array.isArray(parent)) return false;
   if (Object.prototype.hasOwnProperty.call(parent, newKey)) {
     setStatus(`"${newKey}" already exists here`, 4000, 'err');
@@ -648,7 +672,7 @@ function renameKeyAtPath(path, newKey) {
   }
   const renamed = {};
   for (const [k, v] of Object.entries(parent)) renamed[k === oldKey ? newKey : k] = v;
-  if (parentPath.length) setAtPath(config, parentPath, renamed);
+  if (parentPath.length) _setContentAt(parentPath, renamed);
   else config = renamed; // root-level key — renderAll() resyncs fileConfigs[activeFile]
   return true;
 }
@@ -1015,7 +1039,38 @@ function _onRowItself(event) {
   return !!part && part.closest('.field-row') === event.currentTarget;
 }
 
-// Shared "Disable" / "Enable" + "Copy" / "Cut" + "Delete" items every row's menu ends with.
+// Every right-click menu is put together the same way: what it offers is said in groups, by
+// kind, and _menu() lays the groups out in one order with a line between them, whatever the
+// menu is for and whoever named the groups. So entries that belong together stand together,
+// and a kind of entry is in the same place in every menu that has it:
+//   add        Add option…, New file, New folder: always first, where there is one
+//   item       the thing itself: Rename, Disable or Enable, Clear, Delete
+//   convert    Convert to Nix, Convert to native
+//   clipboard  Copy, Cut, Paste
+//   view       Expand all, Collapse all
+//   transfer   Export, Import, Backup, Reload
+//   restore    a file's backups
+// The user's rule, 2026-10-13 ("options that belong together show up in the same in the
+// right click menues", "add option should always be on top", "next group would be disable,
+// delete, rename etc"). Before, each menu was a list written out where it was shown: Delete
+// came last on an option and second on a file, the fold entries after a line on a section
+// and without one on the editor's blank space, a file's menu began with Export, and a
+// plain list item had no line at all. A menu takes any number of such sets of groups (its
+// own, the shared ones, the file's), and a new kind of entry is a name in this list.
+const _MENU_GROUPS = ['add', 'item', 'convert', 'clipboard', 'view', 'transfer', 'restore'];
+function _menu(...sets) {
+  const out = [];
+  for (const group of _MENU_GROUPS) {
+    const items = sets.flatMap(set => (set && set[group]) || []);
+    if (!items.length) continue;
+    if (out.length) out.push({ separator: true });
+    out.push(...items);
+  }
+  return out;
+}
+
+// What every row's menu has, as groups for _menu(): the thing itself (Rename, Disable or
+// Enable, Delete) and the clipboard.
 // ("Enable" was "Re-enable" until 2026-10-12, which the user found confusing: a file's and a
 // folder's menu say Enable too.)
 // Checked live at menu-open time (not render time), so it stays correct even though
@@ -1024,35 +1079,29 @@ function _commonMenuItems(path, { skipDisable = false } = {}) {
   const cur = getAtPath(config, path);
   // Renaming (like disabling) only makes sense for a real object key — a numeric index into an
   // array has no stable "name" to edit, so skip it under the same condition as Disable below.
-  const parent = path.length ? getAtPath(config, path.slice(0, -1)) : null;
+  const parent = path.length ? _contentAt(path.slice(0, -1)) : null;
   const isArrayItem = Array.isArray(parent);
-  if (isDisabled(cur)) {
-    return [
-      ...(isArrayItem ? [] : [{ label: 'Rename', onclick: () => _startKeyRename(path) }]),
-      { label: 'Enable', onclick: () => { setAtPath(config, path, cur._value); renderAll(); } },
-      { separator: true },
-      { label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, path); renderAll(); } },
-    ];
-  }
+  const item = [];
+  if (!isArrayItem) item.push({ label: 'Rename', onclick: () => _startKeyRename(path) });
   // Disabling a single array item isn't supported end-to-end (json2nix.nix's resolveExprs only
   // filters _disabled out of attrsets, not array elements), so skip that option whenever the
   // path's last segment names an index into an array rather than a real object key — determined
   // by the actual parent container's type, not by guessing from the segment's own shape.
-  const items = [];
-  if (!isArrayItem) {
-    items.push({ label: 'Rename', onclick: () => _startKeyRename(path) });
+  if (isDisabled(cur)) {
+    item.push({ label: 'Enable', onclick: () => { setAtPath(config, path, cur._value); renderAll(); } });
+  } else if (!skipDisable && !isArrayItem) {
+    item.push({ label: 'Disable', onclick: () => { setAtPath(config, path, { _disabled: true, _value: getAtPath(config, path) }); renderAll(); } });
   }
-  if (!skipDisable && !isArrayItem) {
-    items.push({ label: 'Disable', onclick: () => { setAtPath(config, path, { _disabled: true, _value: getAtPath(config, path) }); renderAll(); } });
-  }
-  items.push(
-    { separator: true },
-    { label: 'Copy', onclick: () => copyPath(path) },
-    { label: 'Cut', onclick: () => cutPath(path) },
-    { separator: true },
-    { label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, path); renderAll(); } },
-  );
-  return items;
+  item.push({ label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, path); renderAll(); } });
+  return {
+    item,
+    // Switched off or not: what is copied is what is stored, so it arrives switched off too.
+    // (A disabled one had neither until 2026-10-13.)
+    clipboard: [
+      { label: 'Copy', onclick: () => copyPath(path) },
+      { label: 'Cut', onclick: () => cutPath(path) },
+    ],
+  };
 }
 function preview(val, maxlen = 48) {
   if (val === null) return 'null';
@@ -2291,6 +2340,12 @@ function traverseForSet(root, parts) {
       if (cur[k] == null || typeof cur[k] !== 'object') cur[k] = emptyContainerFor(parts, i);
       cur = cur[k];
     }
+    // On into what is switched off, as every path goes (getAtPath()); a plain value that
+    // is switched off holds nothing to go on into.
+    if (isDisabled(cur)) {
+      cur = cur._value;
+      if (cur == null || typeof cur !== 'object') return null;
+    }
   }
   return cur;
 }
@@ -2664,7 +2719,7 @@ let _dragJustEnded = false;
 let dragGhost = null;
 
 function reorderKey(parentPath, fromKey, toKey) {
-  const parent = parentPath.length ? getAtPath(config, parentPath) : config;
+  const parent = _contentAt(parentPath);
   if (!parent || typeof parent !== 'object') return;
   if (Array.isArray(parent)) {
     const fromIdx = parseInt(fromKey, 10);
@@ -2679,7 +2734,7 @@ function reorderKey(parentPath, fromKey, toKey) {
     keys.splice(fromIdx, 1);
     keys.splice(toIdx, 0, fromKey);
     const reordered = Object.fromEntries(keys.map(k => [k, parent[k]]));
-    if (parentPath.length) setAtPath(config, parentPath, reordered);
+    if (parentPath.length) _setContentAt(parentPath, reordered);
     else { Object.keys(config).forEach(k => delete config[k]); Object.assign(config, reordered); }
   }
   renderAll();
@@ -2815,10 +2870,10 @@ function renderEditor() {
     empty.innerHTML = 'No configuration files yet.<br>Right-click here (or the tab bar above) to create your first one.';
     area.appendChild(empty);
     area.oncontextmenu = e => {
-      showContextMenu(e, [
+      showContextMenu(e, _menu({ add: [
         { label: 'New file', onclick: () => createFile() },
         { label: 'New folder', onclick: () => createFolder() },
-      ]);
+      ] }));
     };
     return;
   }
@@ -2841,18 +2896,19 @@ function renderEditor() {
   // showContextMenu), so this only ever fires on genuinely empty space — most importantly a
   // blank (or not-yet-populated) file, which otherwise has nowhere to right-click to add a
   // top-level option. Paste is only offered when there's something to paste.
-  // Below those comes the open file's own menu, the same one its tab shows (_fileMenuItems()).
+  // With those come the open file's own entries, the ones its tab shows (_fileMenuItems()),
+  // each in its group (_menu()).
   // Prevented synchronously for the same reason the tab's handler does it: that menu is built
   // after an awaited fetch, by which point showContextMenu()'s own preventDefault() is too late
   // to stop the native menu.
   area.oncontextmenu = async e => {
     e.preventDefault();
     e.stopPropagation();
-    const items = [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, []) }];
-    if (_clipboard) items.push({ label: 'Paste', onclick: pastePath });
-    items.push(..._foldAllMenuItems());
-    items.push({ separator: true }, ...await _fileMenuItems(activeFile));
-    showContextMenu(e, items);
+    showContextMenu(e, _menu({
+      add: [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, []) }],
+      clipboard: _clipboard ? [{ label: 'Paste', onclick: pastePath }] : [],
+      view: _foldAllMenuItems(),
+    }, await _fileMenuItems(activeFile)));
   };
 }
 
@@ -3259,9 +3315,12 @@ function _detachForFloat(el) {
 // Until 2026-10-12 there was a menu entry per kind of thing pointed at ("Add sub option…" on
 // a heading, "Add field" on an object in a list and on the rows inside it, "Add entry…" on an
 // entry of a set, "Add item" on a list's items), and nothing in the page.
+// A section that is switched off has it like any other, for what it holds (the user,
+// 2026-10-13); until paths went on inside a wrapper that day (getAtPath()), adding there
+// was kept out, since it wrote into the wrapper.
 function _addMenuItems(event, path) {
-  const obj = getAtPath(config, path);
-  const label = obj !== null && typeof obj === 'object' && !isDisabled(obj) ? _addLineFor(path, obj) : null;
+  const obj = _enabledValue(getAtPath(config, path));
+  const label = obj !== null && typeof obj === 'object' ? _addLineFor(path, obj) : null;
   return label ? [{ label, onclick: () => showAddOptionMenu(event, path) }] : [];
 }
 
@@ -3288,7 +3347,6 @@ function _closeFloatingAddPanel() {
 }
 
 function showAddOptionMenu(event, path) {
-  if (isDisabled(getAtPath(config, path))) return; // adding into a disabled section would corrupt its wrapper
   _closeFloatingAddPanel();
 
   const wrap = document.querySelector('.topbar .autocomplete-wrap');
@@ -3419,15 +3477,15 @@ function renderSection(container, key, obj, path) {
   // Nested sections/fields have their own handler and stopPropagation() in showContextMenu(),
   // so a right-click on a child still shows the child's menu, not this one.
   section.oncontextmenu = e => {
-    const items = isDisabled(getAtPath(config, path)) ? [] : [
-      ..._addMenuItems(e, path),
-      { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
-    ];
     // Show/hide all is offered here as well as on the editor's own blank-space menu,
     // but only reaching this section and what's below it -- the blank-space one does the file.
-    const foldAll = _foldAllMenuItems(section);
-    showContextMenu(e, [...items, ..._commonMenuItems(path),
-      ...(foldAll.length ? [{ separator: true }, ...foldAll] : [])]);
+    showContextMenu(e, _menu({
+      add: _addMenuItems(e, path),
+      convert: isDisabled(getAtPath(config, path)) ? [] : [
+        { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
+      ],
+      view: _foldAllMenuItems(section),
+    }, _commonMenuItems(path)));
   };
 
   section.appendChild(header);
@@ -3525,10 +3583,9 @@ function renderArrayField(container, key, arr, path) {
   row.oncontextmenu = e => {
     if (!_onRowItself(e)) return;
     const disabled = isDisabled(getAtPath(config, path));
-    const items = disabled ? [] : [
+    showContextMenu(e, _menu({ convert: disabled ? [] : [
       { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
-    ];
-    showContextMenu(e, [...items, ..._commonMenuItems(path)]);
+    ] }, _commonMenuItems(path)));
   };
 
   row.appendChild(keyEl);
@@ -3825,7 +3882,10 @@ function renderField(container, key, val, path) {
       // one widget is swapped: a whole re-render on blur would take the click that caused
       // the blur away from whatever it was meant for.
       const makeChoice = () => {
-        const cur = getAtPath(config, path);
+        // Read anew, since this is run again after "Other…", and through the wrapper of an
+        // option that is switched off, which is what lies at its path then: the dropdown of
+        // a disabled option read "[object Object]" (the user, 2026-10-13).
+        const cur = _enabledValue(getAtPath(config, path));
         const items = [];
         if (enumOpts.nullable) items.push({ value: '__null__', label: 'null' });
         enumOpts.values.forEach(v => items.push({ value: v, label: v }));
@@ -3936,11 +3996,10 @@ function renderField(container, key, val, path) {
   row.oncontextmenu = e => {
     if (!_onRowItself(e)) return;
     const disabled = isDisabled(getAtPath(config, path));
-    const items = disabled ? [] : [
+    showContextMenu(e, _menu({ convert: disabled ? [] : [
       ...(unwrapAction ? [{ label: 'Convert to native', onclick: unwrapAction }] : []),
       ...(canConvertExpr ? [{ label: 'Convert to Nix', onclick: convertToExpr }] : []),
-    ];
-    showContextMenu(e, [...items, ..._commonMenuItems(path)]);
+    ] }, _commonMenuItems(path)));
   };
 
   row.appendChild(keyEl);
@@ -4008,7 +4067,7 @@ function renderArray(container, arr, path) {
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, [..._addMenuItems(e, itemPath), ..._commonMenuItems(itemPath)]);
+        showContextMenu(e, _menu({ add: _addMenuItems(e, itemPath) }, _commonMenuItems(itemPath)));
       };
       // Backspace in a text field that is already empty takes the whole item away when there
       // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list
@@ -4070,13 +4129,12 @@ function renderArray(container, arr, path) {
     }
     if (isExpr) editor.classList.add('expr-value');
     item.oncontextmenu = e => {
-      const items = [
-        isExpr
+      showContextMenu(e, _menu({
+        item: [{ label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, itemPath); renderAll(); } }],
+        convert: [isExpr
           ? { label: 'Convert to native', onclick: () => { setAtPath(config, itemPath, editor.value); renderAll(); } }
-          : { label: 'Convert to Nix', onclick: () => { setAtPath(config, itemPath, { _expr: editor.value }); renderAll(); } },
-        { label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, itemPath); renderAll(); } },
-      ];
-      showContextMenu(e, items);
+          : { label: 'Convert to Nix', onclick: () => { setAtPath(config, itemPath, { _expr: editor.value }); renderAll(); } }],
+      }));
     };
     item.appendChild(editor);
     container.appendChild(item);
@@ -5291,14 +5349,15 @@ function _endPeekFolder() {
 
 function _folderMenuItems(folder) {
   const folderDisabled = _isDisabledFolderSegment(folder);
-  return [
-    { label: 'Export', onclick: () => exportFolder(folder) },
-    { label: 'New file', onclick: () => createFile(folder) },
-    { separator: true },
+  return _menu({
+    add: [{ label: 'New file', onclick: () => createFile(folder) }],
     // With Delete, as Disable file is with Clear and Delete on a file's menu.
-    { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
-    { label: 'Delete folder', danger: true, onclick: () => deleteFolder(folder) },
-  ];
+    item: [
+      { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
+      { label: 'Delete folder', danger: true, onclick: () => deleteFolder(folder) },
+    ],
+    transfer: [{ label: 'Export', onclick: () => exportFolder(folder) }],
+  });
 }
 
 // The order of the tabs: by the name shown, not the name on disk. A disabled folder is
@@ -5363,53 +5422,58 @@ function _folderLabel(name) {
 // Tabs are plain divs, not <button>s, because rename mode swaps the label for a live <input> —
 // and an <input> nested inside a real <button> is invalid HTML with inconsistent browser
 // behavior.
-// The menu for one file: what right-clicking its tab shows, and (after the editor's own entries)
-// what right-clicking blank space in the editor shows for the open file -- one builder so the two
-// can't drift apart. Async because the Restore submenu lists that file's backups from the server.
+// The menu for one file, as groups for _menu(): what right-clicking its tab shows, and (with
+// the editor's own entries) what right-clicking blank space in the editor shows for the open
+// file -- one builder so the two can't drift apart. Async because the file's backups are
+// listed from the server.
 async function _fileMenuItems(name) {
   const disabled = _isFileDisabled(name);
-  const items = [];
   const ownDisabled = name.endsWith('.json.disabled');
   // Export, Import and then the rest: the order of the system plugin's menu too, which the user
   // set for both.
-  items.push({ label: 'Export', onclick: () => exportFile(name) });
-  items.push({ label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) });
-  if (BACKUP_ENABLED) items.push({ label: 'Backup', title: 'Back this file up now, as it is on disk', onclick: () => backupFile(name) });
-  items.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
-  items.push({ separator: true });
+  const transfer = [
+    { label: 'Export', onclick: () => exportFile(name) },
+    { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) },
+  ];
+  if (BACKUP_ENABLED) transfer.push({ label: 'Backup', title: 'Back this file up now, as it is on disk', onclick: () => backupFile(name) });
+  transfer.push({ label: 'Reload', title: 'Discard unsaved edits to this file and reload it from disk', onclick: () => reloadFile(name) });
   // With Clear and Delete: the three that take the file, or what is in it, out of use.
   // If the file is only disabled because it sits in a disabled folder, toggling its own
   // state here would have no visible effect until the folder itself is re-enabled — so the
   // item is only offered when this file's own disabled-ness is what's being toggled.
+  const item = [];
   if (!disabled || ownDisabled) {
-    items.push({
+    item.push({
       label: ownDisabled ? 'Enable file' : 'Disable file',
       onclick: () => _toggleFileDisabled(name, !ownDisabled),
     });
   }
-  items.push({ label: 'Clear', onclick: () => clearFile(name) });
-  items.push({ label: 'Delete', danger: true, onclick: () => deleteFile(name) });
+  // They say "file": on the editor's blank space they stand among entries for the editor.
+  // (They were "Clear" and "Delete" until 2026-10-13, at the end of a part of the menu that
+  // was the file's alone.)
+  item.push({ label: 'Clear file', onclick: () => clearFile(name) });
+  item.push({ label: 'Delete file', danger: true, onclick: () => deleteFile(name) });
   // This file's own backups, last and as lines of this menu under a heading, the way the
   // system plugin's menu lists the whole system's: a submenu of a "Restore" entry until
   // 2026-10, changed to match once that one had been. There are never many: the newest
   // `backups` (5 unless set) are kept of each file.
   // Explicitly this file, not activeFile: right-clicking a tab that isn't the active one should
   // restore into *that* file, not silently overwrite whatever's currently open.
+  const restore = [];
   if (BACKUP_ENABLED) {
     let fileBackups = [];
     try {
       const res = await apiFetch('/backups?file=' + encodeURIComponent(name));
       if (res.ok) fileBackups = (await res.json()).backups || [];
     } catch (err) { /* falls through to the empty-state heading below */ }
-    items.push({ separator: true });
-    items.push({ label: fileBackups.length ? 'Restore' : 'Restore: no backups yet', disabled: true });
-    fileBackups.forEach(b => items.push({
+    restore.push({ label: fileBackups.length ? 'Restore' : 'Restore: no backups yet', disabled: true });
+    fileBackups.forEach(b => restore.push({
       label: new Date(b.mtime * 1000).toLocaleString() + '  ·  ' + _formatBackupSize(b.size),
       title: 'Bring this version back into the file; nothing is written until you save',
       onclick: () => loadBackup(b.name, name),
     }));
   }
-  return items;
+  return { item, transfer, restore };
 }
 
 function _makeTab(name) {
@@ -5506,7 +5570,7 @@ function _makeTab(name) {
     // dispatch; calling it again once the event's already fully dispatched is a no-op).
     e.preventDefault();
     e.stopPropagation();
-    showContextMenu(e, await _fileMenuItems(name));
+    showContextMenu(e, _menu(await _fileMenuItems(name)));
   };
   return tab;
 }
@@ -5679,13 +5743,16 @@ function renderFileSelector() {
   // that shows no folder) offers to create something new; a tab's own contextmenu stops propagation before
   // reaching here, so this only ever fires on genuinely empty space.
   bar.oncontextmenu = e => {
-    showContextMenu(e, [
-      { label: 'New file', onclick: () => createFile() },
-      { label: 'New folder', onclick: () => createFolder() },
-      { separator: true },
-      { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
-      { label: 'Export all', title: 'Every file, as a zip', onclick: () => exportAll() },
-    ]);
+    showContextMenu(e, _menu({
+      add: [
+        { label: 'New file', onclick: () => createFile() },
+        { label: 'New folder', onclick: () => createFolder() },
+      ],
+      transfer: [
+        { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
+        { label: 'Export all', title: 'Every file, as a zip', onclick: () => exportAll() },
+      ],
+    }));
   };
 }
 
