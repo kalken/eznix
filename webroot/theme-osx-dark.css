@@ -1,4 +1,9 @@
-/* OS X Dark — the macOS dark appearance: the system's own greys and status colours, with its Graphite accent. */
+/* OS X Dark — the macOS dark appearance: the system's own greys and status colours, with its
+   Graphite accent. macOS has no file of colours to read; what it says of itself was asked on
+   2026-10-13 (NSColor, macOS 26.6): one surface, #1e1e1e, for windows and what is in them,
+   which is the page here, and #282828 under a page. Bars and cards are a step up from that
+   and of one colour, as in every theme since that day; the cards were #323232 before, what a
+   window was up to macOS 15. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
@@ -69,7 +74,7 @@
   /* ── Editor fields ── */
   --field-bg: rgb(255 255 255 / 5%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--bg3); /* the filled block of a top-level section */
+  --card-bg:   var(--bg2); /* the filled block of a top-level section: the bars' colour, as in every theme */
   --card-border:  var(--panel-hairline); /* the line around that block */
   --value-border: transparent; /* the line around an option's value cell; transparent: none */
 

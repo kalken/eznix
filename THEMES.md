@@ -72,11 +72,13 @@ comes from them.
 |---|---|---|
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
 | Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
-| A top-level section's card | `--card-bg` | Must be told apart from the page it sits on |
+| A top-level section's card | `--card-bg` (normally `var(--bg2)`) | The bars' colour in every built-in theme; must be told apart from the page it sits on |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 
-- **Page and card need visible contrast.** A dark theme has the page darkest and the cards a
-  step lighter; a light theme has a grey page and white cards.
+- **Page and card need visible contrast, and cards are the colour of the bars.** A dark theme
+  has the page darkest and the bars and cards a step lighter; a light theme has a grey page
+  with white bars and cards (`breeze-light` the other way round, white page and grey bars and
+  cards, since that is where Plasma has those two colours).
 - **Or a line in place of the fill.** `--card-border` is the line around a card (normally
   `var(--panel-hairline)`), and `--value-border` one around a value strip (normally
   `transparent`, which is none). No built-in theme uses them that way; they are there for a

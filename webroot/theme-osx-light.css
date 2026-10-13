@@ -1,12 +1,15 @@
 /* OS X Light — the macOS light appearance: the system's own greys and status colours, with
-   its Graphite accent. The counterpart of theme-osx-dark.css. */
+   its Graphite accent. The counterpart of theme-osx-dark.css (see there for where the
+   colours are from): white, which a window and what is in it are on macOS 26, for the cards
+   and the bars alike, on a page of #ececec, a window's grey up to macOS 15. The bars were
+   #f6f6f6 until 2026-10-13. */
 :root {
   /* Light or dark: what the browser draws by itself (a menu's list, a date picker) follows it,
      and a browser that darkens light pages by force leaves the page alone. */
   --color-scheme: only light;
   /* ── Base palette ── */
   --bg:   #ececec;
-  --bg2:  #f6f6f6;
+  --bg2:  #ffffff;
   --bg3:  #e4e4e4;
   --bg4:  #d8d8d8;
   --text:  #262626;
@@ -70,7 +73,7 @@
   /* ── Editor fields ── */
   --field-bg: rgb(0 0 0 / 4%);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   #ffffff; /* the filled block of a top-level section */
+  --card-bg:   var(--bg2); /* the filled block of a top-level section: the bars' colour, as in every theme */
   --card-border:  var(--panel-hairline); /* the line around that block */
   --value-border: transparent; /* the line around an option's value cell; transparent: none */
 

@@ -68,7 +68,7 @@
   /* ── Editor fields ── */
   --field-bg: rgba(235,219,178,0.05);
   --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   var(--bg2); /* the filled block of a top-level section */
+  --card-bg:   var(--bg2); /* the filled block of a top-level section: the bars' colour, as in every theme */
   --card-border:  var(--panel-hairline); /* the line around that block */
   --value-border: transparent; /* the line around an option's value cell; transparent: none */
 

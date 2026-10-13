@@ -1,6 +1,8 @@
 /* Breeze Light — KDE Plasma's light colour scheme, by the same rules as theme-breeze-dark.css
-   (see there): a grey page in the scheme's Window colour (#eff0f1) with white cards (its View
-   colour), the bars in its Header colour (#dee0e2), the Plasma blue as the accent. Buttons
+   (see there), each grey where a KDE program has it: a white page (the scheme's View colour),
+   the bars and the cards alike in its Header colour (#dee0e2), its Window colour (#eff0f1)
+   for what else is the window's own, the Plasma blue as the accent. Until 2026-10-13 the page
+   was the Window colour and the cards white; it follows the dark theme, changed that day. Buttons
    are its Button colour (#fcfcfc), lighter than the bar they stand on as Plasma's are, and
    darken a little under the pointer: as a step darker than the bar, which is what the other
    light theme does, they looked wrong to the user here. What is marked (the open file's
@@ -66,19 +68,19 @@
   --tab-active-text:   #232629;
 
   /* ── Semantic badges ── */
-  --required-bg:   color-mix(in srgb, #c7303f 10%, #ffffff);
+  --required-bg:   color-mix(in srgb, #c7303f 10%, #dee0e2);
   --required-text: var(--red);
-  --error-bg:      color-mix(in srgb, #c7303f 8%, #ffffff);
-  --success-bg:    color-mix(in srgb, #1e8e4e 12%, #ffffff);
-  --success-border: color-mix(in srgb, #1e8e4e 40%, #ffffff);
+  --error-bg:      color-mix(in srgb, #c7303f 8%, #dee0e2);
+  --success-bg:    color-mix(in srgb, #1e8e4e 12%, #dee0e2);
+  --success-border: color-mix(in srgb, #1e8e4e 40%, #dee0e2);
 
   /* ── Nix expression fields ── */
   --expr-border: #cfd3d7;
 
   /* ── Editor fields ── */
   --field-bg: rgb(0 0 0 / 4%);
-  --editor-bg: var(--bg);  /* the editor page */
-  --card-bg:   #ffffff; /* the filled block of a top-level section */
+  --editor-bg: #ffffff;    /* the editor page: the scheme's View colour */
+  --card-bg:   var(--bg2); /* the filled block of a top-level section: the bars' colour, as in every theme */
   --card-border:  var(--panel-hairline); /* the line around that block */
   --value-border: transparent; /* the line around an option's value cell; transparent: none */
 
