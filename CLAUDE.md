@@ -16,9 +16,13 @@ their computer runs): it is checked in and public.
 
 Do not add Claude as co-author in commit messages.
 
+Do not commit unless the user asks for it. Until then a change stays in the working tree,
+and the report says that it is uncommitted. (The user's rule since 2026-10-13: "never to
+commit without being asked".)
+
 Do not push unless the user explicitly says so in that turn. Committing is not a go-ahead to push.
 
-All changes go to `develop` first. Only merge `develop` into `main`; never commit to `main`.
+Always commit to `develop` first. Only merge `develop` into `main`; never commit to `main`.
 
 ## Workflow
 
