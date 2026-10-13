@@ -22,7 +22,12 @@
 <style>
   /* Dressed like the editor itself: the page is the editor's page, the card is a top-level
      section's card (same fill, hairline and soft shadow -- .section.nest-top in style.css), and
-     the two fields are filled like an option's value cell, with no outline of their own. */
+     the two fields are an option's value in a section: the fill and corners of its cell
+     (.field-row.nest > .field-value) and no line around them, only larger and in another
+     font. On 2026-10-13 the card had the fill of the bars at the top (--bg2) for a few
+     minutes, at the user's wish, and the fields the line of a text field outside a section
+     (--input-border), my reading of "like input boxes inside"; the user saw that they did
+     not look like a value in a section, and both went back. */
   body { align-items: center; justify-content: center; overflow: auto; background: var(--editor-bg); }
   .login-card {
     background: var(--card-bg); border-radius: var(--radius);
@@ -35,7 +40,7 @@
   .login-card h1 { font-size: 18px; font-weight: 700; margin-bottom: 28px; text-align: center; color: var(--section-title-color); letter-spacing: .04em; }
   .login-card input {
     display: block; margin-bottom: 16px; padding: 8px 11px;
-    background: var(--value-bg); border: 0; border-radius: var(--input-radius);
+    background: var(--value-bg); border: 0; border-radius: var(--radius);
     font: 400 13.3333px sans-serif;
   }
   /* Not the theme's font, alone among the inputs: while a saved login is only being offered (its
@@ -72,11 +77,13 @@
        underneath to show through. */
     transition: background-color 600000s 0s, color 600000s 0s;
   }
-  .login-card .btn { width: 100%; justify-content: center; margin-top: 4px; }
+  /* An ordinary button of the editor's (.btn in style.css, which also gives it its hover), as
+     tall as those in the header; only its width is the page's own. */
+  .login-card .btn { width: 100%; height: 28px; justify-content: center; margin-top: 4px; }
   /* The button gets the cursor once a saved login is chosen (the script below), so it shows it:
      its one border in the colour of its text, which stands out from its fill in any theme. It
-     was a ring in the focus colour around the border, two lines, and the focus colour is the
-     button's own fill in some themes. */
+     was a ring in the focus colour around the border, two lines. The button is an ordinary
+     one of the editor's, as the header's are; it was the filled kind (.primary) before. */
   .login-card .btn:focus { outline: none; border-color: currentColor; }
   .login-error { color: var(--red); font-size: 12px; margin-top: 14px; min-height: 18px; text-align: center; }
   .login-ca-link { text-align: center; margin-top: 14px; font-size: 11px; }
@@ -91,7 +98,7 @@
   <form method="post" action="/login">
     <input id="u" name="username" type="text" autocomplete="username" placeholder="Username" aria-label="Username" autofocus>
     <input id="p" name="password" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
-    <button type="submit" class="btn primary">Sign in</button>
+    <button type="submit" class="btn">Sign in</button>
   </form>
   <div class="login-error">%%EZNIX_ERROR%%</div>
   %%EZNIX_CA_LINK%%
