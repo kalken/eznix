@@ -1987,7 +1987,9 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             name, _, rel = parsed.path[len('/plugins/'):].partition('/')
             # Only what the plugin lists for the page, not its server code.
             rel = urllib.parse.unquote(rel)
-            listed = name in PLUGINS and not rel.endswith(('.py', '.md', 'plugin.json'))
+            # Whatever the letters' case: where the disk does not tell them apart (a Mac's),
+            # system.PY is the same file as system.py and was served (found 2026-10-13).
+            listed = name in PLUGINS and not rel.lower().endswith(('.py', '.md', 'plugin.json'))
             path = listed and _plugin_file(PLUGINS[name]['dir'], rel)
             if not path:
                 self.send_error(404); return

@@ -29,6 +29,9 @@ services.eznix.plugins.system = {
 - An import or a restore writes to disk at once: there is no Save step and no undo, only the
   backup taken just before.
 - An import is all or nothing: if eznix may not change one of the files, nothing is changed.
+- Only a zip of a system is taken: one with `flake.nix` at its top, as an export has. Any
+  other zip is refused and nothing is changed. A repository downloaded as a zip has a folder
+  around its files; zip what is inside that folder instead.
 - A list of your own for `exclude` replaces the default, so it has to say `".*"` itself to
   keep dot-files and dot-folders out.
 - Dot-files in a zip are never imported, whatever `exclude` says.

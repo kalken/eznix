@@ -367,6 +367,13 @@ repository, also by the user's choice ("i dont want to update the lock-file manu
 `github:kalken/eznix`, so they are only as new as what is pushed; to try one against the
 checkout, `--override-input eznix path:.`.
 
+**A system import takes only a zip of a system** (`prepare()` in the system plugin): one
+with `flake.nix` at its top, as an export and a backup have. Any other is refused before the
+snapshot and before anything is touched, saying where its `flake.nix` is if it has one deeper
+down. Before 2026-10-13 any zip was taken, and since the tree is made to match the zip, one
+that was not a system removed every file of the flake that it did not hold (the backup
+taken first was the only way back). The user asked for the check. In `test_server.py`.
+
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
 change any one of the rest, it refuses before the snapshot and before the first write. On
@@ -539,8 +546,17 @@ a 404, which a browser writes in its console at every load, where the user found
 `/etc/hosts` back: the path was only tidied with `normpath`, which leaves leading `..` in,
 so anyone logged in could read whatever the eznix process can, its state folder included.
 It is now resolved (`realpath`) and has to lie inside the folder. In `test_server.py`, both.
-The other places that make a path from an address (`/terminal-panel/`, `/theme-*.css`,
-`/plugins/`) were read and are not open the same way; they were not attacked beyond that.
+The user then asked whether that was all of the kind, and every place a request's value
+becomes a path was read and tried with hand-written addresses on the test server (a Mac):
+the page's files, `/terminal-panel/`, `/theme-*.css`, `/plugins/`, the file, folder and
+backup calls, the documents, files and system plugins, the icon's `theme`, and what answers
+without a login. One more turned up: a plugin's server file, `plugin.json` and `README.md`
+were served when asked for in other letters (`system.PY`), on a disk that does not tell
+them apart; the test of the name is now made in lower case. A system import was already
+closed (`prepare()` in the system plugin skips an entry with `..`, an empty or a dot part,
+and refuses the whole zip when a path resolves outside the flake, as through a link in it);
+`test_server.py` now imports zips made to get out, both ways. Not looked at in that pass:
+what a zip can do other than by its paths (its size, say), and anything in the page.
 
 **A tab can be given a place** (`_tabOrders()`, `_tabSort()`, `services.eznix.paths.PATH = {
 order }`, the option in `options.nix`): lowest first, a tab without a number counting as 0,

@@ -370,6 +370,34 @@ def main():
                   status == 200 and result.get('written') == ['eznix/a.json'] and result.get('unchanged') == 3
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 9}, result)
             os.chmod(f'{tmp}/flake/flake.nix', 0o644)
+            # A zip that is not a system at all would, taken for one, remove the whole flake.
+            tree = lambda: sorted(os.path.relpath(os.path.join(d, f), f'{tmp}/flake') for d, _, fs in os.walk(f'{tmp}/flake') for f in fs)
+            had, snapshots = tree(), len(b.json('/api/v1/plugin/system/backups')[1]['backups'])
+            status, result = b.json('/api/v1/plugin/system/import', zipped({'a.json': '{}', 'notes/b.txt': 'x'}), 'POST')
+            check('system: a zip without a flake.nix at its top is refused, nothing changed and no backup made',
+                  status == 400 and 'not a system' in result.get('error', '') and tree() == had
+                  and len(b.json('/api/v1/plugin/system/backups')[1]['backups']) == snapshots, result)
+            status, result = b.json('/api/v1/plugin/system/import', zipped({'repo-main/' + n: t for n, t in now.items()}), 'POST')
+            check('system: one with a folder around the flake too, and is told where its flake.nix is',
+                  status == 400 and 'repo-main/' in result.get('error', '') and tree() == had, result)
+            status, result = b.json('/api/v1/plugin/system/import', zipped({}), 'POST')
+            check('system: and an empty one', status == 400 and tree() == had, result)
+            # A zip made to write outside the flake: by "..", by a path from the root, by a
+            # backslash, and through a link inside the flake that leads out of it.
+            now['eznix/a.json'] = '{"a": 9}'
+            out = f'{tmp}/outside'
+            os.makedirs(out, exist_ok=True)
+            hostile = {'../outside/up.txt': 'x', 'eznix/../../outside/up2.txt': 'x', f'{out}/abs.txt': 'x',
+                       '..\\outside\\back.txt': 'x', '/outside-root.txt': 'x'}
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, **hostile}), 'POST')
+            check('system: a zip with paths that lead out of the flake writes none of them',
+                  status == 200 and os.listdir(out) == [] and not os.path.exists('/outside-root.txt')
+                  and sorted(result.get('skipped', [])) == sorted(hostile) and result.get('written') == [], result)
+            os.symlink(out, f'{tmp}/flake/way-out')
+            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'way-out/through-link.txt': 'x'}), 'POST')
+            check('system: nor one that goes through a link in the flake to somewhere else, and it changes nothing',
+                  status == 400 and os.listdir(out) == [] and os.path.exists(f'{tmp}/flake/extra.nix'), result)
+            os.remove(f'{tmp}/flake/way-out')
             before = b.json('/api/v1/plugin/system/backups')[1]['backups']
             status, made = b.json('/api/v1/plugin/system/backup', b'', 'POST')
             after = b.json('/api/v1/plugin/system/backups')[1]['backups']
@@ -388,6 +416,8 @@ def main():
             check("a plugin's page files are served", b.request('/plugins/system/system.js')[0] == 200)
             check('its server code and files outside it are not', b.request('/plugins/system/system.py')[0] == 404
                   and b.request('/plugins/system/../../index.html')[0] == 404)
+            check('nor in other letters, which a disk that does not tell them apart takes for the same file',
+                  [b.request(p)[0] for p in ('/plugins/system/system.PY', '/plugins/system/PLUGIN.JSON', '/plugins/system/README.MD')] == [404] * 3)
             first, kept = ping['page'], b
         finally:
             proc.terminate(); proc.wait()

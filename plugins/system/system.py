@@ -122,6 +122,18 @@ def setup(api):
         and failing on flake.nix left the tree half one thing and half the other. This way an
         import that only differs inside that folder goes through there, and any other is
         refused whole, with the files named."""
+        # A system is a flake, so its zip has flake.nix at the top: what an export holds, and a
+        # backup. Any other zip (one of a folder of JSON files, somebody's photographs, a
+        # repository downloaded with a folder around it) is refused here, before the snapshot
+        # and before anything is touched. It used to be taken for a system all the same, and
+        # since the tree is made to match the zip, every file of the flake that was not in it
+        # was removed. The user's question, 2026-10-13: "is there some way we can validate
+        # the zip ... to make sure its actually a system?"
+        tops = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
+        if 'flake.nix' not in tops:
+            deeper = sorted(n for n in tops if n.endswith('/flake.nix'))
+            hint = f': its flake.nix is in {os.path.dirname(deeper[0])}/, not at the top' if deeper else ': there is no flake.nix at its top'
+            raise api.Error(400, 'that zip is not a system' + hint + '; nothing was changed')
         write, skipped, unchanged, names = [], [], 0, set()
         for info in zf.infolist():
             if info.is_dir():
