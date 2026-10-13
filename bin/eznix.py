@@ -1041,6 +1041,26 @@ _LOGO_FILLED = ('<rect class="g" width="100%" height="100%"/>\n'
                 '<g transform="translate(250.78 250.78) scale(.72) translate(-250.78 -250.78)">\n', '</g>\n')
 
 
+def _icon_file_svg(theme):
+    """The logo as a file an application menu can show (`eznix --icon THEME`, which the
+    modules run to make the icon of programs.eznix): the same drawing as _favicon_svg(),
+    written out without a stylesheet and without <use>, each arm a path with its own fill,
+    since what draws a desktop's icons reads less of SVG than a browser does. An automatic
+    theme comes out as its light one, a file having no way to follow the desktop; a theme
+    that is not one of eznix's own as the default."""
+    if theme in AUTO_THEMES:
+        theme = AUTO_THEMES[theme][0]
+    if theme not in BUILTIN_THEMES:
+        theme = AUTO_THEMES.get(DEFAULT_THEME, (DEFAULT_THEME,))[0]
+    fill = dict(zip('ab', (c.replace('<', '').replace('&', '').replace('"', '') for c in _icon_colours(theme))))
+    head = re.match(r'<svg[^>]*>', _LOGO_SVG).group(0)
+    shape = re.search(r'<path id="p" d="([^"]*)"', _LOGO_SVG).group(1)
+    groups = re.findall(r'<g transform="[^"]*">', _LOGO_SVG)
+    arms = ''.join('<path d="%s" fill="%s"%s/>\n' % (shape, fill[c], t.replace('transform', ' transform', 1) if t else '')
+                   for c, t in re.findall(r'<use class="(\w)" href="#p"((?: transform="[^"]*")?)\s*/>', _LOGO_SVG))
+    return head + '\n' + ''.join(groups) + '\n' + arms + '</g>' * len(groups) + '\n</svg>\n'
+
+
 def _favicon_svg(theme, filled=False):
     """The icon of the tab, and of the page installed as an app, in a theme's colours. An
     automatic theme gets both of its pairs, the dark one behind a media query; where the icon
@@ -2554,11 +2574,20 @@ def main():
     ap.add_argument('--debug', action='store_true', help='log what is only worth knowing while looking into something')
     ap.add_argument('--https', action='store_true',
                     help='serve HTTPS with a certificate eznix makes itself, kept in the state folder')
+    ap.add_argument('--icon', metavar='THEME',
+                    help="print eznix's icon in a theme's colours, as an SVG file, then exit")
     ap.add_argument('--generate-ca', metavar='DIR',
                     help='make a local CA and a server certificate in DIR, then exit')
     ap.add_argument('--san', action='append', metavar='NAME',
                     help='with --generate-ca or --https: an extra host name or address for the certificate')
     args = ap.parse_args()
+
+    if args.icon:
+        WEBROOT = os.path.abspath(args.webroot or next(
+            (d for d in (os.path.join(HERE, 'webroot'), os.path.join(HERE, '..', 'webroot')) if os.path.isdir(d)),
+            os.path.join(HERE, 'webroot')))
+        sys.stdout.write(_icon_file_svg(args.icon))
+        return
 
     if args.generate_ca:
         if not _CRYPTO:

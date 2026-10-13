@@ -209,6 +209,24 @@ closed and opened again ("it worked if i closed the program"). That was with the
 version of the icon, which has a width and a height; with the first, which had only a
 viewBox, nothing had happened, though whether the size was why is not known.
 
+**eznix in the application menu comes from the configuration** (`programs.eznix`, in
+`options.nix`: `programOptions`, `app`; NixOS and home-manager, not macOS), since 2026-10-13:
+a desktop entry that opens a Chromium-family browser in app mode (`--app=URL`) at the
+address worked out from `services.eznix` (http or https, `localhost` or the machine's name,
+the port), with the logo as a file made at build time by `eznix --icon THEME`
+(`_icon_file_svg()`: no stylesheet, no `<use>`, an automatic theme as its light one). The
+user asked for it after two tries at keeping a browser-installed app working across an
+HTTPS switch were both reverted that day (see "HTTPS" under Nix): that app belongs to its
+address, this one is told the address at every rebuild. It is separate from
+`services.eznix.enable`, so a desktop can have the entry for another machine's editor
+(`url`). The icon on the window and in the task bar depends on the entry carrying the name
+the browser gives the window, taken to be `PREFIX-HOST__-Default` (`brave` for Brave,
+`chrome` otherwise); that is from memory of how Chromium names such windows, not seen, and
+`windowClass` overrides it. ezconf's entry (`programs.ezconf`) is not the model: the user
+said its icons were wrong. Checked: `eznix --icon` gives valid SVG; the option evaluated on
+a copy of the installer's template (the address, the entry's name, the desktop file's text,
+the system's derivation). Not built, not installed, not seen on a desktop.
+
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With
 nothing said a browser chooses, and Brave took the profile's colour, which the user asked to

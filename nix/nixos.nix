@@ -49,6 +49,7 @@ let
 
   common = import ./options.nix {
     inherit lib pkgs cfg packages stateDir terminals;
+    prog = config.programs.eznix;
     hostNames = let name = config.networking.hostName; in
       lib.optionals (name != "") [ name config.networking.fqdnOrHostName "${name}.local" ];
     defaults = { flake = "/etc/nixos"; theme = "nixos"; };
@@ -82,7 +83,13 @@ in
     };
   };
 
-  config = lib.mkIf cfg.enable {
+  options.programs.eznix = common.programOptions;
+
+  config = lib.mkMerge [
+   # By itself, so that a machine can have the entry for another machine's editor without
+   # running one.
+   (lib.mkIf config.programs.eznix.enable { environment.systemPackages = [ common.app ]; })
+   (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {
         assertion = cfg.users != [ ];
@@ -221,5 +228,6 @@ in
         Restart      = "on-failure";
       };
     }) terminals);
-  };
+   })
+  ];
 }

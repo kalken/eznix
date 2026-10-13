@@ -7,7 +7,8 @@
 #   extra      more top-level eznix.toml keys from the module (terminal_restart, auth_helper, ...)
 #   hostNames  what the machine is called, where the module can know: named in the
 #              certificate and accepted in requests without being listed in certNames
-{ lib, pkgs, cfg, packages, defaults, stateDir, terminals ? { }, extra ? { }, hostNames ? [ ] }:
+#   prog       config.programs.eznix, where the module has it (the application-menu entry)
+{ lib, pkgs, cfg, packages, defaults, stateDir, terminals ? { }, extra ? { }, hostNames ? [ ], prog ? null }:
 let
   inherit (lib) mkOption mkEnableOption types;
 
@@ -86,9 +87,75 @@ let
   # is the new name of, see the modules' imports), and people had to know that "HTTPS" was
   # spelled "generate a certificate".
   generateCert = cfg.enableHttps && cfg.cert == null;
+
+  # programs.eznix: eznix in the application menu, made from the configuration. The user
+  # asked for it on 2026-10-13, after a day of an app installed from the browser going wrong
+  # each time HTTPS was switched on or off (see "HTTPS" in CLAUDE.md): that app belongs to
+  # the address it was installed from, and this one is told the address at every rebuild.
+  #
+  # It is a Chromium-family browser in app mode (--app=URL), a window with no tabs or
+  # address bar. What it takes to have eznix's icon on that window and in the task bar is the
+  # entry being named for the window: such a window calls itself PREFIX-HOST__-Default (the
+  # browser's prefix, the address's host, its path with "_" for "/", the profile), and a
+  # desktop finds the icon by that name. So the entry has that name, and says it in
+  # StartupWMClass and --class as well, for a desktop that goes by those. The name is worked
+  # out here and was not seen on a real desktop when this was written: `windowClass` is there
+  # to set it right by hand (the window's own name: on Plasma, `qdbus org.kde.KWin /KWin
+  # queryWindowInfo` and a click on the window; resourceClass).
+  appHost = let rest = lib.last (lib.splitString "://" prog.url); in
+    builtins.head (lib.splitString ":" (builtins.head (lib.splitString "/" rest)));
+  appPath = let rest = lib.last (lib.splitString "://" prog.url);
+                parts = lib.splitString "/" rest; in
+    "/" + lib.concatStringsSep "/" (builtins.tail parts);
+  appClass = if prog.windowClass != null then prog.windowClass else
+    "${if lib.hasInfix "brave" prog.browser then "brave" else "chrome"}-${appHost}_${builtins.replaceStrings [ "/" ] [ "_" ] appPath}-Default";
+  appIcon = pkgs.runCommand "eznix-icon" { } ''
+    mkdir -p $out/share/icons/hicolor/scalable/apps
+    ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
+  '';
+  appEntry = pkgs.makeDesktopItem {
+    name           = appClass;
+    desktopName    = if appHost == "localhost" then "eznix" else "eznix (${appHost})";
+    comment        = "Nix configuration editor";
+    icon           = "${appIcon}/share/icons/hicolor/scalable/apps/eznix.svg";
+    exec           = "${prog.browser} --app=${prog.url} --class=${appClass}";
+    startupWMClass = appClass;
+    categories     = [ "Settings" "System" ];
+  };
 in
 {
   inherit isLocal certDir generateCert;
+
+  # The application-menu entry, and the options it is set with (see appClass above).
+  app = appEntry;
+  programOptions = {
+    enable = mkEnableOption "eznix in the application menu: a window of its own, with eznix's icon, opened at the address the editor is configured for";
+    url = mkOption {
+      type        = types.str;
+      default     = let
+          here = cfg.interfaces == [ ] || builtins.elem "lo" cfg.interfaces;
+          host = if here && (cfg.listenAddresses == [ ] || builtins.elem "127.0.0.1" cfg.listenAddresses) then "localhost"
+                 else if cfg.listenAddresses != [ ] then builtins.head cfg.listenAddresses
+                 else if hostNames != [ ] then builtins.head hostNames
+                 else "localhost";
+        in "http${lib.optionalString cfg.enableHttps "s"}://${host}:${toString cfg.port}/";
+      defaultText = lib.literalExpression "the editor of this machine, by its own settings: http or https, localhost or the machine's name, its port";
+      example     = "https://router.lan:9090/";
+      description = "The address the entry opens. By itself it is this machine's own editor, worked out from services.eznix, so it follows a change of port or of HTTPS at the next rebuild. Set it to have the entry open the editor of another machine.";
+    };
+    browser = mkOption {
+      type        = types.str;
+      default     = "chromium";
+      example     = "brave";
+      description = "The browser the window is opened with: a command, or the path of one. It has to be of the Chromium family (Chromium, Chrome, Brave), which is what can open a page as a window of its own (--app); eznix does not install it.";
+    };
+    windowClass = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      example     = "brave-localhost__-Default";
+      description = "The name the browser gives that window, which the entry has to carry for the window and the task bar to show eznix's icon and not the browser's. Worked out from browser and url when not set; set it if the icon is the browser's all the same, to what the desktop says the window is called (on Plasma: `qdbus org.kde.KWin /KWin queryWindowInfo`, click the window, resourceClass).";
+    };
+  };
 
   toml = (pkgs.formats.toml { }).generate "eznix.toml" settings;
 

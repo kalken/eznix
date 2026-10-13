@@ -25,6 +25,7 @@ let
     inherit lib pkgs cfg packages stateDir;
     terminals = { ${config.home.username} = terminal; };
     defaults  = { flake = "${config.xdg.configHome}/home-manager"; theme = "nixos"; };
+    prog      = config.programs.eznix;
     extra = lib.optionalAttrs cfg.terminal {
       terminal_restart = [ "systemctl" "--user" "restart" "eznix-terminal.service" ];
     };
@@ -45,7 +46,11 @@ in
 
   options.services.eznix = common.options;
 
-  config = lib.mkIf cfg.enable {
+  options.programs.eznix = common.programOptions;
+
+  config = lib.mkMerge [
+   (lib.mkIf config.programs.eznix.enable { home.packages = [ common.app ]; })
+   (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [
       {
         assertion = pkgs.stdenv.hostPlatform.isLinux;
@@ -98,5 +103,6 @@ in
       };
       Install.WantedBy = [ "default.target" ];
     };
-  };
+   })
+  ];
 }

@@ -15,6 +15,7 @@ framework: just Python and a browser.
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself
 - Back up, restore, export and import the whole flake, and read its `.md` files beside the editor
 - Open the flake's other files in the page too, `.nix` or any kind you list, in your own editor (vim, nano, …) in a terminal beside the configuration
+- An entry in the application menu, made from the configuration (`programs.eznix`)
 - Themes: NixOS blue, gruvbox, and OS X, KDE Breeze and GNOME, each light or dark with the system; or your own
 
 ## 🚀 Quick Start
@@ -548,6 +549,24 @@ Saving and the terminal are refused unless the request comes from eznix's own pa
 address the browser sent it to. A proxy has to pass the browser's `Host` header on for that
 (nginx: `proxy_set_header Host $http_host;`). If it can't, add the page's address to `hosts`
 as well, in full: `hosts = ["nix.example.org", "https://nix.example.org"]`.
+
+## 📌 In the application menu
+
+On NixOS and with home-manager, eznix can be an entry in the application menu: a window of
+its own with eznix's icon. Its address comes from the configuration, so a changed port or
+HTTPS is followed at the next rebuild.
+
+```nix
+programs.eznix = {
+  enable  = true;
+  browser = "brave";      # or chromium, google-chrome-stable: a Chromium-family browser
+  # url   = "https://router.lan:9090/";   # another machine's editor instead of this one's
+};
+```
+
+It works without `services.eznix` too, for a desktop that only opens the editor of another
+machine (set `url`). If the window or the task bar shows the browser's icon instead of
+eznix's, set `windowClass` to what your desktop calls the window.
 
 ## 📋 Options
 
