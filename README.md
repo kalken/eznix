@@ -519,7 +519,7 @@ domain, and as `NAME.local`), on NixOS and macOS, and so are the addresses in
 An address in `listenAddresses` is included by itself.
 
 With HTTPS on, an `http://` address on the same port is answered with a redirect to
-`https://`.
+`https://`. Switched off again, the `https://` address is answered with a redirect to http, as long as the certificate eznix made is still there.
 
 ### A browser on another computer
 

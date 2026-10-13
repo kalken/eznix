@@ -4636,10 +4636,16 @@ function initRestartWatcher() {
     let res;
     const asked = performance.now();
     const giveUp = new AbortController(), timer = setTimeout(() => giveUp.abort(), PING_TIMEOUT_MS);
-    try { res = await apiFetch('/ping', { signal: giveUp.signal }); }
+    // A redirect is not followed but taken as news (below): it is the server saying it is
+    // now reached the other way, by https where this page is http or the reverse.
+    try { res = await apiFetch('/ping', { signal: giveUp.signal, redirect: 'manual' }); }
     catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); return; } // still down -- next tick retries
     finally { clearTimeout(timer); }
     if (performance.now() - asked > 1000) eznix.debug('ping answered after', Math.round(performance.now() - asked), 'ms');
+    // HTTPS was switched on or off under this page: loading it again goes where the server
+    // points. Followed, the redirect led to another origin, which a page may not read, so
+    // the ping failed for good and the page hung (the user, 2026-10-13).
+    if (res.type === 'opaqueredirect') { onRestartDetected(); return; }
     if (res.status === 401) { onRestartDetected(); return; }
     if (res.ok) {
       try { handlePayload(await res.json()); } catch (err) { /* malformed body — ignore, next tick retries */ }

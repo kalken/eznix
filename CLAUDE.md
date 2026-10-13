@@ -753,7 +753,19 @@ name, and the old one is kept as a renamed option in each module. Nothing instal
 into browsers or the keychain unless `trustCert` is set; the README gives the command.
 
 With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
-`_redirect_to_https()`): the first byte of a connection says which it is. The TLS handshake
+`_redirect()`): the first byte of a connection says which it is. The other way round since
+2026-10-13: with HTTPS switched off and the certificate eznix had made still in the state
+folder (`was_tls`), a browser that goes on asking over https is answered with it, by a
+redirect to http. And the page's ping takes a redirect as news and loads the page again
+(`redirect: 'manual'`), where it followed it to another origin, could not read the answer
+and failed for good. The user had switched HTTPS off in the editor and rebuilt: the page
+hung, and so did the installed app when closed and opened again. The redirect is a 307 that
+is not to be kept, where it was a 301, which a browser remembers and which, both ways, would
+have pointed each at the other. Tried by hand with a certificate made with `openssl`, on a
+throwaway server, both ways with `curl`; the page's half was not run in a browser. A
+certificate given with `cert`/`key` and then taken away leaves nothing to answer with.
+After the move to http the login is asked for again: the session cookie is marked Secure.
+(Also for what follows:) the first byte of a connection says which it is. The TLS handshake
 moved from the listening socket into each connection's thread for that, which also stops a
 silent client from holding up `accept()`. Not in `test_server.py`, which has no
 `cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
