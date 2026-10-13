@@ -4620,12 +4620,22 @@ function initRestartWatcher() {
     if (!isAnyDirty()) location.reload();
   }
   const POLL_INTERVAL_MS = 5000;
+  // A ping that has no answer after three seconds is given up, which also drops the
+  // connection it was waiting on, so the next one starts on a new one. An answer takes
+  // milliseconds; the user's rule is that seconds on a network mean something is wrong
+  // (2026-10-13). Why: after a rebuild on the user's router the server was back in a second
+  // by its own log and nothing from the page reached it for 24 more, then three pings in
+  // the same second: they had been waiting somewhere on the way, which was not found. So
+  // whether this shortens that wait is not known.
+  const PING_TIMEOUT_MS = 3000;
   async function poll() {
     if (_restartDetected) return; // already decided; nothing left to watch for
     let res;
     const asked = performance.now();
-    try { res = await apiFetch('/ping'); }
+    const giveUp = new AbortController(), timer = setTimeout(() => giveUp.abort(), PING_TIMEOUT_MS);
+    try { res = await apiFetch('/ping', { signal: giveUp.signal }); }
     catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); return; } // still down -- next tick retries
+    finally { clearTimeout(timer); }
     if (performance.now() - asked > 1000) eznix.debug('ping answered after', Math.round(performance.now() - asked), 'ms');
     if (res.status === 401) { onRestartDetected(); return; }
     if (res.ok) {

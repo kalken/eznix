@@ -808,7 +808,13 @@ what nobody went through.
   browser sending nothing for 46 seconds in the middle of a page load, on a connection it
   had already opened. Connections are reused since then; whether that ends it is for the
   router to show. The phase a stuck request is in (the browser's developer tools, Network,
-  Timing) is the evidence still missing.
+  Timing) is the evidence still missing. It came back on 2026-10-13, with reused connections:
+  by the journal (with `debug`) the server was stopped at 12:53:27 and listening a second
+  later, logged no delay of its own, and got nothing until 12:53:52, when three pings came
+  in the same second; a restart a quarter of an hour before had taken two seconds. The
+  switch restarted `eznix.service` and nothing else. A ping is given up after three seconds
+  since then (`PING_TIMEOUT_MS`), at the user's word that seconds on a network mean
+  something is wrong; whether that shortens the wait is not known either.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
