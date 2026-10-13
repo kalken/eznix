@@ -1176,6 +1176,14 @@ function getTypeLabel(val) {
   }
   return typeof val;
 }
+const _ANY_VALUE_TYPES = ['nixpkgs config', 'anything', 'json value', 'toml value', 'yaml 1.1 value', 'yaml 1.2 value', 'raw', 'unspecified'];
+// Whether the type of a new entry of a set leaves open what kind of value the entry is:
+// the set does not say what it holds ("attribute set", '' from _setEntryType()), or says it
+// holds anything at all. Then it is asked for (doAdd()), as for a path nothing is known of.
+function _saysNoKind(entryType) {
+  const t = _stripWrappingParens((entryType || '').trim().toLowerCase()).replace(/^null or /, '');
+  return t === '' || _ANY_VALUE_TYPES.some(f => t === f || t.startsWith(f + ' '));
+}
 function isFreeformType(t) {
   if (!t) return false;
   const tl = t.toLowerCase();
@@ -1189,8 +1197,7 @@ function isFreeformType(t) {
   // lists of non-serializable things (overlays, functions, etc)
   if (inner.startsWith('list of (nixpkgs ') || inner.startsWith('list of (') && inner.includes('overlay')) return true;
   // catch-all freeform type names
-  const FREEFORM = ['nixpkgs config', 'anything', 'json value', 'toml value', 'yaml 1.1 value', 'yaml 1.2 value', 'raw', 'unspecified'];
-  if (FREEFORM.some(f => inner === f || inner.startsWith(f + ' '))) return true;
+  if (_ANY_VALUE_TYPES.some(f => inner === f || inner.startsWith(f + ' '))) return true;
   // types that describe Nix-level evaluations / functions
   if (inner.startsWith('an evaluation of') || tl.includes('nixpkgs overlay')) return true;
   return false;
@@ -2474,6 +2481,15 @@ function doAdd() {
   }
   if (matchedOpt) {
     addSelectedType = typeFromNix(matchedOpt.type);
+  } else if (entryType !== undefined && _saysNoKind(entryType)) {
+    // A new entry of a set that does not say what it holds: nothing tells a list from a
+    // text there, so it is asked for, like a path the suggestions do not know. It was added
+    // as a text without a word (the user, 2026-10-13, on a policy under
+    // programs.chromium.extraOpts, an "attribute set": "i can not choose any type for it.
+    // it should obviously be a list").
+    document.getElementById('add-ac-list').classList.add('hidden');
+    document.getElementById('force-type-bar').classList.remove('hidden');
+    return;
   } else if (entryType !== undefined) {
     // A new entry of a set (see _typeAt()): its type is what the set says it holds.
     addSelectedType = typeFromNix(entryType);

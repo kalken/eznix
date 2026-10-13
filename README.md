@@ -582,6 +582,9 @@ programs.eznix.apps = {
 Neither needs `services.eznix` on the machine itself. If the window or the task bar shows the browser's icon instead of
 eznix's, set `windowClass` to what your desktop calls the window.
 
+Such a window has no toolbar, so the browser's note that a file was downloaded (an export)
+can come up half outside the window. The file is downloaded all the same.
+
 ## 📋 Options
 
 The common ones, the same in all three modules:

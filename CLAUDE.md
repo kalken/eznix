@@ -241,6 +241,11 @@ the window's name is confirmed for one of the two prefixes only. Switching HTTPS
 rebuilding was tried with it too ("yes that works"): the entry opens the new address. The
 window that was open through the switch goes on showing the terminal reconnecting until it
 is closed and opened again, which the user found possibly acceptable ("it might be ok").
+In that window the browser's download bubble comes up off the window's left edge, only its
+right corner showing (the user's photo, 2026-10-13, NixOS with Plasma, after an export); in
+an ordinary window of the same browser it is where it belongs. The file arrives either
+way. My reading, not checked: the bubble hangs off the toolbar's download button and an
+app-mode window has no toolbar. Nothing was done about it but a line in the README.
 
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With
@@ -580,6 +585,10 @@ rightklick, but for lists its great"). A click on a whole option in the add fiel
 adds it at once. A path the suggestions do not know is never refused: Enter on it brings up the
 bar that asks what kind of value it is (`doAdd()`, `doForceAddWithType()`), where it used
 to say "Unknown option path" as long as anything was still suggested for what was typed.
+The same bar comes for a new entry of a set that leaves open what it holds (`_saysNoKind()`:
+a bare "attribute set", or one of anything, of a JSON value and the like), since 2026-10-13:
+it was added as a text without a word, which the user met on a list under
+`programs.chromium.extraOpts`. Checked by running the rule on type texts; not in a browser.
 The bar's buttons and Add keep the cursor in the field, since the field's blur hides the bar.
 Tried by the user in the test server that day, on `services.samba.settings.global` ("that
 works!"): the type chosen from the bar, and Add pressed with no type chosen.
@@ -913,8 +922,11 @@ what nobody went through.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
-  `.gitignore` untouched), but the user has not tried writing the flake through the editor,
-  and no system import has been done there.
+  `.gitignore` untouched). A system import was done there by the user on 2026-10-13: a
+  flake exported and imported again, on NixOS ("it worked"). Whether anything was changed
+  in between was not said, and an import leaves identical files alone, so this may have
+  written nothing outside the JSON folder: the flake being written through the editor is
+  still not seen for certain.
 - The `darwin` template on a machine that had nothing. (`home` was: on a fresh Debian 13 VM,
   `nix flake init -t`, the name filled in, the password file, the first switch, and it worked
   first time. `nixos` was on 2026-10-12, by a report the user brought: a VM installed from the
