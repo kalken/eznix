@@ -5,7 +5,11 @@ Guidance for Claude Code sessions working in this repository.
 ## Git
 
 Work is committed to `develop`, made from `testing` on 2026-10-09 when the user judged it
-stable enough (`origin` is `github.com/kalken/eznix`, public). There is no `master` yet.
+stable enough (`origin` is `github.com/kalken/eznix`, public). `main` was made from it on
+2026-10-13, when the user found it "almost ready", and is what the repository shows and
+what `github:kalken/eznix` gives (the templates, the installer); `main` and not `master`,
+as the user's installer has it. A machine that is to try what is not released yet names
+`github:kalken/eznix/develop`.
 
 Nothing about one person's machine belongs in this file (their paths, their flake, what
 their computer runs): it is checked in and public.
@@ -14,7 +18,7 @@ Do not add Claude as co-author in commit messages.
 
 Do not push unless the user explicitly says so in that turn. Committing is not a go-ahead to push.
 
-All changes go to `develop` first. Only merge `develop` into `master`; never commit to `master`.
+All changes go to `develop` first. Only merge `develop` into `main`; never commit to `main`.
 
 ## Workflow
 
@@ -260,6 +264,10 @@ PATH when the browser is only in the store, so the menu showed nothing, and that
 has the file name an entry of ours for the app would have, so it stands in front of it.
 The identifier Chromium gives the app can be worked out from its address (two rounds of
 SHA-256, sixteen bytes, in the letters a to p) and came out right for eznix.
+Talked through afterwards and not built, the user choosing to "keep it like it is for
+now": the page writing an export itself through the browser's Save dialog, so that no
+download note comes up at all; a window program of eznix's own on a web view; and the
+browser's own setting "Show downloads when they're done", which nobody tried.
 
 **The installed app's window bar has the header's colour** (`_loadWindowColour()`, the
 `theme-color` tag in both pages, `theme_color` and `background_color` in the manifest). With
@@ -936,11 +944,13 @@ what nobody went through.
 - `flakeWritable` on NixOS, as something that works: a listing the user sent shows the
   permissions it sets (the flake and its files `root:eznix` and group-writable with the
   owner unchanged, setgid and ACL on the folders, `.git`, another dot-folder and
-  `.gitignore` untouched). A system import was done there by the user on 2026-10-13: a
-  flake exported and imported again, on NixOS ("it worked"). Whether anything was changed
-  in between was not said, and an import leaves identical files alone, so this may have
-  written nothing outside the JSON folder: the flake being written through the editor is
-  still not seen for certain.
+  `.gitignore` untouched). Tried by the user on 2026-10-13, on NixOS: a
+  system exported, a line `# test` added to `hardware-configuration.nix` and to
+  `flake.nix`, the export imported. The line was still in the hardware file ("#test is
+  still in hardware-configuration.nix after import") and gone from the other ("its gone
+  from flake.nix"): the import writes the flake there, and keeps the machine's own
+  hardware file. (A first try with `touch` showed nothing: an import skips identical
+  files.) Not tried: an import that removes a file, and a restore.
 - The `darwin` template on a machine that had nothing. (`home` was: on a fresh Debian 13 VM,
   `nix flake init -t`, the name filled in, the password file, the first switch, and it worked
   first time. `nixos` was on 2026-10-12, by a report the user brought: a VM installed from the
