@@ -202,7 +202,9 @@ input[type=text].key-rename-input {
 .editor-area { background: var(--editor-bg); flex: 1; overflow-y: auto; padding: 10px 12px; scroll-padding-top: 8px; scroll-padding-bottom: 8px; }
 /* Room under the last line for whatever stands in front of the editor's lower part
    (--covered-below, set by what does: the open terminal panel), so that the end of a file can
-   be scrolled up above it. Room only: nothing that is on screen moves when it changes. */
+   be scrolled up above it. Room only: nothing that is on screen moves when it changes, which
+   is why whoever sets it must not take away room that is in view (the browser would move
+   the file down to fill it). */
 .editor-area { padding-bottom: calc(10px + var(--covered-below, 0px)); scroll-padding-bottom: calc(8px + var(--covered-below, 0px)); }
 
 /* ── Sections ── */

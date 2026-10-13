@@ -559,7 +559,8 @@ as well, in full: `hosts = ["nix.example.org", "https://nix.example.org"]`.
 
 On NixOS and with home-manager, eznix can be an entry in the application menu: a window of
 its own with eznix's icon. Its address comes from the configuration, so a changed port or
-HTTPS is followed at the next rebuild.
+HTTPS is followed at the next rebuild. A window that was open through such a change has to
+be closed and opened again.
 
 ```nix
 programs.eznix = {

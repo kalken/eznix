@@ -943,9 +943,24 @@ eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme
   // And how much of the editor the open panel stands in front of (--covered-below): the
   // editor has that much room under its last line, so the end of a file can still be
   // brought into view above the panel.
+  // The room is not taken back while it is on screen: with the end of a file scrolled up
+  // above the panel, a press in the editor hides the panel, and with the room gone at once
+  // the browser moved the file down by as much, under the pointer (the user, 2026-10-13: "i
+  // just right clicked on a field and the page scrolled up"). What is in view of it stays
+  // until it is scrolled out of view.
   const panel = document.getElementById('terminal-panel');
-  const covered = () => document.documentElement.style.setProperty('--covered-below', Math.max(0, panel.offsetHeight - bars.offsetHeight) + 'px');
+  const area = document.getElementById('editor-area');
+  let room = 0;
+  const covered = () => {
+    const need = Math.max(0, panel.offsetHeight - bars.offsetHeight);
+    const inView = Math.ceil(room - (area.scrollHeight - area.clientHeight - area.scrollTop));
+    const next = Math.max(need, Math.min(room, inView));
+    if (next === room) return;
+    room = next;
+    document.documentElement.style.setProperty('--covered-below', room + 'px');
+  };
   new ResizeObserver(covered).observe(panel);
+  area.addEventListener('scroll', covered, { passive: true });
   covered();
 }
 

@@ -158,7 +158,13 @@ in the editor resized the editor under the pointer; the user reported the page s
 "sometimes" on a click and on a right-click, and said the editor "should not be affected at
 all by the terminal". That this was the cause of those reports is my reading, not something
 seen: none of it was looked at in a browser. The editor gets as much room under its last
-line as the open panel covers, so a file's end can still be scrolled into view.
+line as the open panel covers, so a file's end can still be scrolled into view. That room
+is not taken back while any of it is on screen (`covered()` in `terminal-panel/terminal.js`):
+the user reported the page scrolling on a right-click again the same day, "not all the
+time", and with the file's end scrolled up above the panel, the press that hid the panel
+took the room away and the browser moved the file down by as much. That this is what the
+user saw is again my reading: whether the terminal was open was not said. The rule was run
+on made-up numbers; not in a browser.
 
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
