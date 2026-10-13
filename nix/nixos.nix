@@ -52,7 +52,18 @@ let
     prog = config.programs.eznix;
     hostNames = let name = config.networking.hostName; in
       lib.optionals (name != "") [ name config.networking.fqdnOrHostName "${name}.local" ];
-    defaults = { flake = "/etc/nixos"; theme = "nixos"; };
+    # The theme follows the desktop this machine has, where that is one: Plasma's or GNOME's
+    # alone. Both, or neither, and it is the blue one: which of two somebody logs in to is
+    # not known here (the user's rule, 2026-10-13: "go back to blue if nothing fits"). `or
+    # false`, since a nixpkgs from before the options had these names has neither.
+    defaults = {
+      flake = "/etc/nixos";
+      theme = let
+        plasma = config.services.desktopManager.plasma6.enable or false;
+        gnome  = config.services.desktopManager.gnome.enable or false;
+      in if plasma && !gnome then "breeze" else if gnome && !plasma then "gnome" else "nixos";
+      themeText = ''"breeze" with Plasma as the only desktop, "gnome" with GNOME as the only one, otherwise "nixos"'';
+    };
     extra = {
       auth_helper = "/run/wrappers/bin/eznix-auth";
     } // lib.optionalAttrs cfg.terminal {

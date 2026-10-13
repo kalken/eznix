@@ -1,7 +1,8 @@
 # What the three modules share: the options, and the eznix.toml made from them.
 #
 #   packages   nix/packages.nix, evaluated
-#   defaults   { flake, theme }: what differs by platform
+#   defaults   { flake, theme, themeText ? }: what differs by platform (themeText: how the
+#              theme's default is said in the documentation, where it is worked out)
 #   stateDir   where this install keeps its state (null: the server's own default, ~/.local/state/eznix)
 #   terminals  user -> { port, key_file }: terminals run by the module, one per user
 #   extra      more top-level eznix.toml keys from the module (terminal_restart, auth_helper, ...)
@@ -429,7 +430,8 @@ in
       # The ones that ship, as choices in the editor, or any other name: one of your own.
       type        = types.either (types.enum [ "nixos" "gruvbox" "osx" "osx-dark" "osx-light" "breeze" "breeze-dark" "breeze-light" "gnome" "gnome-dark" "gnome-light" ]) types.str;
       default     = defaults.theme;
-      description = "The theme a browser starts with: nixos, gruvbox, osx, breeze or gnome (each of those three light or dark, following the system the browser runs on; osx-dark, osx-light and so on for one of the two regardless), or one of your own from themes.";
+      defaultText = lib.literalMD (defaults.themeText or ''"${defaults.theme}"'');
+      description = "The theme a browser starts with, by default the one of the system eznix runs on where that is known (osx on macOS; on NixOS breeze with Plasma or gnome with GNOME, when it is the only desktop enabled) and nixos otherwise: nixos, gruvbox, osx, breeze or gnome (each of those three light or dark, following the system the browser runs on; osx-dark, osx-light and so on for one of the two regardless), or one of your own from themes.";
     };
     themes = mkOption {
       type        = types.attrsOf types.path;

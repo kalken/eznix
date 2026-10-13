@@ -433,6 +433,9 @@ Nobody outside eznix depends on the plugin interface yet, so it may still change
 ## 🎨 Themes
 
 Pick one with the swatches in the status bar; `theme` sets what a browser starts with.
+Not set, it is the theme of the system eznix runs on where that is known: `osx` on macOS,
+and on NixOS `breeze` with Plasma or `gnome` with GNOME, when that is the only desktop
+enabled. Otherwise it is `nixos`, the blue one.
 A pair of a light and a dark theme has one swatch, which follows the system; to have one of
 the two regardless, name it in `theme`.
 Built in: `nixos`, `gruvbox`, and three that follow the light or dark appearance of the system

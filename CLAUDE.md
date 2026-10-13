@@ -543,6 +543,14 @@ for `osx-*` from Finder, `breeze-*` from Dolphin and `gnome-*` from Files (run u
 Plasma with `nix run 'nixpkgs#nautilus'`); the first two pairs were seen by the user in the
 test server, but for `breeze-light`. Sections and bars are one colour in every theme, also the user's rule that day.
 
+**The theme a browser starts with follows the system eznix runs on, in the modules**
+(`defaults.theme`): `osx` on macOS as before, and since 2026-10-13 on NixOS `breeze` with
+Plasma or `gnome` with GNOME when that is the only desktop enabled, `nixos` otherwise (both,
+or neither: the user's "go back to blue if nothing fits"); home-manager cannot know and has
+`nixos`. Not in the page: a browser can tell a Mac from Linux but not one desktop from
+another. It is the machine's desktop, not the browser's. Evaluated for none, each, both and
+a theme set by hand; not rebuilt anywhere.
+
 One mistake worth knowing about: a block of these rules (the name column's width, the indent,
 the heading's padding) was deleted by an edit that replaced "everything between two comments"
 in `style.css`, was pushed, and was then papered over with workarounds for an hour before the
