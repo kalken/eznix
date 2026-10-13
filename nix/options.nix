@@ -113,8 +113,10 @@ let
     builtins.head (lib.splitString ":" (builtins.head (lib.splitString "/" rest)));
   pathOf = url: let rest = lib.last (lib.splitString "://" url); in
     "/" + lib.concatStringsSep "/" (builtins.tail (lib.splitString "/" rest));
+  browserName = lib.getName prog.browser;
+  prefix = if lib.hasInfix "brave" browserName then "brave" else "chrome";
   classOf = url:
-    "${if lib.hasInfix "brave" (lib.getName prog.browser) then "brave" else "chrome"}-${hostOf url}_${builtins.replaceStrings [ "/" ] [ "_" ] (pathOf url)}-Default";
+    "${prefix}-${hostOf url}_${builtins.replaceStrings [ "/" ] [ "_" ] (pathOf url)}-Default";
   appIcon = pkgs.runCommand "eznix-icon" { } ''
     mkdir -p $out/share/icons/hicolor/scalable/apps
     ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
@@ -141,19 +143,51 @@ let
     } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; })
     ++ lib.mapAttrsToList (name: url: { inherit url; label = "eznix (${name})"; }) prog.apps;
 
-  # `install` (NixOS, where a browser can be given a policy): the same addresses, installed
-  # by the browser as apps of its own in place of these entries. An app-mode window has no
-  # toolbar, and the browser's note of a download came up off the window's edge there (the
-  # user's photo, 2026-10-13); an installed app has the browser's own bar with a place for
-  # it, and Nix cannot make one, only the browser can. The policy (WebAppInstallForceList)
-  # has it do so at its next start, and is written again at every rebuild, so it follows
-  # the address like the entry does. What the user saw of it that day, entered by hand:
-  # a shortcut on the desktop by itself after a rebuild, in Chromium and in Brave, opening
-  # a proper window, but named for its address with a plain icon, as a browser makes it
-  # when it has not read the page's own name and logo; why it had not was not found (the
-  # address had been typed by hand). `fallback_app_name` is the name for that case.
+  # `install` (NixOS, where a browser can be given a policy, and on by default there): the
+  # same entries, opening an
+  # app the browser has installed where they opened an app-mode window. That window has no
+  # toolbar, and the browser's note of a download came up off its edge (the user's photo,
+  # 2026-10-13); an installed app has the browser's own bar with a place for it, and only
+  # the browser can make one. The policy (WebAppInstallForceList) has it do so at its next
+  # start and is written again at every rebuild, so it follows the address as the entry
+  # does. What the user saw of it that day:
+  # - entered by hand, a shortcut on the desktop by itself after a rebuild, opening a
+  #   proper window, but named for its address with a plain icon, as a browser makes it
+  #   when it has not read the page's own name and logo; why it had not was not found.
+  #   `fallback_app_name` is the name for that case.
+  # - the browser lists the app on its own apps page and not in the system's menu ("it
+  #   shows in chromium apps now, not system menu"), so the entry is still made here.
+  # - written through programs.chromium.extraOpts, which is one file for Chromium, Chrome
+  #   and Brave alike, each of them installed a copy ("why would i need two apps"). So the
+  #   policy is a file of eznix's own, for the one browser in `browser`.
+  # The entry starts the app by the name the browser gives it (--app-id), which is worked
+  # out from the address the way Chromium does: two rounds of SHA-256 over the app's
+  # start address, the first sixteen bytes, written in the letters a to p. Checked against
+  # the known names of two public apps, not against eznix's own. It can only be done at
+  # build time (Nix has no hash of raw bytes), hence the command. The file and the window
+  # are named as Chromium names its own shortcut for such an app.
   byPolicy = prog.install or false;
-  appEntries = lib.optionals (!byPolicy) (map mkApp wanted);
+  policyDir = if prefix == "brave" then "brave/policies/managed"
+    else if lib.hasInfix "chrome" browserName then "opt/chrome/policies/managed"
+    else "chromium/policies/managed";
+  mkInstalled = { url, label, class ? null }: pkgs.runCommand "eznix-app" { inherit url label; nativeBuildInputs = [ pkgs.python3 ]; } ''
+    id=$(python3 -c 'import hashlib, sys
+h = hashlib.sha256(hashlib.sha256(sys.argv[1].encode()).digest()).hexdigest()[:32]
+print("".join(chr(97 + int(c, 16)) for c in h))' "$url")
+    name=${prefix}-$id-Default
+    mkdir -p $out/share/applications
+    {
+      echo "[Desktop Entry]"
+      echo "Type=Application"
+      echo "Name=$label"
+      echo "Comment=Nix configuration editor"
+      echo "Icon=${appIcon}/share/icons/hicolor/scalable/apps/eznix.svg"
+      echo "Exec=${lib.getExe prog.browser} --profile-directory=Default --app-id=$id"
+      echo "StartupWMClass=${if class != null then class else "crx_$id"}"
+      echo "Categories=Settings;System;"
+    } > $out/share/applications/$name.desktop
+  '';
+  appEntries = map (if byPolicy then mkInstalled else mkApp) wanted;
   installed = lib.optionals byPolicy (map (a: {
     inherit (a) url;
     default_launch_container = "window";
@@ -166,7 +200,7 @@ in
 
   # The application-menu entries, and the options they are set with (see classOf above).
   apps = appEntries;
-  inherit installed;
+  inherit installed policyDir;
   programOptions = {
     enable = mkEnableOption "eznix in the application menu: a window of its own, with eznix's icon, opened at the address the editor is configured for";
     url = mkOption {

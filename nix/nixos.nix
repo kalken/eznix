@@ -97,13 +97,13 @@ in
   options.programs.eznix = common.programOptions // {
     install = lib.mkOption {
       type        = lib.types.bool;
-      default     = false;
-      description = "Have the browser install eznix as an app of its own, in place of the entry made here: the same window, with the browser's own slim bar at its top, where a download shows properly (the plain entry's window has no such bar, and the browser's note of a download comes up half outside it). It is done by a browser policy, so every Chromium-family browser on the machine (Chromium, Chrome, Brave) installs it at its next start, for every user, and puts it in the application menu itself; `browser` and `windowClass` are then not used. It follows the address at each rebuild like the plain entry. This sets programs.chromium.extraOpts.WebAppInstallForceList: leave that alone when using it.";
+      default     = true;
+      description = "Have the entry open eznix as an app the browser has installed, where it otherwise opens a plain window of the browser: the same thing to look at, with the browser's own slim bar at its top, where a download shows properly (in the plain window the browser's note of a download comes up half outside it). The browser in `browser` is told to install it by a policy, which it does when it next starts: after the first rebuild with the entry, start that browser once and close it. Set it to false for the plain window.";
     };
     desktopIcon = lib.mkOption {
       type        = lib.types.bool;
       default     = false;
-      description = "With `install`: have the browser put a shortcut on the desktop too.";
+      description = "Have the browser put a shortcut on the desktop too (not with `install` off).";
     };
   };
 
@@ -112,7 +112,7 @@ in
    # running one.
    (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
    (lib.mkIf (common.installed != [ ]) {
-     programs.chromium = { enable = lib.mkDefault true; extraOpts.WebAppInstallForceList = common.installed; };
+     environment.etc."${common.policyDir}/eznix.json".text = builtins.toJSON { WebAppInstallForceList = common.installed; };
    })
    (lib.mkIf cfg.enable {
     assertions = common.assertions ++ [

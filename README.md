@@ -582,22 +582,14 @@ programs.eznix.apps = {
 Neither needs `services.eznix` on the machine itself. If the window or the task bar shows the browser's icon instead of
 eznix's, set `windowClass` to what your desktop calls the window.
 
-Such a window has no toolbar, so the browser's note that a file was downloaded (an export)
-can come up half outside the window. The file is downloaded all the same. On NixOS the
-browser can install eznix as an app of its own instead, with its own slim bar where a
-download shows properly:
+On NixOS the entry opens eznix as an app the browser has installed, which is told to do so
+by a policy and does it when it next starts: after the first rebuild with the entry, start
+the browser once and close it, then use the entry. `desktopIcon = true` has the browser
+put a shortcut on the desktop too.
 
-```nix
-programs.eznix = {
-  enable  = true;
-  install = true;        # the browser installs it, at its next start
-  # desktopIcon = true;  # and puts a shortcut on the desktop
-};
-```
-
-Every Chromium-family browser on the machine then installs it and lists it in the
-application menu itself (close the browser completely and start it once after the
-rebuild); `browser` and `windowClass` are not used.
+With home-manager, or with `install = false`, it is a plain window of the browser. That
+one has no toolbar, so the browser's note that a file was downloaded (an export) can come
+up half outside the window. The file is downloaded all the same.
 
 ## 📋 Options
 
