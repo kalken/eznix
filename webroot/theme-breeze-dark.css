@@ -68,9 +68,9 @@
 
   /* ── Selection / highlight ── */
   --selected-bg:   #1b4155;
-  --toggle-on-bg:  #3daee9;
-  --toggle-on-knob:   #fcfcfc;
-  --toggle-on-border: #3daee9;
+  --toggle-on-bg:  var(--tab-active-bg);
+  --toggle-on-knob:   var(--tab-active-text);
+  --toggle-on-border: var(--tab-active-border);
   --input-focus-border: var(--accent);
 
   /* ── Section keys / active tab ── */
