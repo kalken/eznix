@@ -28,7 +28,9 @@ default_file = "configuration.json"   # the file to open first
 #                                     # hosts (and have the certificate made for it), or
 #                                     # saving by that name is refused; by a plain address
 #                                     # it works without.
-port   = 9090
+port   = 9090                       # plain HTTP
+# https_port = 9443                   # HTTPS (with cert and key). eznix is on the one that
+#                                     # goes with whether HTTPS is on; the other says where
 # hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
 #                                     # behind a proxy that changes the Host header, add the
 #                                     # page's address too: "https://nix.example.org"

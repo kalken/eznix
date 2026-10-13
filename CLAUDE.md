@@ -752,18 +752,25 @@ option called `generateCert` until 2026-10-09; the user found "enable HTTPS" the
 name, and the old one is kept as a renamed option in each module. Nothing installs the CA
 into browsers or the keychain unless `trustCert` is set; the README gives the command.
 
-With a certificate, plain HTTP on the same port gets a redirect to https (`_Server`,
-`_redirect_to_https()`): the first byte of a connection says which it is. The reverse was
-built on 2026-10-13 and taken out within the hour (commit `1ad76b6`, reverted): with HTTPS
-switched off, https answered by a redirect to http with the certificate left in the state
-folder, the page's ping taking a redirect as a reason to reload, and both redirects a 307.
-The user had switched HTTPS off in the editor and rebuilt, and the page hung, as did the
-app when reopened; with the change "it just makes the app blink when i login". Why was not
-found: my guess is a browser that tries https first by itself, which the new answer then
-sent back to http, round and round. That hang is therefore still there. The TLS handshake
-moved from the listening socket into each connection's thread for that, which also stops a
-silent client from holding up `accept()`. Not in `test_server.py`, which has no
-`cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
+HTTPS and plain HTTP have a port each since 2026-10-13, `httpsPort` (9443) and `port` (9090),
+and eznix is served on the one that goes with `enableHttps`; the other answers every request
+with a page saying where eznix is, a 410 with the address in `X-Eznix-At`
+(`_ElsewhereHandler`), which the page's ping takes as a reason to load itself again. With
+HTTPS off that port needs a certificate to answer with, the one eznix made while it was on,
+if it is still in the state folder; otherwise it is not listened on. On NixOS `openFirewall`
+opens both. How it came to this, that day: both shared one port, the first byte of a
+connection saying which it was, and plain HTTP was redirected to https; the other way had no
+answer, so with HTTPS switched off in the editor and rebuilt the page hung and the app could
+not be reopened (the user). Answering https on the same port with a redirect to http was
+built and reverted within the hour (`1ad76b6`): "it just makes the app blink when i login",
+my guess being a browser that tries https first and was sent back each time. Two ports were
+the user's idea, with a page on the wrong one telling them to install the app again. Tried
+by hand with `curl` on a throwaway server and a certificate made with `openssl`: HTTPS off
+with an old certificate, HTTPS on, and off with none. Not in `test_server.py`, which has no
+`cryptography` to make a certificate with, and not in a browser. What it costs: an address
+with https on port 9090 from before has moved to 9443, and an app installed from it has to
+be installed again. The TLS handshake is done in each connection's thread, which also stops
+a silent client from holding up `accept()`.
 
 `trustCert` (off by default, as the user asked) adds that authority to the browsers of the
 machine eznix runs on: `trustCertScript` in `options.nix`, ported from ezconf's

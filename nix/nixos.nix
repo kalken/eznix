@@ -101,9 +101,9 @@ in
     environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
     # On the interfaces eznix is reached through, alone (lo has no firewall); on every one
     # where none is named.
-    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interfaces == [ ]) [ cfg.port ];
+    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interfaces == [ ]) [ cfg.port cfg.httpsPort ];
     networking.firewall.interfaces = lib.mkIf cfg.openFirewall
-      (lib.genAttrs (lib.filter (i: i != "lo") cfg.interfaces) (_: { allowedTCPPorts = [ cfg.port ]; }));
+      (lib.genAttrs (lib.filter (i: i != "lo") cfg.interfaces) (_: { allowedTCPPorts = [ cfg.port cfg.httpsPort ]; }));
 
     users.users.eznix = {
       isSystemUser = true;
