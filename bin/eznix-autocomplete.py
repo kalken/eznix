@@ -412,7 +412,8 @@ let
         let v = unwrapValue (f opt);
             result = builtins.tryEval (builtins.deepSeq v v);
         in if result.success then result.value else null;
-    rawList = builtins.filter (opt: !(opt.internal or false)) (lib.optionAttrSetToDocList opts);
+    # The same as for the system's options below: no internal ones, and none hidden (removed).
+    rawList = builtins.filter (opt: !(opt.internal or false) && (opt.visible or true)) (lib.optionAttrSetToDocList opts);
 in map (opt: {{
     path = "home-manager.users.<name>." + opt.name;
     description = safeGet (o: o.description or null) opt;
@@ -454,7 +455,12 @@ let
     # convention behind e.g. disko's underscore-prefixed options) — drop these before forcing
     # anything else about them, both because they shouldn't be surfaced to users at all, and
     # because it means never having to force a broken internal-only default in the first place.
-    rawList = builtins.filter (opt: !(opt.internal or false)) (lib.optionAttrSetToDocList opts);
+    # visible = false is how a removed or renamed option is declared (mkRemovedOptionModule,
+    # mkRenamedOptionModule): it is there only to say so when set. Dropped as the NixOS manual
+    # drops it (make-options-doc: `opt.visible && !opt.internal`); they were offered as
+    # options until 2026-10-15, when the user found programs.eznix.browser still there after
+    # its removal.
+    rawList = builtins.filter (opt: !(opt.internal or false) && (opt.visible or true)) (lib.optionAttrSetToDocList opts);
 in map (opt: {{
     path = opt.name;
     description = safeGet (o: o.description or null) opt;
