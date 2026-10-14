@@ -585,8 +585,10 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .array-item input, .array-item textarea { flex: 1; min-width: 0; }
 
 /* Object items inside arrays */
+/* No line around it in any theme, the user's wish (2026-10-14): the fill alone sets it off. The
+   border stays, transparent, so everything inside is where it was measured with the line. */
 .array-obj-item {
-  border: 1px solid var(--border); border-radius: var(--radius);
+  border: 1px solid transparent; border-radius: var(--radius);
   padding: 4px 12px;
 }
 /* No gap between an object item's own options -- set here rather than under .field-row.nest so
