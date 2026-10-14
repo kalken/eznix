@@ -49,11 +49,8 @@
   --toggle-on-border: var(--input-focus-border);
   --input-focus-border: var(--accent2);
 
-  /* ── Section keys / active tab ── */
+  /* ── Section keys / tabs ── */
   --section-key-color: var(--accent);
-  --tab-active-bg:     var(--bg4);
-  --tab-active-border: transparent;    /* no line round the open tab either, in any theme (the user's wish, 2026-10-14): its fill and its name's colour set it off */
-  --tab-active-text:   var(--text);
   --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as in osx-* (the user's wish, 2026-10-14) */
   --tab-border:        transparent;
 

@@ -73,7 +73,7 @@ comes from them.
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
 | Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
 | A top-level section's card | `--card-bg` (normally `var(--bg2)`) | The bars' colour in every built-in theme; must be told apart from the page it sits on |
-| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line, if a theme wants them; every built-in theme has `transparent` for both, a tab being a name until it is the open one, and `transparent` for `--tab-active-border` too, the open tab having a fill and no line |
+| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line, if a theme wants them; every built-in theme has `transparent` for both, a tab being a name until it is the open one. The open tab looks like a selected button (`--bg4`, `--border2`, `--text`), with no variables of its own |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 
 - **Page and card need visible contrast, and cards are the colour of the bars.** A dark theme
@@ -196,7 +196,6 @@ thing here:
 | The line round that panel, and the lines between columns | the line round a card and every thin line | `--panel-hairline`, `--card-divider` |
 | A button of the toolbar: its fill and its rim | a button | `--bg3`, `--border2` |
 | An entry of the sidebar that is not selected | a tab | `--tab-bg`, `--tab-border` |
-| The selected entry: its fill and the colour of its name | the open tab | `--tab-active-bg`, `--tab-active-border`, `--tab-active-text` |
 | A file's name | text | `--text` |
 | The dimmer column beside it (kind, date) | dimmer text | `--text2` |
 | What the selection or a link is coloured with | the accent, if the theme has one | `--accent` |

@@ -579,7 +579,8 @@ tried and taken back. As it stands:
 "A theme from a screenshot"), the user's idea on 2026-10-13: the window's own surface is the
 bars and the sections, a panel of another shade the editor's page, a sidebar entry a tab
 (`--tab-bg`, `--tab-border`, new that day so a tab can be a bare name) and the selected one
-the open tab; popups have the bars' colour. Measured in the picture's pixels, converted to
+the open tab (until 2026-10-14, when the user had the open tab look like a selected button,
+`.btn.active`, in every theme, and `--tab-active-*` went); popups have the bars' colour. Measured in the picture's pixels, converted to
 sRGB (a Mac's screenshot is in the display's profile; `sips -s format bmp` converts). Done
 for `osx-*` from Finder, `breeze-*` from Dolphin and `gnome-*` from Files (run under
 Plasma with `nix run 'nixpkgs#nautilus'`); the first two pairs were seen by the user in the
