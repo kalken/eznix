@@ -233,7 +233,10 @@ title bar and borders" off, which is in the browser's profile and cannot be pass
 command line. A profile of eznix's own with that setting written in was offered and not
 wanted, and so was the browser policy below again. Checked: the two entries' text evaluated
 on a NixOS system, and the removed option's message; then the user, on Linux the same day,
-"yes that works" (with which entries, `enable` or `apps`, was not said). What follows is the
+"yes that works" (with which entries, `enable` or `apps`, was not said). Every entry is
+named for its address, "eznix (https://router.lan:9090)" (`labelOf`), the user's choice the
+same day over the address as the entry's description; it was named for the machine ("eznix
+(HOST)", or the name in `apps`). Evaluated, not seen in a menu. What follows is the
 app-mode entry as it was from 2026-10-13 to then:
 a desktop entry that opens a Chromium-family browser in app mode (`--app=URL`) at the
 address worked out from `services.eznix` (http or https, `localhost` or the machine's name,

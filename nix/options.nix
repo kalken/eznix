@@ -103,8 +103,6 @@ let
   # One entry is this machine's own editor (enable, url); `apps` adds one for each other
   # editor named there, so that one desktop has every machine it looks after in its menu
   # (the user, 2026-10-13: "can i add more programs.eznix to other machines?").
-  hostOf = url: let rest = lib.last (lib.splitString "://" url); in
-    builtins.head (lib.splitString ":" (builtins.head (lib.splitString "/" rest)));
   appIcon = pkgs.runCommand "eznix-icon" { } ''
     mkdir -p $out/share/icons/hicolor/scalable/apps
     ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
@@ -117,24 +115,18 @@ let
     exec           = "${pkgs.xdg-utils}/bin/xdg-open ${url}";
     categories     = [ "Settings" "System" ];
   };
+  # An entry is named for its address, "eznix (https://router.lan:9090)", whichever machine
+  # it is: the user's choice on 2026-10-15. It was named for the machine before ("eznix
+  # (box)" for this one, "eznix (NAME)" for one of `apps`).
+  labelOf = url: "eznix (${lib.removeSuffix "/" url})";
   appEntries =
-    lib.optional prog.enable (mkApp {
-      inherit (prog) url;
-      name = "eznix";
-      # Named for the machine, as the page's own title is and as the entries of `apps` are:
-      # its host name where the module knows it and the address is this machine's, else
-      # the address's host. (It was plain "eznix" for localhost at first; the user asked
-      # for the name, 2026-10-13.)
-      label = let host = hostOf prog.url; mine = host == "localhost" || builtins.elem host hostNames; in
-        if mine && hostNames != [ ] then "eznix (${builtins.head hostNames})"
-        else if host == "localhost" then "eznix" else "eznix (${host})";
-    })
-    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; name = "eznix-${name}"; label = "eznix (${name})"; }) prog.apps;
+    lib.optional prog.enable (mkApp { inherit (prog) url; name = "eznix"; label = labelOf prog.url; })
+    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; name = "eznix-${name}"; label = labelOf url; }) prog.apps;
 in
 {
   inherit isLocal certDir generateCert;
 
-  # The application-menu entries, and the options they are set with (see hostOf above).
+  # The application-menu entries, and the options they are set with (see appIcon above).
   apps = appEntries;
   programOptions = {
     enable = mkEnableOption "eznix in the application menu, with eznix's icon: it opens the address the editor is configured for in the default browser";
@@ -155,7 +147,7 @@ in
       type        = types.attrsOf types.str;
       default     = { };
       example     = { router = "https://router.lan:9090/"; };
-      description = "More entries in the application menu, one for each name: the address of another machine's editor. Each is shown as eznix (NAME). They are there whether or not enable is set, which is the entry for this machine's own editor.";
+      description = "More entries in the application menu, one for each name: the address of another machine's editor. Each is shown as eznix (ADDRESS); the name tells the entries apart in the configuration. They are there whether or not enable is set, which is the entry for this machine's own editor.";
     };
   };
 

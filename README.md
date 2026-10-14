@@ -572,7 +572,8 @@ programs.eznix = {
 };
 ```
 
-For the editors of other machines, add an entry each, shown as "eznix (NAME)":
+For the editors of other machines, add an entry each. Every entry is shown with its
+address, as "eznix (https://router.lan:9090)":
 
 ```nix
 programs.eznix.apps = {
