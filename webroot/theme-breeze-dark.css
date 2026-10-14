@@ -95,7 +95,7 @@
   --field-bg: rgb(255 255 255 / 5%);
   --editor-bg: #141618;    /* the editor page: the scheme's View colour */
   --card-bg:   var(--bg2); /* the filled block of a top-level section: the bars' colour, as in every theme */
-  --card-border:  var(--panel-hairline); /* the line around that block */
+  --card-border:  rgb(0 0 0 / 45%); /* the line around that block: a shade of black, as in the other themes, not the panels' line */
   --value-border: transparent; /* the line around an option's value cell; transparent: none */
 
   /* ── Editor layout ── */
