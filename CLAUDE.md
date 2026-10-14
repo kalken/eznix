@@ -224,7 +224,16 @@ version of the icon, which has a width and a height; with the first, which had o
 viewBox, nothing had happened, though whether the size was why is not known.
 
 **eznix in the application menu comes from the configuration** (`programs.eznix`, in
-`options.nix`: `programOptions`, `app`; NixOS and home-manager, not macOS), since 2026-10-13:
+`options.nix`: `programOptions`, `appEntries`; NixOS and home-manager, not macOS). Since
+2026-10-15 an entry opens its address in the default browser (`xdg-open`), a plain tab,
+and `browser` and `windowClass` are removed options (`mkRemovedOptionModule`). The user
+chose that after seeing the app-mode window under Plasma with Plasma's title bar and frame,
+which the page cannot colour: the browser draws its own only with its setting "Use system
+title bar and borders" off, which is in the browser's profile and cannot be passed on the
+command line. A profile of eznix's own with that setting written in was offered and not
+wanted, and so was the browser policy below again. Checked: the two entries' text evaluated
+on a NixOS system, and the removed option's message; not on a desktop. What follows is the
+app-mode entry as it was from 2026-10-13 to then:
 a desktop entry that opens a Chromium-family browser in app mode (`--app=URL`) at the
 address worked out from `services.eznix` (http or https, `localhost` or the machine's name,
 the port), with the logo as a file made at build time by `eznix --icon THEME`

@@ -42,6 +42,10 @@ in
     # sections = "collapsed" | "expanded" became collapseLevel, a number, on 2026-10-12.
     (lib.mkChangedOptionModule [ "services" "eznix" "sections" ] [ "services" "eznix" "collapseLevel" ]
       (config: if config.services.eznix.sections == "expanded" then null else 3))
+    # The menu entry opened a Chromium-family browser in app mode until 2026-10-15; it opens
+    # the default browser now.
+    (lib.mkRemovedOptionModule [ "programs" "eznix" "browser" ] "The entry opens the default browser.")
+    (lib.mkRemovedOptionModule [ "programs" "eznix" "windowClass" ] "The entry opens the default browser, in a tab of its own.")
   ];
 
   options.services.eznix = common.options;

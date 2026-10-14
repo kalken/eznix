@@ -561,16 +561,14 @@ as well, in full: `hosts = ["nix.example.org", "https://nix.example.org"]`.
 
 ## 📌 In the application menu
 
-On NixOS and with home-manager, eznix can be an entry in the application menu: a window of
-its own with eznix's icon. Its address comes from the configuration, so a changed port or
-HTTPS is followed at the next rebuild. A window that was open through such a change has to
-be closed and opened again.
+On NixOS and with home-manager, eznix can be an entry in the application menu, with
+eznix's icon, that opens it in the default browser. Its address comes from the
+configuration, so a changed port or HTTPS is followed at the next rebuild.
 
 ```nix
 programs.eznix = {
-  enable  = true;
-  browser = pkgs.brave;   # default: pkgs.chromium; any Chromium-family browser
-  # url   = "https://router.lan:9090/";   # another machine's editor instead of this one's
+  enable = true;
+  # url  = "https://router.lan:9090/";   # another machine's editor instead of this one's
 };
 ```
 
@@ -583,13 +581,10 @@ programs.eznix.apps = {
 };
 ```
 
-Neither needs `services.eznix` on the machine itself. If the window or the task bar shows the browser's icon instead of
-eznix's, set `windowClass` to what your desktop calls the window.
-
-Such a window has no toolbar, so the browser's note that a file was downloaded (an export)
-can come up half outside the window. The file is downloaded all the same. An app installed
-from the browser's own menu ("Install page as app") shows it properly, but belongs to the
-address it was installed from.
+Neither needs `services.eznix` on the machine itself. For a window of its own, install
+eznix from the browser's menu instead ("Install page as app"); such an app belongs to the
+address it was installed from, so it has to be installed again after switching HTTPS on or
+off or changing the port.
 
 ## 📋 Options
 
@@ -617,8 +612,7 @@ The common ones, the same in all three modules:
 | `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`1` folds them all, `4` what is inside `services.openssh.settings`); not set, nothing is folded |
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |
 
-Beside `services.eznix` there is `programs.eznix` (`enable`, `url`, `apps`, `browser`,
-`windowClass`): see [In the application menu](#-in-the-application-menu).
+Beside `services.eznix` there is `programs.eznix` (`enable`, `url`, `apps`): see [In the application menu](#-in-the-application-menu).
 
 Every option has a description; `nix/options.nix` is the full list. Run by hand, the same
 settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).

@@ -94,43 +94,33 @@ let
   # each time HTTPS was switched on or off (see "HTTPS" in CLAUDE.md): that app belongs to
   # the address it was installed from, and this one is told the address at every rebuild.
   #
-  # It is a Chromium-family browser in app mode (--app=URL), a window with no tabs or
-  # address bar. What it takes to have eznix's icon on that window and in the task bar is the
-  # entry being named for the window: such a window calls itself PREFIX-HOST__-Default (the
-  # browser's prefix, the address's host, its path with "_" for "/", the profile), and a
-  # desktop finds the icon by that name. So the entry has that name, and says it in
-  # StartupWMClass and --class as well, for a desktop that goes by those. The name is worked
-  # out here and was not seen on a real desktop when this was written: `windowClass` is there
-  # to set it right by hand (the window's own name: on Plasma, `qdbus org.kde.KWin /KWin
-  # queryWindowInfo` and a click on the window; resourceClass).
+  # It opens the address in the default browser (xdg-open), an ordinary tab. Until
+  # 2026-10-15 it was a Chromium-family browser in app mode (--app=URL, options `browser`
+  # and `windowClass`), a window of its own; under Plasma that window had Plasma's title bar
+  # and frame, which a page cannot colour, and making it the browser's own was a setting of
+  # the browser's profile or a profile of eznix's own. The user chose the plain link.
   #
   # One entry is this machine's own editor (enable, url); `apps` adds one for each other
   # editor named there, so that one desktop has every machine it looks after in its menu
-  # (the user, 2026-10-13: "can i add more programs.eznix to other machines?"). An entry is
-  # named for its window, and a window for its host alone, so two addresses on one host
-  # would be one name twice: the port is not part of it.
+  # (the user, 2026-10-13: "can i add more programs.eznix to other machines?").
   hostOf = url: let rest = lib.last (lib.splitString "://" url); in
     builtins.head (lib.splitString ":" (builtins.head (lib.splitString "/" rest)));
-  pathOf = url: let rest = lib.last (lib.splitString "://" url); in
-    "/" + lib.concatStringsSep "/" (builtins.tail (lib.splitString "/" rest));
-  classOf = url:
-    "${if lib.hasInfix "brave" (lib.getName prog.browser) then "brave" else "chrome"}-${hostOf url}_${builtins.replaceStrings [ "/" ] [ "_" ] (pathOf url)}-Default";
   appIcon = pkgs.runCommand "eznix-icon" { } ''
     mkdir -p $out/share/icons/hicolor/scalable/apps
     ${packages.eznix}/bin/eznix --icon ${lib.escapeShellArg cfg.theme} > $out/share/icons/hicolor/scalable/apps/eznix.svg
   '';
-  mkApp = { url, label, class ? classOf url }: pkgs.makeDesktopItem {
-    name           = class;
+  mkApp = { url, label, name }: pkgs.makeDesktopItem {
+    inherit name;
     desktopName    = label;
     comment        = "Nix configuration editor";
     icon           = "${appIcon}/share/icons/hicolor/scalable/apps/eznix.svg";
-    exec           = "${lib.getExe prog.browser} --app=${url} --class=${class}";
-    startupWMClass = class;
+    exec           = "${pkgs.xdg-utils}/bin/xdg-open ${url}";
     categories     = [ "Settings" "System" ];
   };
   appEntries =
-    lib.optional prog.enable (mkApp ({
+    lib.optional prog.enable (mkApp {
       inherit (prog) url;
+      name = "eznix";
       # Named for the machine, as the page's own title is and as the entries of `apps` are:
       # its host name where the module knows it and the address is this machine's, else
       # the address's host. (It was plain "eznix" for localhost at first; the user asked
@@ -138,16 +128,16 @@ let
       label = let host = hostOf prog.url; mine = host == "localhost" || builtins.elem host hostNames; in
         if mine && hostNames != [ ] then "eznix (${builtins.head hostNames})"
         else if host == "localhost" then "eznix" else "eznix (${host})";
-    } // lib.optionalAttrs (prog.windowClass != null) { class = prog.windowClass; }))
-    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; label = "eznix (${name})"; }) prog.apps;
+    })
+    ++ lib.mapAttrsToList (name: url: mkApp { inherit url; name = "eznix-${name}"; label = "eznix (${name})"; }) prog.apps;
 in
 {
   inherit isLocal certDir generateCert;
 
-  # The application-menu entries, and the options they are set with (see classOf above).
+  # The application-menu entries, and the options they are set with (see hostOf above).
   apps = appEntries;
   programOptions = {
-    enable = mkEnableOption "eznix in the application menu: a window of its own, with eznix's icon, opened at the address the editor is configured for";
+    enable = mkEnableOption "eznix in the application menu, with eznix's icon: it opens the address the editor is configured for in the default browser";
     url = mkOption {
       type        = types.str;
       default     = let
@@ -166,19 +156,6 @@ in
       default     = { };
       example     = { router = "https://router.lan:9090/"; };
       description = "More entries in the application menu, one for each name: the address of another machine's editor. Each is shown as eznix (NAME). They are there whether or not enable is set, which is the entry for this machine's own editor.";
-    };
-    browser = mkOption {
-      type        = types.package;
-      default     = pkgs.chromium;
-      defaultText = lib.literalExpression "pkgs.chromium";
-      example     = lib.literalExpression "pkgs.brave";
-      description = "The browser the window is opened with, as a package: the entry starts it from there, so it need not be installed otherwise. It has to be of the Chromium family (Chromium, Chrome, Brave), which is what can open a page as a window of its own (--app). It was a command to be found on the PATH for an hour, with chromium as the default, which was not found where only another browser was installed.";
-    };
-    windowClass = mkOption {
-      type        = types.nullOr types.str;
-      default     = null;
-      example     = "brave-localhost__-Default";
-      description = "The name the browser gives that window, which the entry has to carry for the window and the task bar to show eznix's icon and not the browser's. Worked out from browser and url when not set; set it if the icon is the browser's all the same, to what the desktop says the window is called (on Plasma: `qdbus org.kde.KWin /KWin queryWindowInfo`, click the window, resourceClass).";
     };
   };
 
