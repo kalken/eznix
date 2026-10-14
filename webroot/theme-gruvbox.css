@@ -54,8 +54,8 @@
   --tab-active-bg:     var(--bg4);
   --tab-active-border: var(--border2);
   --tab-active-text:   var(--text);
-  --tab-bg:            var(--bg3);     /* a tab that is not the open one: a button's fill and line unless set */
-  --tab-border:        var(--border2);
+  --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as in osx-* (the user's wish, 2026-10-14) */
+  --tab-border:        transparent;
 
   /* ── Semantic badges ── */
   --required-bg:   #623b36;
