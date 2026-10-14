@@ -232,7 +232,8 @@ which the page cannot colour: the browser draws its own only with its setting "U
 title bar and borders" off, which is in the browser's profile and cannot be passed on the
 command line. A profile of eznix's own with that setting written in was offered and not
 wanted, and so was the browser policy below again. Checked: the two entries' text evaluated
-on a NixOS system, and the removed option's message; not on a desktop. What follows is the
+on a NixOS system, and the removed option's message; then the user, on Linux the same day,
+"yes that works" (with which entries, `enable` or `apps`, was not said). What follows is the
 app-mode entry as it was from 2026-10-13 to then:
 a desktop entry that opens a Chromium-family browser in app mode (`--app=URL`) at the
 address worked out from `services.eznix` (http or https, `localhost` or the machine's name,
