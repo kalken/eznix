@@ -73,7 +73,7 @@ comes from them.
 | The editor page | `--editor-bg` (normally `var(--bg)`) | Also the terminal's background, via `--term-bg` |
 | Bars and panels: top bar, tab bar, status bar, terminal bar | `--bg2` | The status bar has its own variable, `--statusbar-bg`; keep it `var(--bg2)` so every bar is one colour |
 | A top-level section's card | `--card-bg` (normally `var(--bg2)`) | The bars' colour in every built-in theme; must be told apart from the page it sits on |
-| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line, if a theme wants them; every built-in theme has `transparent` for both, a tab being a name until it is the open one |
+| A tab that is not the open one | `--tab-bg`, `--tab-border` (normally `var(--bg3)` and `var(--border2)`) | A button's fill and line, if a theme wants them; every built-in theme has `transparent` for both, a tab being a name until it is the open one, and `transparent` for `--tab-active-border` too, the open tab having a fill and no line |
 | An option's value cell, inside a card | `--value-bg` | Defined as halfway between card and page; leave it derived |
 
 - **Page and card need visible contrast, and cards are the colour of the bars.** A dark theme

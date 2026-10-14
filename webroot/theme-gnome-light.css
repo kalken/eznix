@@ -67,7 +67,7 @@
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
   --tab-active-bg:     #ececee;
-  --tab-active-border: #ececee;
+  --tab-active-border: transparent;    /* no line round the open tab either, in any theme (the user's wish, 2026-10-14): its fill and its name's colour set it off */
   --tab-active-text:   var(--text);
   --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of the sidebar in Files */
   --tab-border:        transparent;

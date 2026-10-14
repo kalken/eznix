@@ -67,7 +67,7 @@
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
   --tab-active-bg:     #f6f6f6;
-  --tab-active-border: #f6f6f6;
+  --tab-active-border: transparent;    /* no line round the open tab either, in any theme (the user's wish, 2026-10-14): its fill and its name's colour set it off */
   --tab-active-text:   #0070fa;
   --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Finder's sidebar */
   --tab-border:        transparent;

@@ -60,13 +60,13 @@
   --selected-bg:   #c2e0f5;
   --toggle-on-bg:  var(--tab-active-bg);
   --toggle-on-knob:   var(--tab-active-text);
-  --toggle-on-border: var(--tab-active-border);
+  --toggle-on-border: #3daee9; /* the accent */
   --input-focus-border: var(--accent2);
 
   /* ── Section keys / active tab ── */
   --section-key-color: var(--text2);
   --tab-active-bg:     #c2e0f5;
-  --tab-active-border: #3daee9; /* the accent: Plasma has no line round a selected entry, the user liked the tab better with one */
+  --tab-active-border: transparent;    /* no line round the open tab either, in any theme (the user's wish, 2026-10-14): its fill and its name's colour set it off */
   --tab-active-text:   #232629;
   --tab-bg:            transparent;    /* a tab that is not the open one: nothing behind its name, as an entry of Dolphin's Places */
   --tab-border:        transparent;
