@@ -927,7 +927,11 @@ was a plain list until Autocomplete was pressed once, and had its chips again af
 works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
-the user. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
+the user. Options that are not `visible` (how `mkRemovedOptionModule` and
+`mkRenamedOptionModule` declare theirs) are left out as the NixOS manual leaves them out,
+since 2026-10-15: `programs.eznix.browser` was still offered after its removal, among
+1,735 such options of 26,350 on NixOS. The user confirmed the fix on Linux after a rebuild
+that brought the new generator, and Autocomplete. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
 which only types that command into the terminal (it is part of `terminal-panel/`, so there is
 none without a terminal); before that the templates carried it as one of their buttons.
 It is there in install mode as well since 2026-10-13 (it was left out there, and the
