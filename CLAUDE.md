@@ -776,6 +776,12 @@ change, so it can be reshaped freely.
   `render`, `dirty`, `theme`, `ping`), and `eznix.addButton()`. All of
   it is documented at the top of the main script, under "Plugins". The page must never name a
   plugin's function directly, or it breaks when that plugin is left out.
+- **A plugin looks like the page**: it uses the page's classes (`.btn`, `.modal`,
+  `.modal-input`, `.modal-hint`, `.modal-error`, `.autocomplete-list`, ...) and the theme's
+  variables, and its own stylesheet holds only what the page has no rule for (a size, a
+  position). The user's wish, 2026-10-14, after the files plugin's dialog had a field, hint,
+  error and a `primary` button of its own; the dialog rules were the Import dialog's
+  (`.import-*`) and were given general names for it.
 - **Server side**: `setup(api)` in the server file registers handlers under
   `/api/v1/plugin/NAME/` (`PluginApi`: `api.get/post`, `api.config`, `api.flake`,
   `api.state_dir`, `api.page`, `api.login`, `api.ignore`). A handler returns JSON-able data or an

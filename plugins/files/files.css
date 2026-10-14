@@ -1,17 +1,13 @@
 /* The files plugin's own rules. */
 
-/* The dialog that asks for a new file's path (newFlakeFile()): the page's own (.modal),
-   narrower, with the flake's folders listed under its field (.autocomplete-list). */
+/* The dialog that asks for a new file's path (newFlakeFile()): the page's own (.modal, with
+   its .modal-input, .modal-hint and .modal-error, so it looks as the Import dialog does),
+   narrower, with the flake's folders listed under its field (.autocomplete-list). It had a
+   field, hint and error of its own until 2026-10-14, the user asking for plugins to follow
+   the page. */
 .modal.files-new { width: 480px; }
 .files-new-path { position: relative; }
-.files-new-path input {
-  width: 100%; box-sizing: border-box; padding: 6px 8px;
-  background: var(--bg); color: var(--text); border: 1px solid var(--input-border); border-radius: var(--radius-sm);
-  font-family: var(--font); font-size: 12px; outline: none;
-}
-.files-new-path input:focus { border-color: var(--input-focus-border); }
-.files-new-hint { margin: 0; font-size: 12px; color: var(--text3); line-height: 1.5; }
-.files-new-hint.is-error { color: var(--red); }
+.files-new-path .modal-input { width: 100%; box-sizing: border-box; }
 
 /* A file open in a program of the user's, in a terminal (openFlakeFile()): the terminal fills
    the panel, on the terminal's own background, and is the one thing that scrolls. */

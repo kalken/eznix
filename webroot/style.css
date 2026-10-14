@@ -654,14 +654,17 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .import-target-row { display: flex; align-items: center; gap: 8px; }
 .import-target-row label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; }
-.import-target-row input {
-  flex: 1; background: var(--bg); border: 1px solid var(--input-border); color: var(--text);
+.import-target-row .modal-input { flex: 1; }
+/* A dialog's text field, hint and message box, for every dialog, a plugin's too: the Import
+   dialog's look, which a plugin's dialog takes by these names instead of styling its own. */
+.modal-input {
+  background: var(--bg); border: 1px solid var(--input-border); color: var(--text);
   padding: 5px 9px; border-radius: var(--input-radius); font-family: var(--font); font-size: 12px; outline: none;
 }
-.import-hint { margin: 0 0 10px; font-size: 12px; color: var(--text3); line-height: 1.5; }
-.import-hint code { font-family: var(--font); color: var(--text2); }
-.import-error { background: var(--error-bg); border: 1px solid var(--required-bg); color: var(--required-text); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
-.import-error.import-valid { background: var(--success-bg); border-color: var(--success-border); color: var(--green); }
+.modal-hint { margin: 0 0 10px; font-size: 12px; color: var(--text3); line-height: 1.5; }
+.modal-hint code { font-family: var(--font); color: var(--text2); }
+.modal-error { background: var(--error-bg); border: 1px solid var(--required-bg); color: var(--required-text); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
+.modal-error.modal-valid { background: var(--success-bg); border-color: var(--success-border); color: var(--green); }
 .import-examples { display: flex; gap: 8px; align-items: flex-start; }
 .import-example-label { color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; flex-shrink: 0; }
 .import-example-code { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 9px; font-family: var(--font); font-size: 10px; color: var(--text2); line-height: 1.5; white-space: pre; overflow-x: auto; margin: 0; cursor: pointer; transition: border-color .15s, background .15s; }

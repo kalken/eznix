@@ -185,10 +185,10 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
     </div>
     <div class="import-target-row">
       <label for="import-target-file">Import into</label>
-      <input type="text" id="import-target-file" placeholder="e.g. services/nginx.json" autocomplete="off">
+      <input type="text" class="modal-input" id="import-target-file" placeholder="e.g. services/nginx.json" autocomplete="off">
     </div>
     <textarea id="import-textarea" placeholder="Paste a Nix expression or JSON object…" oninput="_validateImportInput(this)"></textarea>
-    <p class="import-hint">Try pasting the contents of your <code>configuration.nix</code> — options will be merged into the target file above (defaults to the current one; a name that doesn't exist yet, e.g. <code>services/nginx.json</code>, is created).</p>
+    <p class="modal-hint">Try pasting the contents of your <code>configuration.nix</code> — options will be merged into the target file above (defaults to the current one; a name that doesn't exist yet, e.g. <code>services/nginx.json</code>, is created).</p>
     <div class="import-examples">
       <div class="import-example-label">Nix</div>
       <pre class="import-example-code" onclick="setImportExample(this)">services.nginx.enable = true;
@@ -199,7 +199,7 @@ networking.hostName = "myhost";</pre>
   "networking": { "hostName": "myhost" }
 }</pre>
     </div>
-    <div class="import-error hidden" id="import-error"></div>
+    <div class="modal-error hidden" id="import-error"></div>
     <div class="modal-actions">
       <button class="btn" onclick="closeImportModal()">Cancel</button>
       <button class="btn" onclick="doImport()">Import</button>
@@ -4856,7 +4856,7 @@ function closeImportModal() { document.getElementById('import-modal').classList.
 
 function _importClearError() {
   const el = document.getElementById('import-error');
-  el.textContent = ''; el.classList.add('hidden'); el.classList.remove('import-valid');
+  el.textContent = ''; el.classList.add('hidden'); el.classList.remove('modal-valid');
 }
 function _validateImportInput(ta) {
   const src = ta.value.trim();
@@ -4868,24 +4868,24 @@ function _validateImportInput(ta) {
     try { parsed = nixImportParse(src); kind = 'Nix'; }
     catch (e) {
       el.textContent = 'Parse error: ' + e.message;
-      el.classList.remove('hidden', 'import-valid');
+      el.classList.remove('hidden', 'modal-valid');
       return;
     }
   }
   if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
     el.textContent = 'Expected an attribute set or JSON object at the top level.';
-    el.classList.remove('hidden', 'import-valid');
+    el.classList.remove('hidden', 'modal-valid');
     return;
   }
   const unsupported = _checkUnsupportedKeys(parsed);
   if (unsupported.length) {
     const keys = unsupported.map(k => `"${k}"`).join(', ');
     el.textContent = `Cannot import: ${keys} ${unsupported.length === 1 ? 'is a' : 'are'} NixOS module-level directive${unsupported.length > 1 ? 's' : ''}, not config options.`;
-    el.classList.remove('hidden', 'import-valid');
+    el.classList.remove('hidden', 'modal-valid');
     return;
   }
   el.textContent = '✓ Valid ' + kind;
-  el.classList.remove('hidden'); el.classList.add('import-valid');
+  el.classList.remove('hidden'); el.classList.add('modal-valid');
 }
 function _importShowError(msg, ta, highlightLine) {
   const el = document.getElementById('import-error');

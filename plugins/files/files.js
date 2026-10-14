@@ -88,17 +88,20 @@ function newFlakeFile(menu, existing) {
   overlay.className = 'modal-overlay';
   overlay.innerHTML =
     '<div class="modal files-new"><h2></h2>' +
-      '<div class="files-new-path"><input type="text" spellcheck="false" autocomplete="off" aria-label="Path inside the flake">' +
+      '<div class="files-new-path"><input type="text" class="modal-input" spellcheck="false" autocomplete="off" aria-label="Path inside the flake">' +
         '<div class="autocomplete-list hidden"></div></div>' +
-      '<p class="files-new-hint"></p>' +
-      '<div class="modal-actions"><button class="btn">Cancel</button><button class="btn primary">Create</button></div></div>';
-  const [title, pathWrap, hint, actions] = overlay.firstChild.children;
+      '<p class="modal-hint"></p><div class="modal-error hidden"></div>' +
+      '<div class="modal-actions"><button class="btn">Cancel</button><button class="btn">Create</button></div></div>';
+  const [title, pathWrap, hint, error, actions] = overlay.firstChild.children;
   const input = pathWrap.firstChild, list = pathWrap.lastChild, [cancelBtn, createBtn] = actions.children;
   const endings = menu.extensions;
   title.textContent = 'New file in ' + menu.name;
   input.placeholder = 'folder/name' + endings[0];
   const plain = 'A path inside the flake, ending in ' + endings.join(' or ') + '.';
-  const say = (text, isError) => { hint.textContent = text; hint.classList.toggle('is-error', !!isError); };
+  // The hint says what the path will do; what is wrong with it goes in the box under it, as
+  // in the Import dialog (the page's .modal-hint and .modal-error), until the path changes.
+  const say = text => { hint.textContent = text; };
+  const fail = text => { error.textContent = text; error.classList.remove('hidden'); };
   // The folders of the path that are not there yet, from the first one missing, and the one
   // they go in: null when there are none. What the menu lists counts as there (the flake's
   // folders, less what is excluded).
@@ -138,14 +141,14 @@ function newFlakeFile(menu, existing) {
   }
   function create() {
     let name = input.value.trim().replace(/^\.?\/+/, '');
-    if (!name || name.endsWith('/')) { say('The file needs a name.', true); return; }
-    if (!endings.some(ending => name.endsWith(ending) && name.length > ending.length)) { say('The name has to end in ' + endings.join(' or ') + '.', true); return; }
-    if (name.split('/').some(part => !part || part === '.' || part === '..')) { say('Not a path inside the flake.', true); return; }
-    if (existing.includes(name)) { say(name + ' is there already.', true); return; }
+    if (!name || name.endsWith('/')) { fail('The file needs a name.'); return; }
+    if (!endings.some(ending => name.endsWith(ending) && name.length > ending.length)) { fail('The name has to end in ' + endings.join(' or ') + '.'); return; }
+    if (name.split('/').some(part => !part || part === '.' || part === '..')) { fail('Not a path inside the flake.'); return; }
+    if (existing.includes(name)) { fail(name + ' is there already.'); return; }
     close();
     openFlakeFile(name, menu, !!newFolders(name));
   }
-  input.addEventListener('input', () => { describe(); showList(); });
+  input.addEventListener('input', () => { error.classList.add('hidden'); describe(); showList(); });
   input.addEventListener('blur', hideList);
   input.addEventListener('keydown', e => {
     const items = [...list.children], open = !list.classList.contains('hidden');
