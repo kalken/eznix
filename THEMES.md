@@ -80,10 +80,12 @@ comes from them.
   has the page darkest and the bars and cards a step lighter; a light theme has a grey page
   with white bars and cards (`breeze-light` the other way round, white page and grey bars and
   cards, since that is where Dolphin has those two colours).
-- **Or a line in place of the fill.** `--card-border` is the line around a card (normally
-  `var(--panel-hairline)`), and `--value-border` one around a value strip (normally
-  `transparent`, which is none). No built-in theme uses them that way; they are there for a
-  theme of your own that wants outlines.
+- **Or a line in place of the fill.** `--card-border` is the line around a card and
+  `--value-border` one around a value strip, both `transparent` (none) in every built-in theme:
+  a card is edged by its shadow alone. They are there for a theme of your own that wants
+  outlines. `--card-divider` is the line between the boxes inside a card, normally
+  `var(--panel-hairline)` (a translucent black in `osx-dark` and `breeze-*`, whose hairline is a
+  grey or a white copied from the file manager).
 - **`--bg3` and `--bg4` are hover and raised shades**, used on buttons, list rows and inline
   code. Each has to move one step further away from `--bg2`, in the same direction (lighter in
   a dark theme, darker in a light one), or hover states disappear.
@@ -92,7 +94,7 @@ comes from them.
   over an option and the search results, so those always match each other. `--search-file-color`
   is the file a search result is in, a line of small text on that surface: pick something
   readable there that is neither the path's colour (`--text2`) nor the value's.
-- **Edges are shadows, not borders**: `--panel-hairline` is the 1px line along a bar or card,
+- **Edges are shadows, not borders**: `--panel-hairline` is the 1px line along a bar,
   `--panel-shadow` the soft shadow beside it. Both are translucent black, so they need lowering
   a lot on a light theme and barely show on a very dark one.
 
@@ -191,7 +193,7 @@ thing here:
 |---|---|---|
 | The window's own surface, which the toolbar has too | the bars and the cards | `--bg2`, `--card-bg` |
 | A panel of another shade in the window: the sidebar | the editor's page | `--bg`, `--editor-bg` |
-| The line round that panel, and the lines between columns | the line round a card and every thin line | `--panel-hairline`, `--card-border` |
+| The line round that panel, and the lines between columns | the line round a card and every thin line | `--panel-hairline`, `--card-divider` |
 | A button of the toolbar: its fill and its rim | a button | `--bg3`, `--border2` |
 | An entry of the sidebar that is not selected | a tab | `--tab-bg`, `--tab-border` |
 | The selected entry: its fill and the colour of its name | the open tab | `--tab-active-bg`, `--tab-active-border`, `--tab-active-text` |

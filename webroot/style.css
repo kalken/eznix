@@ -404,7 +404,7 @@ input[type=text].key-rename-input {
 /* Not part of a strip of rows any more, so its value cell keeps all four corners. */
 .field-row.nest.nest-root > .field-value { border-radius: var(--radius); }
 /* A second-level section is only set off by a plain line above it, across the frame it sits
-   in: the colour of the frame's own line (--card-border), without the shadow. */
+   in: --card-divider, normally the colour of the frame's own line, without the shadow. */
 /* What is in a top-level section is a stack of boxes, each with a line along its top and the
    same padding above and below (the themes' --card-gap): a sub-section is one box, and so is
    a run of plain options standing between sub-sections or at either end. The space is the
@@ -415,8 +415,8 @@ input[type=text].key-rename-input {
    each fixed for the one spot pointed at: "isnt it better to draw all subsections in a
    container and have the spacing on that?") Both are elements: a sub-section is its
    .section, a run of options a .field-group (renderObj() in index.html). */
-.section.nest-card { padding: var(--card-gap) var(--block-pad); border-top: 1px solid var(--card-border); }
-.section.nest-top > .section-body > .field-group { padding: var(--card-gap) 0 calc(var(--card-gap) + 4px); border-top: 1px solid var(--card-border); }
+.section.nest-card { padding: var(--card-gap) var(--block-pad); border-top: 1px solid var(--card-divider); }
+.section.nest-top > .section-body > .field-group { padding: var(--card-gap) 0 calc(var(--card-gap) + 4px); border-top: 1px solid var(--card-divider); }
 /* A run of options has 4px below it, wherever it is: its strip of values is filled right down
    to the bottom of its last row, where a line of text has the row's 4px under it. With these
    4px the two are alike, so that what comes next, a divider line, a heading or the card's
