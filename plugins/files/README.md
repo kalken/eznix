@@ -8,7 +8,7 @@ opens in your own editor, in a terminal of its own that is a tab beside the conf
 - One menu out of the box: **Nix files**, listing the flake's `.nix` files
 - A file opens in `$EDITOR` (or nano), or in the editor you name
 - More menus as you like, each with its own kinds of file and its own program
-- **New file…** asks for a path and opens the editor on it; the ✕ on a file's line deletes it
+- **New file…** asks for a path, which has to end in one of the menu's endings, and opens the editor on it; the editor makes the file when you save, and a folder that is not there yet is made first (the dialog says so as you type); the ✕ on a file's line deletes it
 - Leaving the editor closes its tab, and so does the tab's ✕
 - An open file slides out of the way when you click outside it, like the terminal
 

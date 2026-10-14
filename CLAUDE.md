@@ -809,7 +809,7 @@ entry of `[plugin.files] menus` is a button with a `name`, the `extensions` it l
 (`openFlakeFile()`). With nothing set there is one, "Nix files" for `.nix` (the user went
 from that to an empty default and back within the hour). The command is the menu's own, else the plugin's `editor`, else
 `$EDITOR`, then nano; in Nix it can be a store path, which is how an editor set up in Nix is
-used. A shell named after the file is started on `mkdir -p DIR && exec COMMAND 'path'`, so
+used. A shell named after the file is started on `exec COMMAND 'path'`, so
 leaving the program ends the shell and closes the tab. The tab's cross closes it too,
 hanging up on the program with no question: an editor keeps what was unsaved in its own
 recovery file (vim's swap file) and offers it at the next opening, which the user found
@@ -823,7 +823,14 @@ only, and for an hour a second one for hiding ("looks weird"). No buttons withou
 a terminal. Its server half lists files and deletes one:
 each line of a menu ends in a cross, which removes the file at once after a question (and
 closes its tab), and "New file…" is a dialog of the page's kind with the flake's folders
-offered under its path field.
+offered under its path field. It makes nothing: the program makes the file on its first
+write, and a folder that is not there is made by `mkdir -p DIR && ` in front of the program,
+for that open only, which the line under the field says as the path is typed ("Creates the
+folder …"); the name has to end in one of the menu's endings. Until 2026-10-14 every open
+ran the `mkdir`, and the first ending was put on a name without one. Having the plugin's
+server make the file was built that day and dropped before it was finished: on NixOS it
+would belong to `eznix`, fail where `flakeWritable = false` lets the user's editor write,
+and stay behind empty if the editor was left without saving.
 It went through several other shapes that day, which is why the terminal and the side
 panels are what they are, and none of which should be rebuilt without the user asking:
 - an editor of its own in the page (a text field with colouring drawn under it, suggestions
