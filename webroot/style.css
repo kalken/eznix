@@ -435,29 +435,28 @@ input[type=text].key-rename-input {
 .array-obj-fields > .field-group { padding-bottom: 0; }
 /* Every section can be folded away by a click on its name (.foldable; from the third level
    down only until 2026-10-12), and starts out folded or not by the collapseLevel setting
-   (.collapsed, see _setNestDepths()). From the third level down (.nest-arrow) there is an
-   arrowhead in front of the name as well; the two levels above have none, which the user
-   did not want there. The arrowhead is the switch too,
-   pointing right while the section is hidden and down while it's shown. The arrow is part of
-   the heading's text: "▾ name" begins where the section's indent puts it, on the line of the
-   options beside the section, and the arrow is two characters wide, itself and a space. What
-   is in the section is indented one step from where that text begins, the arrow, as with any
-   section: the indent is the depth in steps and nothing else, at every level. (The user's
-   rule, 2026-10-11: "I compare to the arrow which should be part of the text". Tried and
-   taken back that day: the arrow hanging to the left of the name, outside the heading's
-   flow, which put it a step out from the options beside the section; and counting a
-   section's own options from its name instead of from its arrow.) */
-.section-toggle { display: none; }
-.section.nest-arrow > .section-header .section-toggle {
-  display: inline-block; width: 2ch; cursor: pointer; user-select: none;
-}
+   (.collapsed, see _setNestDepths()). There is no arrow in front of the name, at any level,
+   since 2026-10-15: what is in a section is indented one step (two characters) from its name,
+   and that is all the indent there is. From the third level down there was an arrowhead,
+   part of the heading's text and two characters wide, so a section's options lined up under
+   its name and the names of the levels below jumped by two steps at each section; the user
+   found the left side too busy with everything unfolded. Tried and taken back on the way:
+   the arrow hanging to the left of the name, outside the text (2026-10-11, a step out from
+   the options beside it), and that again shown only while the pointer is on the section,
+   with a line down its length (2026-10-15: "i dont like it when just moving the mouse
+   changes the program like that"). The arrows there are now are hung outside the text (below).
+   Below the second level a section has nothing round it, only its indent of one step (--indent-step,
+   2ch; 1ch was tried the same day). Tried that day to show what is at a depth and all turned down: a
+   shade per level, boxes and lines along the top taking turns as the first two levels do,
+   the boxes with only a line down the left, those lines fainter, soft shadows in their
+   place, and a box, a line along the top and a line down the left taking turns. */
 /* A heading below the top level is as tall as an option's row, and there is nothing between
    rows (the themes' --nested-section-gap is 0): folded sections and options are evenly spaced,
    as rows are in an outline on macOS, which is where the user took this from (2026-10-11).
    Tried with it and taken out the same hour: an empty place for the arrow in front of every
    option beside foldable sections, which lined the names up and pushed the options much too
    far in. */
-.section.nest-card > .section-header, .section.nest-arrow > .section-header { min-height: var(--row-height); align-items: flex-start; padding-top: 5px; }
+.section.nest-card > .section-header, .section.nest-deep > .section-header { min-height: var(--row-height); align-items: flex-start; padding-top: 5px; }
 /* Every line of the outline is then the same distance from the next, a row (--row-height, 24px
    in the themes), with its text in the middle of its row whatever it is: a heading and an
    option's name by 5px above their 14px line of text (their padding-top; 4px until it was
@@ -469,9 +468,24 @@ input[type=text].key-rename-input {
    and taken back at once.) Until that day a row was 28px, a value cell had 2px above and
    below, a name stood 6px down and a heading was centred in its row, so the lines were
    unevenly far apart. */
-.section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
-.section.nest-arrow.collapsed > .section-header .section-toggle::before { content: '▸'; }
 .section.collapsed > .section-body { display: none; }
+/* A folded section has an arrow in front of its name pointing right, at every level, so
+   that it does not look like one with nothing in it; an open one has one pointing down
+   from the level the arrowLevel setting names (ARROW_LEVEL, .nest-arrow from
+   _setNestDepths()), 3 unless set. It hangs to the
+   left of the name, outside the text, in the room the indent and a card's padding leave
+   there, and never moves anything. (2026-10-15, the user's wishes in that order: no arrows,
+   then an arrow only on a folded section, then the arrows of level 3 and down back, but
+   never moving the text. After the name, "rotate ▸", was tried the same day and put back
+   in front. The level became a setting the same day, at the user's wish.) */
+.section-toggle { display: none; }
+.section.foldable.collapsed > .section-header .section-toggle,
+.section.nest-arrow > .section-header .section-toggle {
+  display: block; position: absolute; right: 100%; top: 0; width: 1.2ch;
+  cursor: pointer; user-select: none;
+}
+.section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
+.section.foldable.collapsed > .section-header .section-toggle::before { content: '▸'; }
 /* A section nested deeper than that has no edge or fill, only a little space below it. */
 .section.nest:not(.nest-top):not(.nest-card) { margin-bottom: var(--nested-section-gap); }
 /* An option with no such section around it (set straight on a top-level section, or at the root

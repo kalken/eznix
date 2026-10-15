@@ -186,6 +186,8 @@ THEMES_DIR       = None          # folder of user themes, <name>.css each
 CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_custom_themes()
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
 SECTIONS_LEVEL   = 0             # the level from which sections start out folded (a top-level one is 1); 0: none do (collapse_level not set)
+ARROW_LEVEL      = 3             # the level from which an open section shows its arrow (arrow_level); 0: none does
+INDENT           = 2             # characters of indent per level in the editor (indent)
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
 STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
 PLUGINS          = {}            # name -> {dir, scripts, styles, config}; see _load_plugins()
@@ -1252,6 +1254,10 @@ def _render_index():
         .replace('%%EZNIX_MODE%%', json.dumps(EZNIX_MODE))
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
+        .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
+        # indent: put in place of the theme's --indent-step, whichever theme the browser has.
+        # `html:root` outweighs a theme's `:root`, so it holds whatever loads after it.
+        .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch; }}</style>')
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_VERSION%%', EZNIX_VERSION)
@@ -2552,7 +2558,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL
+    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2693,6 +2699,14 @@ def main():
     # read as that level.
     level = cfg.get('collapse_level', 3 if cfg.get('sections') == 'collapsed' else None)
     SECTIONS_LEVEL = level if isinstance(level, int) and not isinstance(level, bool) and level > 0 else 0
+    # arrow_level: the level from which an open section has an arrow in front of its name (a
+    # folded one always has). 3 when not set, which is how it was before it was a setting;
+    # 0 for none.
+    arrows = cfg.get('arrow_level', 3)
+    ARROW_LEVEL = arrows if isinstance(arrows, int) and not isinstance(arrows, bool) and arrows > 0 else 0
+    # indent: characters per level of nesting in the editor, 2 when not set.
+    indent = cfg.get('indent', 2)
+    INDENT = float(indent) if isinstance(indent, (int, float)) and not isinstance(indent, bool) and indent >= 0 else 2
     TERMINAL_AUTO_HIDE = bool(cfg.get('terminal_auto_hide', True))
     STATIC_BUTTONS = [b for b in cfg.get('buttons', []) if isinstance(b, dict) and b.get('label') and b.get('command')]
     STATIC_MENUS = {name: m for name, m in (cfg.get('menus') or {}).items() if isinstance(m, dict)}

@@ -573,10 +573,23 @@ tried and taken back. As it stands:
   a heading, an option's name, the text of a value. Rows follow each other with nothing
   between, so lines of text are evenly far apart. A strip of values has 4px below it
   (`.field-group`'s padding), since it is filled to the bottom of its last row.
-- The indent is `--indent-step` (2ch) per level and nothing else. A foldable section's
-  arrow is part of its heading's text, two characters wide, so its options start under its
-  name. Counting the arrows of the sections around a row into its indent was tried and
-  taken out.
+- The indent is `--indent-step` (2ch; 1ch was tried on 2026-10-15) per level and nothing
+  else, and a setting since that day (`indent`, in characters, 2 unless set, `services.eznix.indent`;
+  the server puts it in the page as `html:root`, which outweighs every theme's `:root`): a section's options start one step in from its name, and no arrow takes room in
+  the text. Until 2026-10-15 the arrow of level 3 and down was part of the heading's text,
+  two characters wide, and the user found the names too busy with everything unfolded; it
+  was taken away altogether for a while that day (a click on the name folds). Arrows and a line down the section shown only under the pointer were
+  tried the same day and turned down: the user does not want the page to change when the
+  mouse only moves. A folded section has an arrow (▸) at every level, an open one (▾)
+  from `arrowLevel` down (`arrow_level`, 3 unless set, 0 for none; a setting since the same
+  day, at the user's wish); each hangs to the left of the name, outside the
+  text, so that it moves nothing (the user: "the arrow should never affect the text
+  placement").
+- Below level 2 a section has no line, box or shade of its own, only its indent. Turned
+  down by the user on 2026-10-15, each tried in the test server: a shade per level, boxes
+  and lines along the top taking turns as levels 1 and 2 do, the box as a line down its
+  left only, those lines fainter, soft shadows in their place, and box / top line / left
+  line in turn. The comment in `style.css` has the list.
 - A value is 8px from its strip's left and right edge and 4px from the top of its row.
   Giving the strip room of its own above its first value was tried and made the rows
   uneven; the user chose even rows.
@@ -644,8 +657,8 @@ top-level section being 1; not set (null), the default, nothing is folded
 collapsed or expanded, collapsed by default, with the level fixed at 3, the first level
 that could be folded then: levels 1 and 2, the cards and the boxes in them, had no arrow
 until the user asked for those to fold too the same day, by a click on the name and
-without an arrowhead (`.foldable` on every section; `.nest-arrow` stays the mark of level
-3 and below, which have the arrowhead).
+without an arrowhead (`.foldable` on every section; level 3 and below kept theirs until
+2026-10-15, see the layout above, and are marked `.nest-deep`).
 The user wanted the level settable. It went through 4 as the default ("collapse after level
 3"), one setting taking either word or a number (unclear, the user found), and one number
 with 0 for never (my suggestion), until, having seen everything open in the test server,

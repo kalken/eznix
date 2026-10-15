@@ -71,6 +71,7 @@ function _themeBase(t) { return _CUSTOM_THEMES[t] ? _CUSTOM_THEMES[t].base : t; 
 </script>
 <link rel="stylesheet" href="style.css">
 %%EZNIX_PLUGIN_STYLES%%
+%%EZNIX_INDENT_STYLE%%
 <!-- Nothing is shown until the page is whole (_init() takes `booting` off again). A browser
      keeps the page it is leaving on screen until the new one has something to show, so a
      reload now goes from the old page straight to the finished new one. Before, the first
@@ -2987,9 +2988,9 @@ function renderEditor() {
 // .nest-top on a top-level section (framed), .nest-card on a section directly under one (a line
 // above it), .nest-loose on an option with no such section around it (padded to line up with
 // the ones that have), .nest-root on an option at the root of the file (framed on its own,
-// like a top-level section), and .nest-arrow on every section two or more levels below a
-// top-level one (foldable: an arrowhead in front of its name shows or hides it, and .collapsed
-// marks it hidden). Classes
+// like a top-level section), and .nest-deep on every section two or more levels below a
+// top-level one (its heading a row of the outline). .foldable is on every section outside a
+// list, whose name shows or hides it, and .collapsed marks it hidden. Classes
 // on the row itself rather than selectors written against its ancestors, so a drag ghost (a
 // clone appended to <body>, see makeDraggable()) carries its whole look along with it.
 
@@ -3055,11 +3056,14 @@ function _setNestDepths(root) {
     // Every section can be folded, by a click on its name (.foldable), the top-level ones
     // and the ones directly in them too. Those two levels could not until 2026-10-12, when
     // the user asked for them, and have no arrowhead ("not needed on the first and second
-    // level"); .nest-arrow stays the mark of the levels below, which have one and whose
-    // headings are rows of the outline (style.css).
+    // level"); the levels below had one until 2026-10-15, when the user had it taken away
+    // so that every level is indented by one step and nothing else (style.css).
+    // .nest-deep marks those levels, whose headings are rows of the outline. An open
+    // section shows an arrow from ARROW_LEVEL down (.nest-arrow), a folded one always.
     const foldable = !inArrayObj && isSection;
     el.classList.toggle('foldable', foldable);
-    el.classList.toggle('nest-arrow', foldable && depth >= 2);
+    el.classList.toggle('nest-deep', foldable && depth >= 2);
+    el.classList.toggle('nest-arrow', foldable && ARROW_LEVEL > 0 && depth + 1 >= ARROW_LEVEL);
     el.classList.toggle('collapsed', foldable && !_isSectionOpen(el));
     el.classList.toggle('nest-loose', !inArrayObj && !isSection && depth <= 1);
     el.classList.toggle('nest-root', !inArrayObj && !isSection && depth === 0);
@@ -3463,15 +3467,16 @@ function makeSectionHeader(key, path, extraType) {
 
   const keyText = document.createElement('span');
   keyText.className = 'section-key-text';
-  // The show/hide arrow of a foldable section (see _setNestDepths()); CSS keeps it hidden on
-  // every other one. Clicking the name does the same (below).
+  // The arrow of a folded section (style.css): shown only while it is folded, hanging to
+  // the left of the name so that it never moves the text. A click on it is a click on the
+  // name, which shows the section again.
   const toggle = document.createElement('span');
   toggle.className = 'section-toggle';
   keyText.appendChild(toggle);
   const keyTextInner = document.createElement('span');
   keyTextInner.className = 'tt-anchor'; keyTextInner.textContent = key;
   keyText.appendChild(keyTextInner);
-  // The name is the switch as much as the arrow is. Not after a drag that happened to end back
+  // The name shows or hides a foldable section (see _setNestDepths()). Not after a drag that happened to end back
   // on it, and not while it's being renamed (the name is a live <input> then).
   keyText.onclick = e => {
     if (_dragJustEnded || e.target.closest('input')) return;
@@ -5359,6 +5364,7 @@ function initImportDrop() {
 // ── API auth ──────────────────────────────────────────────────────────────────
 const API_BASE = '/api/v1';
 const BACKUP_ENABLED    = %%EZNIX_BACKUP%%;
+const ARROW_LEVEL       = %%EZNIX_ARROW_LEVEL%%; // services.eznix.arrowLevel / arrow_level in eznix.toml: the level from which an open section has an arrow; 0 for none -- see _setNestDepths()
 const SECTIONS_LEVEL    = %%EZNIX_SECTIONS_LEVEL%%; // services.eznix.collapseLevel / collapse_level in eznix.toml: the level sections are folded from; 0 when it is not set, for never -- see _sectionStartsOpen()
 const EZNIX_MODE       = %%EZNIX_MODE%%; // null or "install" — services.eznix.mode / mode in eznix.toml, deploy-time only, no in-GUI toggle
 const INSTALL_MODE      = EZNIX_MODE === 'install';

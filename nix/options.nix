@@ -60,6 +60,8 @@ let
     themes_dir       = if cfg.themes != { } then "${themesDir}" else null;
     plugins_dir      = if cfg.extraPlugins != { } then "${pluginsDir}" else null;
     collapse_level   = cfg.collapseLevel;
+    indent           = cfg.indent;
+    arrow_level      = cfg.arrowLevel;
     mode             = cfg.mode;
     backups          = cfg.backups;
     debug            = if cfg.debug then true else null;
@@ -416,6 +418,18 @@ in
       default     = null;
       example     = 4;
       description = "The level from which sections start out folded in the editor, a top-level section being level 1: with 4, services.openssh.settings is shown and what lies inside it is folded. 1 folds every section. Not set (or 0), nothing is folded.";
+    };
+    arrowLevel = mkOption {
+      type        = types.ints.unsigned;
+      default     = 3;
+      example     = 1;
+      description = "The level from which an open section in the editor has an arrow in front of its name, a top-level section being level 1: 1 gives every section one, 0 none. A folded section always has one.";
+    };
+    indent = mkOption {
+      type        = types.numbers.nonnegative;
+      default     = 2;
+      example     = 1;
+      description = "How far in the editor each level of nesting is indented, in characters.";
     };
     mode = mkOption {
       type        = types.nullOr (types.enum [ "install" ]);
