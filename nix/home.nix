@@ -61,11 +61,20 @@ in
         message   = "The eznix home-manager module is for Linux (it sets up systemd user services). On macOS use the nix-darwin module, darwinModules.default.";
       }
       {
-        # A service that isn't root can at best check its own user's system password, and on a
-        # distribution that isn't NixOS even that depends on a system helper the PAM library
-        # from nixpkgs may not be able to use. Untested, so not the default.
-        assertion = cfg.password != null || cfg.passwordFile != null || cfg.users != [ ];
-        message   = "services.eznix needs a way to log in: set passwordFile (or password), or users = [ \"you\" ] to try your system password.";
+        # No system passwords here. A service that isn't root can at best check its own
+        # user's, and on a distribution that isn't NixOS not even that: nixpkgs' PAM library
+        # reads the host's /etc/pam.d, which on Debian 13 it cannot parse (@include is
+        # Debian's own addition) and whose modules it cannot load (tried 2026-10-15). It
+        # works where the host is NixOS, which has a module of its own for that; documenting
+        # users as working on NixOS alone was the first answer, and the user asked why it was
+        # there at all. Calling the host's own unix_chkpwd, as an auth_helper for one's own
+        # password, was talked through and not built.
+        assertion = cfg.users == [ ];
+        message   = "services.eznix.users (system passwords) does not work with home-manager: set passwordFile (or password) instead. On NixOS, the NixOS module has system passwords.";
+      }
+      {
+        assertion = cfg.password != null || cfg.passwordFile != null;
+        message   = "services.eznix needs a way to log in: set passwordFile (or password).";
       }
     ];
 

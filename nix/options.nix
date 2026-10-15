@@ -319,7 +319,7 @@ in
     users = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "Who may log in with their system password.";
+      description = "Who may log in with their system password. NixOS and macOS only: with home-manager, log in with passwordFile.";
     };
     session.days = mkOption {
       type        = types.nullOr (types.numbers.between 0.01 400);

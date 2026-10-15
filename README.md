@@ -130,6 +130,9 @@ services.eznix = {
 };
 ```
 
+With home-manager, `passwordFile = "/home/alice/.config/eznix-password";` in place of `users`
+(see [Other Linux](#other-linux-home-manager)).
+
 Rebuild, and open eznix on port 9090: `https://192.168.1.2:9090`, or http://localhost:9090.
 
 **No flake yet?** The [Quick Start](#-quick-start) writes one for you.
@@ -261,6 +264,8 @@ services.eznix = {
 
 Two user services, running as you. It edits your home-manager flake
 (`~/.config/home-manager`), and rebuilding is `home-manager switch`, with no root involved.
+You log in with the password in `passwordFile`; system passwords (`users`) are for NixOS and
+macOS.
 
 ## 🔁 Migrating from configuration.nix
 
@@ -596,10 +601,10 @@ The common ones, the same in all three modules:
 | `flake` | `/etc/nixos`, `/etc/nix-darwin`, `~/.config/home-manager` | the flake being edited (`~/` works on macOS and with home-manager) |
 | `configDir` | `<flake>/eznix` | the folder of JSON files |
 | `exclude` | `[ ]` | what in it is not configuration, as in a `.gitignore` (see [How the configuration is stored](#-how-the-configuration-is-stored)) |
-| `users` | | who may log in with their system password |
+| `users` | | who may log in with their system password (NixOS and macOS) |
 | `session.days` | | days a login lasts, 400 at most; unset, until the page has been closed for 15 minutes, and a day at most |
 | `session.renew` | `false` | count those days from the last visit instead of from the login |
-| `password`, `passwordFile` | | log in with one password instead (not on NixOS) |
+| `password`, `passwordFile` | | log in with one password instead (not on NixOS; the way in with home-manager) |
 | `port` | `9090` | the editor's port |
 | `listenAddresses` | `[ ]` | addresses to answer on, and no others: through any interface when `interfaces` is not set, else of those the interfaces have; empty: all |
 | `interfaces` | `[ "lo" ]`, or `[ ]` with `listenAddresses` set | the network interfaces eznix is reached through, and no others (`"lo"`: the machine itself, `[ ]`: any); see [HTTPS](#-https) |

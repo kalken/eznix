@@ -131,7 +131,8 @@ units (`terminal_restart`). The helper is a small C program (`nix/eznix-auth.c`,
 compiled in) since 2026-10-15: it was a Python script until nixpkgs-unstable began refusing
 any wrapper target that is not an ELF binary (2026-10-03), which stopped the user's rebuild
 of a machine on unstable. Compiled on a Mac and evaluated into a NixOS system on unstable;
-not yet built or run on Linux.
+then, the same day, rebuilt on NixOS by the user and logged in with a system password
+("it works"; which release the machine was on was not said).
 
 **A terminal is a separate process, per user, on 127.0.0.1.** The browser never connects to
 it: `_proxy_terminal()` relays `/terminal` after its own login check, replacing the browser's
@@ -376,16 +377,23 @@ configuration without the key), and an `interfaces` that is written is used as w
 per interface were both talked through and not built. Checked: the module's default for
 each combination, and on a Mac that an address with `lo` named still answers there; an
 address alone could not be reached from the shell it was tried in, where a plain Python
-server on that address could not either, so it has not been seen answering.
+server on that address could not either, so it has not been seen answering. On
+2026-10-15 the user, on a Linux VM, set an address alone with `openFirewall` and reached
+eznix from outside ("seems to work"); without `openFirewall` it was not reached, as it
+should be. Whether `localhost` then stayed unanswered was not said.
 It is IPv4 only: the sockets are `AF_INET`, and an IPv6 address in `listenAddresses` is
 left out as one that cannot be listened on.
 Tried on a Mac: the default, `lo` with a real interface, a real one alone, the empty list,
 a missing interface beside `lo` and alone, and with addresses; the NixOS module evaluated
 for the same. On Linux by the user's word the same day, on two NixOS machines rebuilt to it: the
 router, with `interfaces = [ "lan" ]` and opened as `ezbox.lan` (a name eznix added by
-itself), and a desktop on the default `[ "lo" ]` ("both machines seems to work"). Not yet
-seen there: two interfaces at once, which is where two sockets share a port by being tied
-to different interfaces, and an interface that is missing.
+itself), and a desktop on the default `[ "lo" ]` ("both machines seems to work"). Two
+interfaces at once, where two sockets share a port by being tied to different interfaces,
+by the user's word on 2026-10-15 ("seem to work"; which two was not said). A missing
+interface alone, the same day: the rebuild went through and the service did not start, as
+meant (the build cannot know which interfaces the machine will have). Beside `lo`, also
+that day: it started on `lo` alone ("works"), with HTTPS on, as it should be: the build
+takes any name other than `lo` for a way in from outside.
 
 **Reached from elsewhere, what eznix cannot know goes in `certNames`, by hand.** What it
 can know it takes by itself since 2026-10-12: the machine's host name (`hostNames` from the
@@ -588,7 +596,8 @@ tried and taken back. As it stands:
   from `arrowLevel` down (`arrow_level`, 3 unless set, 0 for none; a setting since the same
   day, at the user's wish); each hangs to the left of the name, outside the
   text, so that it moves nothing (the user: "the arrow should never affect the text
-  placement").
+  placement"). Both settings at 1 were seen by the user in the test server that day
+  ("that works").
 - Below level 2 a section has no line, box or shade of its own, only its indent. Turned
   down by the user on 2026-10-15, each tried in the test server: a shade per level, boxes
   and lines along the top taking turns as levels 1 and 2 do, the box as a line down its
@@ -622,7 +631,8 @@ Plasma or `gnome` with GNOME when that is the only desktop enabled, `nixos` othe
 or neither: the user's "go back to blue if nothing fits"); home-manager cannot know and has
 `nixos`. Not in the page: a browser can tell a Mac from Linux but not one desktop from
 another. It is the machine's desktop, not the browser's. Evaluated for none, each, both and
-a theme set by hand; not rebuilt anywhere.
+a theme set by hand. On 2026-10-15 the user reported `breeze` chosen by itself on NixOS
+with Plasma; GNOME's and the fallback to `nixos` not seen.
 
 One mistake worth knowing about: a block of these rules (the name column's width, the indent,
 the heading's padding) was deleted by an edit that replaced "everything between two comments"
@@ -919,7 +929,10 @@ moved from the listening socket into each connection's thread for that, which al
 silent client from holding up `accept()`. Not in `test_server.py`, which has no
 `cryptography` to make a certificate with; tried by hand with `nix run . -- --https`.
 
-`trustCert` (off by default, as the user asked) adds that authority to the browsers of the
+`trustCert` (off by default, as the user asked; asked again on 2026-10-15 whether HTTPS on
+localhost alone should switch it on, and kept off: the authority has no name constraints,
+so trusted it could vouch for any site, and a browser's warning still lets the user log in)
+adds that authority to the browsers of the
 machine eznix runs on: `trustCertScript` in `options.nix`, ported from ezconf's
 `installCerts`, which ran as root for a list of users and was on by default. Here it always
 runs as the person concerned: a oneshot unit per user on NixOS, the editor's `ExecStartPre`
@@ -1015,8 +1028,15 @@ what nobody went through.
   still in hardware-configuration.nix after import") and gone from the other ("its gone
   from flake.nix"): the import writes the flake there, and keeps the machine's own
   hardware file. (A first try with `touch` showed nothing: an import skips identical
-  files.) Not tried: an import that removes a file, and a restore.
-- The `darwin` template on a machine that had nothing. (`home` was: on a fresh Debian 13 VM,
+  files.) On 2026-10-15 the user exported, added `groda.txt` to the flake, imported the
+  export (the file was gone), and restored the backup the import had taken (it was back);
+  on which system was not said.
+- The `darwin` template on a machine that had nothing: installing Nix and the first switch
+  as the README has them. What else it takes is covered: on 2026-10-15 the template, with
+  the name filled in, built against the checkout on 26.05 without switching (its two agents
+  there, the terminal's without a store path), refused with `YOUR-USER-NAME` left in, and
+  the user runs that version of the module on their own Mac. A fresh Mac in a VM was
+  offered and not wanted. (`home` was: on a fresh Debian 13 VM,
   `nix flake init -t`, the name filled in, the password file, the first switch, and it worked
   first time. `nixos` was on 2026-10-12, by a report the user brought: a VM installed from the
   NixOS 26.05 minimal ISO, the README's Quick Start typed as written at commit `f644f75`, all
@@ -1028,7 +1048,12 @@ what nobody went through.
   why the templates name the stable release since. With that, each of the three was
   evaluated against 26.05 on a Mac with the checkout's eznix, down to the system's or the
   generation's derivation; none was built or installed that way.)
-- System-password login on a non-NixOS Linux through nixpkgs' PAM library (the template
-  there uses a password file).
+- System-password login on a non-NixOS Linux through nixpkgs' PAM library does not work:
+  tried on Debian 13 with home-manager on 2026-10-15 (the user's report): the library reads
+  the host's `/etc/pam.d/login`, cannot parse its `@include` lines (Debian's own addition to
+  PAM) or load its `pam_selinux.so`, and never reaches `pam_unix`. So the home-manager
+  module refuses `users` and asks for `passwordFile` (or `password`), the user's choice the
+  same day after it was first only documented ("why do we have that option even if only one
+  works"): home-manager on NixOS, where it worked, has the NixOS module for that.
 - home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator
   has a path for its options, untried on a real flake.
