@@ -127,7 +127,11 @@ from the name it covers). If a fix only works for the case in the report, it is 
 everywhere; a rebuild goes through `sudo` in the terminal. On NixOS the two things an
 unprivileged service can't do are given to it narrowly: a setuid helper that only checks a
 password for the listed users (`auth_helper`), and a sudo rule that only restarts the terminal
-units (`terminal_restart`).
+units (`terminal_restart`). The helper is a small C program (`nix/eznix-auth.c`, the users
+compiled in) since 2026-10-15: it was a Python script until nixpkgs-unstable began refusing
+any wrapper target that is not an ELF binary (2026-10-03), which stopped the user's rebuild
+of a machine on unstable. Compiled on a Mac and evaluated into a NixOS system on unstable;
+not yet built or run on Linux.
 
 **A terminal is a separate process, per user, on 127.0.0.1.** The browser never connects to
 it: `_proxy_terminal()` relays `/terminal` after its own login check, replacing the browser's

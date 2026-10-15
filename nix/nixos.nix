@@ -27,24 +27,15 @@ let
   systemctl = "/run/current-system/sw/bin/systemctl";
 
   # Checks a password for the service: user and password on stdin, one per line; exit 0 when
-  # right. It names the Python interpreter itself, with -I: a wrapper script in between would
-  # be a shell, and a shell drops setuid privileges. It answers only for the allowed users.
-  authHelper = pkgs.writeScript "eznix-auth" ''
-    #!${pkgs.python3}/bin/python3 -I
-    import os, sys
-    sys.path[:0] = ${builtins.toJSON (lib.splitString ":" (pkgs.python3.pkgs.makePythonPath [ pkgs.python3.pkgs.python-pam ]))}
-    ALLOWED = ${builtins.toJSON cfg.users}
-    def main():
-        try:
-            os.setgid(0); os.setuid(0)
-        except OSError:
-            return 2
-        lines = sys.stdin.read(4096).split("\n")
-        if len(lines) < 2 or lines[0] not in ALLOWED:
-            return 1
-        import pam
-        return 0 if pam.pam().authenticate(lines[0], lines[1]) else 1
-    sys.exit(main())
+  # right. A compiled program (eznix-auth.c), since nixpkgs takes nothing else behind a setuid
+  # wrapper; the allowed users are compiled into it, and it answers for no one else.
+  authHelper = pkgs.runCommandCC "eznix-auth" {
+    buildInputs = [ pkgs.pam ];
+    allowed = pkgs.writeText "eznix-auth-allowed.h" ''
+      static const char *ALLOWED[] = { ${lib.concatMapStrings (u: "${builtins.toJSON u}, ") cfg.users}0 };
+    '';
+  } ''
+    $CC -O2 -Wall -Werror -include $allowed -o $out ${./eznix-auth.c} -lpam
   '';
 
   common = import ./options.nix {
