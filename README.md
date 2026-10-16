@@ -627,12 +627,9 @@ settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
 
 ## 📝 Notes
 
-- **Do not expose eznix to the internet.** It is made for the machine itself and a network you
-  trust, such as a home or an office. Whoever logs in gets a terminal, which is a shell, and
-  can change a configuration that is built as root, so it should not be reachable by the
-  world: no port forwarding to it, and no `interfaces` or `listenAddresses` that include a
-  connection to the internet. To use it from outside, go through a VPN (WireGuard,
-  Tailscale) or an SSH tunnel.
+- **Do not expose eznix's port to the internet.** Whoever logs in gets a shell and can change
+  the configuration of the whole system. Keep it to the machine itself and a network you
+  trust.
 - **Without Nix**, `python3 bin/eznix.py --flake DIR --password PW` from a checkout does what
   `nix run` does. Run by hand, eznix and its terminal run as you and keep their data in
   `~/.local/state/eznix`; add `--https` for HTTPS with a certificate eznix makes itself.
