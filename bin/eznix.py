@@ -1264,9 +1264,9 @@ def _render_index():
             _theme_value(_theme_vars(AUTO_THEMES.get(THEME, (THEME,))[0]), 'var(--bg2)') or ''))
         .replace('%%EZNIX_THEME%%', THEME)
         .replace('%%EZNIX_CUSTOM_THEMES%%', json.dumps(
-            {n: {k: t[k] for k in ('base', 'bg', 'border')} for n, t in CUSTOM_THEMES.items()}))
+            {n: {k: t[k] for k in ('base', 'bg', 'border')} for n, t in CUSTOM_THEMES.items()}).replace('</', '<\\/'))
         .replace('%%EZNIX_BACKUP%%', 'true' if BACKUP_COUNT > 0 else 'false')
-        .replace('%%EZNIX_MODE%%', json.dumps(EZNIX_MODE))
+        .replace('%%EZNIX_MODE%%', json.dumps(EZNIX_MODE).replace('</', '<\\/'))
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
@@ -1521,6 +1521,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         # (_unchanged()). What is left with no-store is every answer of the API.
         if not getattr(self, '_no_default_cache_control', False):
             self.send_header('Cache-Control', 'no-store')
+        # Not shown inside another site's frame (a click on a button here can start a rebuild
+        # or type into the terminal), and a file is what its type says it is. Nothing of
+        # eznix's is framed or sniffed.
+        self.send_header('X-Frame-Options', 'DENY')
+        self.send_header('X-Content-Type-Options', 'nosniff')
         # Whether the connection stays open: see protocol_version. (send_error() closes by
         # itself, and so does whatever sent a Connection header of its own.)
         sent = [h.lower() for h in getattr(self, '_headers_buffer', [])]

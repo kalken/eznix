@@ -732,7 +732,29 @@ them apart; the test of the name is now made in lower case. A system import was 
 closed (`prepare()` in the system plugin skips an entry with `..`, an empty or a dot part,
 and refuses the whole zip when a path resolves outside the flake, as through a link in it);
 `test_server.py` now imports zips made to get out, both ways. Not looked at in that pass:
-what a zip can do other than by its paths (its size, say), and anything in the page.
+what a zip can do other than by its paths (its size, say).
+
+**Nothing from a file or a module goes into the page as markup** (2026-10-16, the user asked
+how safe the page was against bad input and then to make it secure). A script that runs in
+the page can use the whole API and the terminal, which is a shell as the user, and the
+page took markup from places a flake gets from others: a `.md` file (the Documents plugin
+let raw HTML and `javascript:` links through, on the thought that the files are the flake's
+own), a key in an imported JSON file (the "Add option" list), and a description, default,
+example or type from a module taken from elsewhere (the lists and tooltips). Shown by running
+the parser outside the browser on `<img src=x onerror=...>`. Now every such value goes
+through `_escHtml()` before `innerHTML`, and `parseMarkdown()` escapes `<` outside code and
+allows `http(s)`, `mailto` and scheme-less addresses in links and images (`safeUrl()`: control
+characters dropped first, `&` and `"` escaped, so `jav&#x09;ascript:` and a tab inside the
+scheme do not get through). A new `innerHTML` with a value in it needs `_escHtml()`; the
+rest of them hold fixed text. Answers also carry `X-Frame-Options: DENY` and
+`X-Content-Type-Options: nosniff` (`end_headers()`; the types are checked in
+`test_server.py`), and the JSON put into the page escapes `</` everywhere, not only the
+plugins'. No `Content-Security-Policy`: the page has inline scripts, so one needs nonces
+and a browser to try it in. No `Referrer-Policy: no-referrer` either, on purpose: with it a
+browser leaves `Origin` off a same-origin POST, which `_valid_origin()` goes by. Checked by
+running the parser on fifteen hostile and ordinary inputs and the page's scripts through a
+syntax check. Then opened by the user in the test server: "it seems to be working from what
+i can tell" (which of the lists, tooltips and documents were looked at was not said).
 
 **A button can say what it does** (`description` on an entry of `services.eznix.buttons`,
 `_buttonTip()` in `terminal-panel/terminal.js`): its tooltip then has that on a line above

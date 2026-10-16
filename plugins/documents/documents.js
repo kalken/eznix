@@ -11,12 +11,13 @@ const _mdMenuBtn = eznix.addButton('header', {
 });
 _mdMenuBtn.classList.add('hidden');
 
-// Minimal Markdown → HTML parser, no dependencies — ported near-verbatim from
-// github.com/kalken/ezblog's app.js (same zero-dependency philosophy as this project). Raw HTML
-// in the source passes through unescaped outside of code spans/blocks, same as that source —
-// acceptable here since these files come straight from NIXOS_TARGET's root, which an
-// authenticated eznix user already has full local access to (see resolve_config_path()'s "not
-// a security boundary" note).
+// Minimal Markdown → HTML parser, no dependencies — ported from github.com/kalken/ezblog's
+// app.js (same zero-dependency philosophy as this project). Raw HTML in the source is shown as
+// text, and a link or an image takes only http(s), mailto and addresses without a scheme
+// (2026-10-16). It passed through as written before, on the thought that these files are the
+// flake's own; but a flake takes files from elsewhere (a zip imported, a repository cloned),
+// and a script in this page can use the whole API and the terminal, which is a shell as the
+// user. Run on `<img src=x onerror=...>` and `[x](javascript:...)`, outside the browser.
 function parseMarkdown(text) {
   const escape = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
@@ -29,7 +30,22 @@ function parseMarkdown(text) {
     stashPush(`<pre><code${lang ? ` class="language-${lang}"` : ''}>${escape(code.trimEnd())}</code></pre>`)
   );
 
+  // An address in a link or an image: no scheme at all, or http, https or mailto. Control
+  // characters and spaces are dropped first (a browser ignores a tab inside "java\tscript:"),
+  // and & and " are escaped so that an entity cannot spell what was just refused.
+  const safeUrl = u => {
+    u = u.replace(/[\x00-\x20\x7f]/g, '');
+    if (/^[a-z][a-z0-9+.-]*:/i.test(u) && !/^(https?|mailto):/i.test(u)) return '#';
+    return u.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  };
+  const attr = s => s.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
   function inline(s) {
+    // Code spans first, and set aside: what is inside them is escaped once, below, and what is
+    // outside has its "<" escaped so that no tag is ever written by the source.
+    const codes = [];
+    s = s.replace(/`([^`]+)`/g, (_, c) => `\x04${codes.push(escape(c)) - 1}\x05`);
+    s = s.replace(/</g, '&lt;');
     return stashPop(s
       // target="_blank" on every link (both here and the text-link replace below) is what keeps
       // a genuine external/unhandled link from navigating this SPA tab away to a dead URL
@@ -37,13 +53,13 @@ function parseMarkdown(text) {
       // case below is instead caught and preventDefault()-ed by a click handler before the
       // browser ever acts on href/target at all, so this is just the safe fallback for everything
       // that handler doesn't recognize as one of the open document's own siblings.
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => { const s = src.replace(/^\.\.\//, ''); return `<a href="${s}" target="_blank" rel="noopener noreferrer"><img alt="${alt}" src="${s}"></a>`; })
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>')
-      .replace(/`([^`]+)`/g, (_, c) => `<code>${escape(c)}</code>`)
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => { const u = safeUrl(src.replace(/^\.\.\//, '')); return `<a href="${u}" target="_blank" rel="noopener noreferrer"><img alt="${attr(alt)}" src="${u}"></a>`; })
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => `<a href="${safeUrl(href)}" target="_blank" rel="noopener noreferrer">${label}</a>`)
       .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>')
       .replace(/~~(.+?)~~/g, '<del>$1</del>')
+      .replace(/\x04(\d+)\x05/g, (_, i) => `<code>${codes[+i]}</code>`)
     );
   }
 

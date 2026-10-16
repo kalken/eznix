@@ -244,6 +244,22 @@ def main():
             page = page.decode()
             check('the page loads its plugins', all(f'plugins/{p}' in page for p in ('system/system.js', 'documents/documents.js')))
             check('no terminal panel without a terminal', 'terminal-panel/terminal.js' not in page)
+
+            # Not framed by another site, and not sniffed: nosniff makes a browser refuse a script
+            # or a stylesheet whose type is wrong, so the types of the page's own files are
+            # checked with it.
+            seen = {}
+            for path in ('/', '/style.css', '/plugins/system/system.js', '/theme-nixos.css', '/manifest.json'):
+                req = urllib.request.Request(BASE + path, headers={'Cookie': '; '.join(f'{c.name}={c.value}' for c in b.cookies)})
+                with urllib.request.urlopen(req, timeout=10) as r:
+                    seen[path] = (r.headers.get('X-Frame-Options'), r.headers.get('X-Content-Type-Options'),
+                                  r.headers.get('Content-Type', '').split(';')[0])
+            check('answers cannot be framed and are not sniffed',
+                  all(v[0] == 'DENY' and v[1] == 'nosniff' for v in seen.values()), seen)
+            check('and the page, its stylesheets and its scripts have the types nosniff needs',
+                  seen['/'][2] == 'text/html' and seen['/style.css'][2] == 'text/css'
+                  and seen['/theme-nixos.css'][2] == 'text/css'
+                  and seen['/plugins/system/system.js'][2] in ('text/javascript', 'application/javascript'), seen)
             check('every setting in the page is filled in', '%%EZNIX' not in page)
             _, ping = b.json('/api/v1/ping')
             check('the page was built with the checksum the ping reports', f"'{ping['page']}'" in page)

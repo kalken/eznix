@@ -2205,13 +2205,13 @@ function initAddPanel() {
       const hint = document.createElement('div');
       hint.className = 'autocomplete-item ac-wildcard-hint';
       const prefix = wildcard.prefix ? wildcard.prefix + '.' : '';
-      hint.innerHTML = `<span class="ac-name"><span class="ac-wildcard-prefix">${prefix}</span><span class="ac-wildcard-name">&lt;name&gt;</span></span><span class="ac-desc ac-wildcard-desc">Any name — type it and continue</span>`;
+      hint.innerHTML = `<span class="ac-name"><span class="ac-wildcard-prefix">${_escHtml(prefix)}</span><span class="ac-wildcard-name">&lt;name&gt;</span></span><span class="ac-desc ac-wildcard-desc">Any name — type it and continue</span>`;
       hint.addEventListener('mousedown', e => { e.preventDefault(); inp.value = prefix; inp.focus(); });
       acList.appendChild(hint);
       wildcard.existingKeys.forEach(k => {
         const item = document.createElement('div');
         item.className = 'autocomplete-item';
-        item.innerHTML = `<span class="ac-name ac-existing-path">${prefix}${k}.</span><span class="ac-desc">existing — continue path</span>`;
+        item.innerHTML = `<span class="ac-name ac-existing-path">${_escHtml(prefix + k)}.</span><span class="ac-desc">existing — continue path</span>`;
         item.addEventListener('mousedown', e => {
           e.preventDefault();
           inp.value = prefix + k + '.';
@@ -2230,7 +2230,7 @@ function initAddPanel() {
       item._acOpt = o;
       const desc = (o.description || '').split('\n')[0];
       const reqBadge = o.required ? `<span class="ac-required">required</span>` : '';
-      item.innerHTML = `<span class="ac-name">${o.displayPath}</span><span class="ac-desc">${desc}</span>${reqBadge}<span class="ac-type">${o.type || ''}</span>`;
+      item.innerHTML = `<span class="ac-name">${_escHtml(o.displayPath)}</span><span class="ac-desc">${_escHtml(desc)}</span>${reqBadge}<span class="ac-type">${_escHtml(o.type || '')}</span>`;
       item.addEventListener('mouseenter', () => _showAcTooltip(o, item));
       item.addEventListener('mouseleave', _hideAcTooltip);
       item.addEventListener('mousedown', e => {
@@ -2339,7 +2339,7 @@ function initAddPanel() {
         item.className = 'autocomplete-item';
         if (isLeaf) item._acOpt = hit;
         const desc = isLeaf ? (hit.description || '').split('\n')[0] : '';
-        item.innerHTML = `<span class="ac-name">${segPath}</span><span class="ac-desc">${desc}</span><span class="ac-type">${isLeaf ? (hit.type || '') : ''}</span>`;
+        item.innerHTML = `<span class="ac-name">${_escHtml(segPath)}</span><span class="ac-desc">${_escHtml(desc)}</span><span class="ac-type">${_escHtml(isLeaf ? (hit.type || '') : '')}</span>`;
         if (isLeaf) {
           item.addEventListener('mouseenter', () => _showAcTooltip(hit, item));
           item.addEventListener('mouseleave', _hideAcTooltip);
@@ -3148,8 +3148,14 @@ function renderObj(container, obj, path, addLine = false) {
   group.appendChild(add);
 }
 
+// Everything that is not the page's own text and goes into innerHTML passes through this:
+// names from the user's files, and descriptions, types, defaults and examples from the modules
+// the suggestions were made from. Any of those can hold markup (a key in an imported file, a
+// description in a module taken from elsewhere), and a script that runs in this page can use
+// the whole API and the terminal. Not done until 2026-10-16.
 function _escHtml(s) {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 function mdToHtml(md) {
   if (!md) return '';
@@ -3200,14 +3206,14 @@ function buildTooltip(opt, typeLabel) {
     const hasExample = opt.example !== undefined && opt.example !== null;
     if (hasDefault || hasExample) {
       html += '<div class="tt-meta">';
-      if (hasDefault) html += `<div class="tt-meta-row"><span class="tt-label">default</span><span class="tt-val">${opt.default}</span></div>`;
-      if (hasExample) html += `<div class="tt-meta-row"><span class="tt-label">example</span><span class="tt-val">${typeof opt.example === 'object' ? JSON.stringify(opt.example) : opt.example}</span></div>`;
+      if (hasDefault) html += `<div class="tt-meta-row"><span class="tt-label">default</span><span class="tt-val">${_escHtml(opt.default)}</span></div>`;
+      if (hasExample) html += `<div class="tt-meta-row"><span class="tt-label">example</span><span class="tt-val">${_escHtml(typeof opt.example === 'object' ? JSON.stringify(opt.example) : opt.example)}</span></div>`;
       html += '</div>';
     }
   }
   const type = (opt && opt.type) || typeLabel;
   if (type) {
-    html += `<div class="tt-meta tt-type"><div class="tt-meta-row"><span class="tt-label">type</span><span class="tt-val">${type}</span></div></div>`;
+    html += `<div class="tt-meta tt-type"><div class="tt-meta-row"><span class="tt-label">type</span><span class="tt-val">${_escHtml(type)}</span></div></div>`;
   }
   tt.innerHTML = html;
   return tt;
@@ -4258,7 +4264,7 @@ function renderPkgArray(container, arr, path) {
     hits.forEach(p => {
       const it = document.createElement('div');
       it.className = 'autocomplete-item';
-      it.innerHTML = `<span class="ac-name">pkgs.${p.name}</span><span class="ac-desc">${p.description || ''}</span>`;
+      it.innerHTML = `<span class="ac-name">pkgs.${_escHtml(p.name)}</span><span class="ac-desc">${_escHtml(p.description || '')}</span>`;
       it.addEventListener('mousedown', e => { e.preventDefault(); addPkg(p.name); });
       acList.appendChild(it);
     });

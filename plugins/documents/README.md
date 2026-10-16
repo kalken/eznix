@@ -7,6 +7,7 @@ The **Documents** button: read the Markdown files of your flake beside the confi
 - Lists every `.md` file in the flake
 - Opens each as a tab on the side, shown as a page: headings, lists, tables, code
 - A link to another document of the flake opens that document
+- HTML written in a document is shown as text, and a link or image takes only `http(s)`, `mailto` and plain paths
 - What was open is open again after a reload
 - An open document slides out of the way when you click outside it, like the terminal
 
