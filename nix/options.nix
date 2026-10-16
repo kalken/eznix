@@ -291,7 +291,7 @@ in
       default     = if cfg.listenAddresses == [ ] then [ "lo" ] else [ ];
       defaultText = lib.literalExpression ''[ "lo" ], or [ ] when listenAddresses is set'';
       example     = [ "lo" "enp1s0" ];
-      description = "The network interfaces eznix is reached through, by name, and no others. \"lo\" is this machine itself, and all there is unless you add to it: [ \"lo\" \"enp1s0\" ] opens eznix here and on that network. Through an interface eznix answers on every address it has, also when that changes (DHCP), so there is no address to set. An empty list is every interface, for where their names are not known, and what this is when left unset with listenAddresses set. One that is not there is left out, with a line in the log. Reached from elsewhere, enableHttps is on by default; opened by a host name instead of an address, put that name in certNames.";
+      description = "The network interfaces eznix is reached through, by name, and no others. \"lo\" is this machine itself, and all there is unless you add to it: [ \"lo\" \"enp1s0\" ] opens eznix here and on that network. Through an interface eznix answers on every address it has, also when that changes (DHCP), so there is no address to set. Meant for this machine and a network you trust, never the internet: whoever logs in gets a shell. An empty list is every interface, for where their names are not known, and what this is when left unset with listenAddresses set. One that is not there is left out, with a line in the log. Reached from elsewhere, enableHttps is on by default; opened by a host name instead of an address, put that name in certNames.";
     };
     listenAddresses = mkOption {
       type        = types.listOf types.str;
