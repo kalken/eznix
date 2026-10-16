@@ -85,6 +85,7 @@ import importlib.util
 import ipaddress
 import json
 import os
+import base64
 import re
 import secrets
 import shlex
@@ -202,6 +203,14 @@ TERMINAL_PANEL   = {'styles': ['xterm.css', 'terminal.css'],
 HOSTNAME         = socket.gethostname().split('.')[0] or 'localhost'
 
 LOGIN_MAX_ATTEMPTS   = 5
+# The most a POST may carry, by what it is for (_body_too_big()). Every handler reads as many
+# bytes as the request says it has, and before 2026-10-16 nobody asked how many that was: the
+# login, which anybody can reach, took whatever it was told to (a negative length read until
+# the client closed). The login form is a few hundred bytes, the files of a flake a few
+# megabytes, and a plugin's upload is a whole flake as a zip.
+MAX_LOGIN_BODY  = 16 * 1024
+MAX_API_BODY    = 64 * 1024 * 1024
+MAX_UPLOAD_BODY = 512 * 1024 * 1024
 LOGIN_WINDOW_SECONDS = 300       # failures older than this no longer count
 _LOGIN_FAILURES  = {}            # ip -> [failure times within the window]
 _LOGIN_LOCK      = threading.Lock()
@@ -1279,6 +1288,67 @@ def _render_index():
     )
 
 
+_CSP_INLINE_SCRIPT = re.compile(r'<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script>', re.S | re.I)
+_CSP_HANDLER = re.compile(r'\bon[a-z]+\s*=\s*"([^"]*)"', re.I)
+
+
+def _csp_source(text):
+    return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode('utf-8')).digest()).decode() + "'"
+
+
+def _csp_scripts(page, script_files=()):
+    """What a page may run of its own, as the sources of a Content-Security-Policy: a hash of
+    each inline <script> in the page, and of each event-handler attribute (onclick="...")
+    written in the page or in one of the script files that put markup in it. Worked out from
+    the text itself, so that nothing has to be listed by hand and a handler added to the page
+    is allowed by being there. What a file or a module brings in later has none of these
+    hashes, so a script it writes into the page does not run (2026-10-16: this was the
+    second layer under the escaping of everything that goes into the page as markup)."""
+    texts = [m.group(1) for m in _CSP_INLINE_SCRIPT.finditer(page)]
+    for text in [page, *script_files]:
+        texts += [html.unescape(m.group(1)) for m in _CSP_HANDLER.finditer(text)]
+    return sorted({_csp_source(t) for t in texts})
+
+
+def _csp_header(scripts, host=''):
+    """The policy itself. Scripts and event handlers only by the hashes of `_csp_scripts()` and
+    files from this server; styles may be inline (the page sets many, by script); no other
+    origin for anything, no plugins, no <base>, forms only to this server, no frames around
+    the page. The terminal's WebSocket is named by the address it was reached by, since
+    'self' does not cover a WebSocket in every browser."""
+    connect = "'self'"
+    if re.fullmatch(r'[A-Za-z0-9.:\[\]-]+', host or ''):
+        connect += f' ws://{host} wss://{host}'
+    return '; '.join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-hashes' " + ' '.join(scripts),
+        "style-src 'self' 'unsafe-inline'",
+        "img-src 'self' data: blob:",
+        "font-src 'self' data:",
+        'connect-src ' + connect,
+        "object-src 'none'",
+        "base-uri 'none'",
+        "form-action 'self'",
+        "frame-ancestors 'none'",
+    ])
+
+
+def _script_files():
+    """The text of every script the page can load from WEBROOT or a plugin, for _csp_scripts()."""
+    texts = []
+    for top in [WEBROOT] + [p['dir'] for p in PLUGINS.values()]:
+        for root, dirs, names in os.walk(top):
+            dirs[:] = [d for d in dirs if d != 'autocomplete' and not d.startswith('.')]
+            for n in names:
+                if n.endswith('.js') and not n.startswith('xterm'):
+                    try:
+                        with open(os.path.join(root, n), encoding='utf-8') as f:
+                            texts.append(f.read())
+                    except (OSError, UnicodeDecodeError):
+                        pass
+    return texts
+
+
 def _compute_page_hash():
     """PAGE_HASH: one checksum of everything a browser gets from this server -- the page as
     rendered (so every setting baked into it), every file under WEBROOT, the user themes, the
@@ -1542,9 +1612,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
     def _deny(self, error=''):
         accept = self.headers.get('Accept', '')
         if 'text/html' in accept:
-            page = _read_login_page(error).encode('utf-8')
+            text = _read_login_page(error)
+            page = text.encode('utf-8')
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Security-Policy', _csp_header(_csp_scripts(text), self.headers.get('Host', '')))
             self.send_header('Content-Length', str(len(page)))
             self.end_headers()
             self.wfile.write(page)
@@ -1554,8 +1626,30 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(b'Unauthorized\n')
 
+    def _body_too_big(self, parsed):
+        """Whether this POST carries a body that is not a number of bytes eznix will read, in
+        which case it has been answered. The length is checked once, here, before any handler
+        reads: 400 for one that is not a plain number, 413 for one over the limit for what the
+        request is for. The connection closes after a POST either way (see protocol_version)."""
+        raw = self.headers.get('Content-Length', '0').strip()
+        if not raw.isascii() or not raw.isdigit():
+            self.send_error(400, 'bad Content-Length')
+            return True
+        if parsed.path == '/login':
+            limit = MAX_LOGIN_BODY
+        elif parsed.path.startswith('/api/v1/plugin/'):
+            limit = MAX_UPLOAD_BODY
+        else:
+            limit = MAX_API_BODY
+        if int(raw) > limit:
+            self.send_error(413, 'that is too much to send at once')
+            return True
+        return False
+
     def do_POST(self):
         parsed = urlparse(self.path)
+        if self._body_too_big(parsed):
+            return
         if parsed.path == '/login':
             ip = self.client_address[0]
             retry_after = _login_retry_after(ip)
@@ -2281,10 +2375,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             # real path: this is templated, not read verbatim from disk.
             cached = _STATIC_GZIP_CACHE.get('__index__')
             if cached is None:
-                raw = _render_index().replace('%%EZNIX_PAGE_HASH%%', PAGE_HASH).encode('utf-8')
-                cached = (raw, gzip.compress(raw), _etag(raw))
+                page = _render_index().replace('%%EZNIX_PAGE_HASH%%', PAGE_HASH)
+                raw = page.encode('utf-8')
+                cached = (raw, gzip.compress(raw), _etag(raw), _csp_scripts(page, _script_files()))
                 _STATIC_GZIP_CACHE['__index__'] = cached
-            raw, gzipped_data, etag = cached
+            raw, gzipped_data, etag, csp_scripts = cached
             _cookie = _renew_session(self.headers)
             if self._unchanged(etag, _cookie):
                 return
@@ -2292,6 +2387,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             data = gzipped_data if use_gzip else raw
             self.send_response(200)
             self.send_header('Content-Type', 'text/html; charset=utf-8')
+            self.send_header('Content-Security-Policy', _csp_header(csp_scripts, self.headers.get('Host', '')))
             if use_gzip:
                 self.send_header('Content-Encoding', 'gzip')
             self.send_header('Content-Length', str(len(data)))

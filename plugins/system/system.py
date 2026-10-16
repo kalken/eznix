@@ -40,6 +40,12 @@ import zipfile
 
 PREFIX = 'system-'
 
+# What a zip may hold to be taken as a system (prepare()): a flake is text, a few thousand
+# files at the most.
+MAX_ENTRIES  = 100_000
+MAX_UNPACKED = 2 << 30
+MAX_FILE     = 1 << 30
+
 
 def setup(api):
     flake = os.path.realpath(api.flake)
@@ -138,6 +144,16 @@ def setup(api):
         # since the tree is made to match the zip, every file of the flake that was not in it
         # was removed. The user's question, 2026-10-13: "is there some way we can validate
         # the zip ... to make sure its actually a system?"
+        # And not a zip made to fill the disk or the memory: how many entries, how much they
+        # hold when unpacked, and how much one does. The sizes are the zip's own claims, and
+        # reading stops at them (ZipExtFile reads no more than file_size), so they bind what
+        # is written. 2026-10-16.
+        infos = zf.infolist()
+        if (len(infos) > MAX_ENTRIES or sum(i.file_size for i in infos) > MAX_UNPACKED
+                or any(i.file_size > MAX_FILE for i in infos)):
+            raise api.Error(413, 'that zip is too big to be a system (more than '
+                                 f'{MAX_ENTRIES} files, {MAX_UNPACKED >> 30} GiB unpacked, or a file over '
+                                 f'{MAX_FILE >> 30} GiB); nothing was changed')
         tops = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
         if 'flake.nix' not in tops:
             deeper = sorted(n for n in tops if n.endswith('/flake.nix'))

@@ -749,9 +749,36 @@ scheme do not get through). A new `innerHTML` with a value in it needs `_escHtml
 rest of them hold fixed text. Answers also carry `X-Frame-Options: DENY` and
 `X-Content-Type-Options: nosniff` (`end_headers()`; the types are checked in
 `test_server.py`), and the JSON put into the page escapes `</` everywhere, not only the
-plugins'. No `Content-Security-Policy`: the page has inline scripts, so one needs nonces
-and a browser to try it in. No `Referrer-Policy: no-referrer` either, on purpose: with it a
-browser leaves `Origin` off a same-origin POST, which `_valid_origin()` goes by. Checked by
+plugins'. Under the escaping there is a `Content-Security-Policy` on the page and on the login
+page (`_csp_scripts()`, `_csp_header()`), as the second layer: scripts only by hash. The
+server hashes every inline `<script>` of the page and every `onclick="..."`-style attribute
+written in the page or in a script file that puts markup in it (the terminal's, a plugin's),
+at the time it renders the page, so nothing is listed by hand and a handler is allowed by
+being written there; `'unsafe-hashes'` is what lets a hash cover an attribute. A script a
+file or a module writes into the page has no hash and does not run. Styles may be inline,
+everything else is this server only, and the terminal's WebSocket is named by the `Host` the
+page was reached by (`'self'` does not cover a WebSocket in every browser). **A new handler
+built from a variable (`onclick="${x}"`) or by concatenation is not found by the scan and
+is blocked**: write it as a plain string, or set `el.onclick = fn`. `test_server.py` reads the
+page with `html.parser` and checks that everything inline is in the policy. Opened by the
+user in the test server the same day: "it seems to be working" (what was used, and whether
+the console was looked at, was not said). Not tried in a browser by me.
+No `Referrer-Policy: no-referrer`, on purpose: with it a
+browser leaves `Origin` off a same-origin POST, which `_valid_origin()` goes by.
+
+**A POST has a size** (`_body_too_big()`, at the top of `do_POST`): the length has to be a
+plain number (400), at most 16 KiB for the login, 64 MiB for the API and 512 MiB for a
+plugin (413), checked before any handler reads. Nothing asked before 2026-10-16, and the
+login, which anybody can reach, took what it was told (a negative length read until the
+client hung up). A zip taken as a system has limits too (`prepare()` in the system plugin):
+100,000 entries, 2 GiB unpacked, 1 GiB for one file, by the sizes the zip declares, which
+bind what is written since reading stops at them. Both in `test_server.py`.
+
+**Not limited, on purpose: tries at a system password.** A web login is limited per address
+(`LOGIN_MAX_ATTEMPTS`). A lockout per user, or one in the setuid helper, would let anyone
+who can reach the page lock the real user out, and those in the group `eznix` can already
+write JSON that is built as root; PAM's own delay of a failed try (about two seconds) stays.
+Talked through with the user as a gap and left; build it only if asked, knowing that. Checked by
 running the parser on fifteen hostile and ordinary inputs and the page's scripts through a
 syntax check. Then opened by the user in the test server: "it seems to be working from what
 i can tell" (which of the lists, tooltips and documents were looked at was not said).

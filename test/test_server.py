@@ -256,6 +256,38 @@ def main():
                                   r.headers.get('Content-Type', '').split(';')[0])
             check('answers cannot be framed and are not sniffed',
                   all(v[0] == 'DENY' and v[1] == 'nosniff' for v in seen.values()), seen)
+            # The page's own scripts and handlers are what its policy allows, found by reading the
+            # page the way a browser does (html.parser), apart from the code that made the policy.
+            import base64, hashlib, html.parser
+            class Inline(html.parser.HTMLParser):
+                def __init__(self):
+                    super().__init__(); self.found = []; self.cur = None
+                def handle_starttag(self, tag, attrs):
+                    self.found += [v for k, v in attrs if k.startswith('on') and v is not None]
+                    if tag == 'script' and not any(k == 'src' for k, _ in attrs):
+                        self.cur = ''
+                def handle_data(self, data):
+                    if self.cur is not None:
+                        self.cur += data
+                def handle_endtag(self, tag):
+                    if tag == 'script' and self.cur is not None:
+                        self.found.append(self.cur); self.cur = None
+            def allowed(text, policy):
+                return "'sha256-" + base64.b64encode(hashlib.sha256(text.encode()).digest()).decode() + "'" in policy
+            req = urllib.request.Request(BASE + '/', headers={'Cookie': '; '.join(f'{c.name}={c.value}' for c in b.cookies)})
+            with urllib.request.urlopen(req, timeout=10) as r:
+                policy, body = r.headers.get('Content-Security-Policy', ''), r.read().decode()
+            parsed_page = Inline(); parsed_page.feed(body)
+            check('the page has a policy that allows its own scripts and handlers, and nothing inline besides',
+                  parsed_page.found and all(allowed(x, policy) for x in parsed_page.found)
+                  and "script-src 'self' 'unsafe-hashes' 'sha256-" in policy and "'unsafe-inline'" not in policy.split('style-src')[0]
+                  and "object-src 'none'" in policy and "frame-ancestors 'none'" in policy, policy[:300])
+            with urllib.request.urlopen(urllib.request.Request(BASE + '/', headers={'Accept': 'text/html'}), timeout=10) as r:
+                login_policy, login_body = r.headers.get('Content-Security-Policy', ''), r.read().decode()
+            parsed_login = Inline(); parsed_login.feed(login_body)
+            check('the login page too',
+                  'name="password"' in login_body and parsed_login.found
+                  and all(allowed(x, login_policy) for x in parsed_login.found), login_policy[:200])
             check('and the page, its stylesheets and its scripts have the types nosniff needs',
                   seen['/'][2] == 'text/html' and seen['/style.css'][2] == 'text/css'
                   and seen['/theme-nixos.css'][2] == 'text/css'
@@ -468,6 +500,46 @@ def main():
             check('system: nor one that goes through a link in the flake to somewhere else, and it changes nothing',
                   status == 400 and os.listdir(out) == [] and os.path.exists(f'{tmp}/flake/extra.nix'), result)
             os.remove(f'{tmp}/flake/way-out')
+
+            # A zip that claims more than a flake can hold: a file over 1 GiB (it packs to about
+            # a megabyte) is refused before anything is touched, as is one with too many entries.
+            big = io.BytesIO()
+            with zipfile.ZipFile(big, 'w', zipfile.ZIP_DEFLATED, compresslevel=1) as zf:
+                zf.writestr('flake.nix', now['flake.nix'])
+                with zf.open('huge.bin', 'w', force_zip64=True) as f:
+                    chunk = bytes(1 << 20)
+                    for _ in range(1025):
+                        f.write(chunk)
+            status, result = b.json('/api/v1/plugin/system/import', big.getvalue(), 'POST')
+            check('system: a zip with a file over 1 GiB is refused, and changes nothing',
+                  status == 413 and tree() == had and not os.path.exists(f'{tmp}/flake/huge.bin'), (status, result))
+            many = io.BytesIO()
+            with zipfile.ZipFile(many, 'w') as zf:
+                zf.writestr('flake.nix', now['flake.nix'])
+                for n in range(100_001):
+                    zf.writestr(f'f/{n}', '')
+            status, result = b.json('/api/v1/plugin/system/import', many.getvalue(), 'POST')
+            check('system: and one with a hundred thousand entries', status == 413 and tree() == had, (status, result))
+
+            # A body is as long as the request says and no longer than eznix will read. Raw, since
+            # a client library would not send these.
+            def raw(path, length, cookie=True):
+                conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
+                try:
+                    headers = {'Content-Length': length, 'Origin': BASE, 'Content-Type': 'application/json'}
+                    if cookie:
+                        headers['Cookie'] = '; '.join(f'{c.name}={c.value}' for c in b.cookies)
+                    conn.request('POST', path, headers=headers)
+                    return conn.getresponse().status
+                finally:
+                    conn.close()
+            check('a length that is not a number is refused, also before logging in',
+                  raw('/login', '-1', cookie=False) == 400 and raw('/login', 'abc', cookie=False) == 400
+                  and raw('/api/v1/file/save', '-5') == 400)
+            check('the login takes 16 KiB, the API 64 MiB, a plugin 512 MiB',
+                  raw('/login', str(16 * 1024 + 1), cookie=False) == 413
+                  and raw('/api/v1/file/save', str(64 * 1024 * 1024 + 1)) == 413
+                  and raw('/api/v1/plugin/system/import', str(512 * 1024 * 1024 + 1)) == 413)
             before = b.json('/api/v1/plugin/system/backups')[1]['backups']
             status, made = b.json('/api/v1/plugin/system/backup', b'', 'POST')
             after = b.json('/api/v1/plugin/system/backups')[1]['backups']

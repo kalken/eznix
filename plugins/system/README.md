@@ -38,3 +38,4 @@ services.eznix.plugins.system = {
 - A list of your own for `exclude` replaces the default, so it has to say `".*"` itself to
   keep dot-files and dot-folders out.
 - Dot-files in a zip are never imported, whatever `exclude` says.
+- A zip of more than 100,000 files, 2 GiB unpacked, or a file over 1 GiB is refused as too big to be a system.
