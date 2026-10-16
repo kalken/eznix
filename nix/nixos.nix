@@ -231,18 +231,27 @@ in
       restartIfChanged = false;
       serviceConfig = {
         User         = user;
-        # The secret between this terminal and the editor: readable by this user and, through
-        # its group, by the service -- not by the other users, who could otherwise reach each
-        # other's shells over loopback.
+        # The secret between this terminal and the editor: readable by this user and by the
+        # service account `eznix` alone, by an ACL entry for that one account -- not by the
+        # other users, who could otherwise reach each other's shells over loopback. It was
+        # owned by the user with the group `eznix` and mode 640 until 2026-10-16, and every
+        # user in `users` is in that group, so each could read the others' keys. The mode
+        # first, then the ACL: setfacl works the mask out from the entries it is given. A
+        # failing setfacl stops the unit (no `|| true` here, unlike the folders above): a
+        # terminal the editor cannot reach is better seen than one with an open key.
         ExecStartPre = "+" + pkgs.writeShellScript "eznix-terminal-key-${user}" ''
+          set -e
           mkdir -p -m 755 /run/eznix-terminal
           mkdir -p ${termDir user}
           if [ ! -s ${t.key_file} ]; then
             ( umask 077; ${pkgs.openssl}/bin/openssl rand -hex 32 > ${t.key_file} )
           fi
-          chown -R ${lib.escapeShellArg user}:eznix ${termDir user}
-          chmod 750 ${termDir user}
-          chmod 640 ${t.key_file}
+          chown -R ${lib.escapeShellArg user}: ${termDir user}
+          chmod 700 ${termDir user}
+          chmod 600 ${t.key_file}
+          ${pkgs.acl}/bin/setfacl -b ${termDir user} ${t.key_file}
+          ${pkgs.acl}/bin/setfacl -m u:eznix:x ${termDir user}
+          ${pkgs.acl}/bin/setfacl -m u:eznix:r ${t.key_file}
         '';
         ExecStart    = "${packages.eznix-terminal}/bin/eznix-terminal ${common.terminalArgs t}";
         Restart      = "on-failure";

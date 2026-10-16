@@ -175,9 +175,45 @@ def sessions():
     check('session: until the days are over', ez._session(cookie(token)) is None)
 
 
+def private_keys():
+    """The certificate authority's key and the server's are for this user alone, under the
+    NixOS service's umask (0002, which shares its other files with the group) as under a
+    private one, and a key made before they were closed is closed by the next start. Needs the
+    cryptography package, as the generator does; without it nothing is checked."""
+    import stat
+    spec = importlib.util.spec_from_file_location('eznix_server', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    if not ez._CRYPTO:
+        print('  (private keys: cryptography is not installed, not checked)')
+        return
+    mode = lambda d, f: stat.S_IMODE(os.stat(os.path.join(d, f)).st_mode)
+    was = os.umask(0o002)
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            ez.generate_local_ca(d)
+            check('keys: under umask 0002 both private keys are 0600',
+                  mode(d, 'ca-key.pem') == 0o600 and mode(d, 'localhost-key.pem') == 0o600,
+                  {f: oct(mode(d, f)) for f in os.listdir(d)})
+            check('keys: and the certificates stay readable', mode(d, 'ca.pem') & 0o044 == 0o044
+                  and mode(d, 'localhost.pem') & 0o044 == 0o044)
+            os.chmod(os.path.join(d, 'ca-key.pem'), 0o664)
+            os.chmod(os.path.join(d, 'localhost-key.pem'), 0o664)
+            ez.generate_local_ca(d)
+            check('keys: ones made open by an earlier version are closed by the next start',
+                  mode(d, 'ca-key.pem') == 0o600 and mode(d, 'localhost-key.pem') == 0o600)
+            os.chmod(os.path.join(d, 'localhost-key.pem'), 0o664)
+            ez.generate_local_ca(d, extra_sans=['another.example'])
+            check('keys: and a server key made again for other names is closed',
+                  mode(d, 'localhost-key.pem') == 0o600)
+    finally:
+        os.umask(was)
+
+
 def main():
     terminal_history()
     sessions()
+    private_keys()
     excludes()
     with tempfile.TemporaryDirectory() as tmp:
         os.makedirs(f'{tmp}/flake/eznix')

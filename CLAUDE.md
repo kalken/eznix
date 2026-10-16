@@ -138,7 +138,22 @@ then, the same day, rebuilt on NixOS by the user and logged in with a system pas
 it: `_proxy_terminal()` relays `/terminal` after its own login check, replacing the browser's
 cookie with that terminal's own secret (`key_file`). Each user's terminal has its own secret,
 or the allowed users could reach each other's shells over loopback. The terminal never creates
-the secret; whoever starts it does, before it starts.
+the secret; whoever starts it does, before it starts. On NixOS the key is the user's own
+(mode 600) with an ACL entry for the account `eznix` alone (`setfacl -m u:eznix:r`) since
+2026-10-16: it was `user:eznix` mode 640, and every user in `users` is in the group `eznix`,
+so each could read the others' keys, against what the comment there said (found when the
+user asked whether every file that needs protecting was protected). Evaluated on a copy of
+the NixOS template, not run: that `/run` takes the ACL and that the editor still reaches the
+terminals is for a NixOS machine to show. The script stops the unit if `setfacl` fails,
+which is meant.
+
+**Private keys are written closed** (`_write_private()`): the CA's and the server's
+certificate key are `0600` whatever the umask. The NixOS service runs with `UMask = 0002`
+(its other files are shared with the group), and they were `0664` there, readable and
+writable by every user in `users`, which with `trustCert` is a key that makes certificates
+the other users' browsers trust. Mac and home-manager were `0600` only by their start
+scripts' `umask 077`. A key made earlier is closed at the next start. In `test_server.py`
+(`private_keys()`, which needs `cryptography` and says so when it is not there).
 
 **A page that reconnects gets the terminal's history back**, up to 5000 lines: the terminal
 keeps each line that scrolls off the top of its record of the screen (`_VirtualScreen`,

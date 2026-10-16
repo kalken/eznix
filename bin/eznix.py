@@ -276,6 +276,20 @@ def _wanted_san_strings(extra_sans=None):
     return result
 
 
+def _write_private(path, data):
+    """Write a private key readable by this user alone, whatever the umask is and whether the
+    file was there before: the NixOS service runs with UMask 0002 so that its other files are
+    shared with the group, and a key made under it was readable and writable by every user in
+    `users` (found 2026-10-16). The mode is also set on a file that already exists, so a key
+    made by an earlier version is closed by the next start."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    try:
+        os.fchmod(fd, 0o600)
+        os.write(fd, data)
+    finally:
+        os.close(fd)
+
+
 def _generate_server_cert(out_dir, ca_key, ca_cert, extra_sans=None):
     srv_key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
     srv_cert = (x509.CertificateBuilder()
@@ -288,12 +302,10 @@ def _generate_server_cert(out_dir, ca_key, ca_cert, extra_sans=None):
         .add_extension(x509.SubjectAlternativeName(_build_sans(extra_sans)), critical=False)
         .sign(ca_key, hashes.SHA256())
     )
-    for path, data in [
-        (os.path.join(out_dir, 'localhost-key.pem'), srv_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption())),
-        (os.path.join(out_dir, 'localhost.pem'),      srv_cert.public_bytes(serialization.Encoding.PEM)),
-    ]:
-        with open(path, 'wb') as f:
-            f.write(data)
+    _write_private(os.path.join(out_dir, 'localhost-key.pem'),
+                   srv_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+    with open(os.path.join(out_dir, 'localhost.pem'), 'wb') as f:
+        f.write(srv_cert.public_bytes(serialization.Encoding.PEM))
 
 
 def generate_local_ca(out_dir, extra_sans=None):
@@ -332,14 +344,18 @@ def generate_local_ca(out_dir, extra_sans=None):
             ), critical=True)
             .sign(ca_key, hashes.SHA256())
         )
-        for path, data in [
-            (ca_key_path,  ca_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption())),
-            (ca_cert_path, ca_cert.public_bytes(serialization.Encoding.PEM)),
-        ]:
-            with open(path, 'wb') as f:
-                f.write(data)
+        _write_private(ca_key_path,
+                       ca_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
+        with open(ca_cert_path, 'wb') as f:
+            f.write(ca_cert.public_bytes(serialization.Encoding.PEM))
         ca_generated = True
     else:
+        # Keys made before they were written closed (see _write_private()) are closed here.
+        for k in (ca_key_path, os.path.join(out_dir, 'localhost-key.pem')):
+            try:
+                os.chmod(k, 0o600)
+            except OSError:
+                pass
         with open(ca_key_path, 'rb') as f:
             ca_key = serialization.load_pem_private_key(f.read(), password=None)
         with open(ca_cert_path, 'rb') as f:
@@ -372,12 +388,11 @@ def generate_self_signed_cert(cert_path, key_path):
         ]), critical=False)
         .sign(key, hashes.SHA256())
     )
-    with open(key_path, 'wb') as f:
-        f.write(key.private_bytes(
-            serialization.Encoding.PEM,
-            serialization.PrivateFormat.TraditionalOpenSSL,
-            serialization.NoEncryption(),
-        ))
+    _write_private(key_path, key.private_bytes(
+        serialization.Encoding.PEM,
+        serialization.PrivateFormat.TraditionalOpenSSL,
+        serialization.NoEncryption(),
+    ))
     with open(cert_path, 'wb') as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
 
