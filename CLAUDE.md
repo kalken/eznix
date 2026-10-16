@@ -143,9 +143,10 @@ the secret; whoever starts it does, before it starts. On NixOS the key is the us
 2026-10-16: it was `user:eznix` mode 640, and every user in `users` is in the group `eznix`,
 so each could read the others' keys, against what the comment there said (found when the
 user asked whether every file that needs protecting was protected). Evaluated on a copy of
-the NixOS template, not run: that `/run` takes the ACL and that the editor still reaches the
-terminals is for a NixOS machine to show. The script stops the unit if `setfacl` fails,
-which is meant.
+the NixOS template, then run by the user the same day on a NixOS machine: `getfacl` shows
+`user:eznix:r--`, `group::---` and `mask::r--`, the certificate keys on that machine were
+`0600` after the rebuild, and the terminal panel connected ("yes it works"). The script
+stops the unit if `setfacl` fails, which is meant.
 
 **Private keys are written closed** (`_write_private()`): the CA's and the server's
 certificate key are `0600` whatever the umask. The NixOS service runs with `UMask = 0002`
