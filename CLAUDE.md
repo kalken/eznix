@@ -678,9 +678,7 @@ the heading's padding) was deleted by an edit that replaced "everything between 
 in `style.css`, was pushed, and was then papered over with workarounds for an hour before the
 cause was found. Edit that file by exact strings.
 
-**Adding**: an empty list has a "+" that adds an item (`addItem()` in `renderArrayField()`;
-every list ended with one until 2026-10-18, when the user asked for it only while the list is
-empty)
+**Adding**: a list ends with a "+" that adds an item (`addItem()` in `renderArrayField()`)
 and an object in a list with a "+" that opens the add field for it (`renderObj()` with
 `addLine`), both in the page (`_addButton()`; they were the words "Add item…" and "Add
 option…" across the line for some hours, until the user asked for a button); a section has
