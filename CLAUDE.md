@@ -982,6 +982,15 @@ NixOS flake with home-manager 26.05 as a module (29,894 options of which 5,315 h
 and 20 kernels, identical); also `test_server.py` (`generator_plugins()`), the command's text
 evaluated on the darwin template. Not tried: pressing the button in the page, a user plugin on
 a real machine, the module's `eznix.toml` read by the generator on NixOS.
+The same day the user's ezberry (a flake with the home-manager *input* and not its module)
+generated 5,541 home-manager options and typing "home" in Add option offered none:
+`optionSearch()` skips an option with a placeholder before its last part, and every one has
+`<name>` in the middle, so it relies on the set above them (`home-manager.users`) being
+an option, which the system's list has only with the module imported. The plugin now adds that
+one entry, and the generator keeps one entry per path (`generate_options()`). Checked by
+running `optionSearch()`, lifted out of the page, on ezberry's generated list: 0 results for
+"home" before, `home-manager.users` after, and 50 under `home-manager.users.alice.home`.
+Not looked at in the page.
 
 Core, not plugins, by decision: the terminal, Save, ordinary import/export of files, file backups on save,
 themes (a theme stays a plain CSS file anyone can install without trusting code), and support

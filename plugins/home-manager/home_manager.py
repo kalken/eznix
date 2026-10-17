@@ -20,20 +20,24 @@ def generate(ctx):
     string needs guessing) — and reads *its* .options. An option's description/type/default never
     depend on which username it'll eventually be set under, so a placeholder instance name is
     exactly as accurate as a real one for this purpose, and this needs nothing from the consuming
-    flake beyond a `home-manager` input (the standard input name — this doesn't try alternate
-    names). Every path comes back home-manager-root-relative (e.g. "home.packages"); rewritten to
+    flake beyond a home-manager input (found by the function it has, whatever it is called). Every path comes back home-manager-root-relative (e.g. "home.packages"); rewritten to
     home-manager.users.<name>.home.packages using the same literal `<name>` wildcard segment the
     frontend already matches generically (WILDCARDS in index.html — the same mechanism behind
     e.g. users.users.<name>), so it applies to whatever real username ends up in a config.
-    A flake with no `home-manager` input at all (the common case) is a silent, expected no-op —
-    resolved with one cheap `or null` inside the same expression, not a separate probe, so the
-    common case costs nothing beyond one more attribute lookup already-evaluated `target` has to
-    do anyway."""
+    A flake with no home-manager input at all says so and adds nothing (resolved inside the
+    same expression, not a separate probe, so the check costs one attribute lookup already-
+    evaluated `target` has to do anyway). It was silent until 2026-10-17, when the user pressed
+    Autocomplete on a flake without one and was left to wonder why nothing came.
+    """
     expr = f"""
 let
     target = builtins.getFlake "path:{ctx.target}";
     cfg = target.{ctx.config_attr}."{ctx.host}";
-    hmInput = target.inputs.home-manager or null;
+    # The input called home-manager, else any input that has home-manager's function: a flake
+    # may name it as it likes (home-manager-unstable, hm), and nothing here depends on the name.
+    hmInput = target.inputs.home-manager or (
+        let found = builtins.filter (i: (i.lib or {{}}) ? homeManagerConfiguration) (builtins.attrValues target.inputs);
+        in if found == [] then null else builtins.head found);
 in if hmInput == null then [] else
 let
     lib = target.inputs.nixpkgs.lib;
@@ -78,6 +82,19 @@ in map (opt: {{
              "e.g. a home-manager input incompatible with this nixpkgs version would fail here)")
         return None
     if not result:
+        ctx.info("home-manager: the flake has no home-manager input, so there are no "
+                 "home-manager.users.<name> options to add")
         return None
     ctx.info(f"  {len(result)} home-manager options (home-manager.users.<name>.*)")
+    # The set they all lie in. The system's own options have it only when its home-manager
+    # module is imported (the generator keeps one entry per path), and without it nothing here
+    # is found by typing: the editor offers an option that has no placeholder before its last
+    # part, and every one of these has `<name>` in the middle. The user's ezberry (a flake
+    # with the input and not the module) showed nothing for "home" (2026-10-17).
+    result.append({
+        "path": "home-manager.users",
+        "description": "Per-user Home Manager configuration.\n",
+        "type": "attribute set of (Home Manager module)",
+        "default": {}, "example": None, "required": False,
+    })
     return {"options": result}

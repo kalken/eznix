@@ -392,8 +392,10 @@ in map (opt: {{
                "hardware-configuration.nix import would fail here, for one)")
         return
 
-    # What plugins add (home-manager's, for one) goes in before the rest is done to all of them.
-    result += list(extra)
+    # What plugins add (home-manager's, for one) goes in before the rest is done to all of them,
+    # but one entry per path: a plugin may supply what the system has only some of the time.
+    known = {o["path"] for o in result}
+    result += [o for o in extra if o["path"] not in known]
 
     # Clear required on options whose description says they are alternatives to another option.
     # NixOS has no formal "mutually exclusive" metadata; the only signal is prose like

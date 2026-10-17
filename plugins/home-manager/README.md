@@ -6,7 +6,12 @@ system: `home-manager.users.<name>.*`.
 ## ✨ What it is for
 
 - Completing and describing the options of home-manager inside the system's own JSON files
-- Needs a `home-manager` input in the flake; without one it does nothing
+- Needs a home-manager input in the flake (found by what it provides, so any name will do);
+  without one the generator says so and adds nothing
+- Also offers `home-manager.users` itself, which typing `home` finds: the system's own options
+  have it only when home-manager's NixOS or nix-darwin module is imported. Setting any of these
+  needs that module in the flake (`home-manager.nixosModules.home-manager`, or
+  `darwinModules.home-manager`); the input alone is not enough
 - A standalone home-manager configuration needs no plugin: its own options already are
   home-manager's
 
