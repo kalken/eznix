@@ -659,6 +659,12 @@ def _terminal_end(user):
         print(f'[terminal] could not end the shell: {e}', file=sys.stderr)
 
 
+def _minutes_seconds(seconds):
+    """90 -> "1m 30s", 45 -> "45s", 120 -> "2m": what the login says of how long to wait."""
+    minutes, seconds = divmod(int(seconds), 60)
+    return ' '.join(part for part in (f'{minutes}m' if minutes else '', f'{seconds}s' if seconds or not minutes else '') if part)
+
+
 def _login_begin(ip):
     """One step, under one lock: (seconds `ip` has to wait, 0 if it may try; how many tries it
     has had in the window, this one included). A try is counted here, before the password is
@@ -1674,7 +1680,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             retry_after, count = _login_begin(ip)
             if retry_after:
                 print(f'[auth] {ip} rate-limited, retry in {retry_after}s')
-                self._deny(f'Too many failed attempts. Try again in {retry_after}s.')
+                self._deny(f'Too many failed attempts. Try again in {_minutes_seconds(retry_after)}.')
                 return
             length = int(self.headers.get('Content-Length', 0))
             body = self.rfile.read(length).decode('utf-8', errors='replace')

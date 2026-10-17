@@ -199,6 +199,9 @@ def login_limit():
     ez._clear_login_failures('203.0.113.9')
     check('login limit: a login that works forgets the count', ez._login_begin('203.0.113.9')[0] == 0)
 
+    check('login limit: the wait is told in minutes and seconds',
+          [ez._minutes_seconds(n) for n in (1, 45, 60, 90, 120, 272, 300)] == ['1s', '45s', '1m', '1m 30s', '2m', '4m 32s', '5m'])
+
     xff = lambda v: {'X-Forwarded-For': v}
     check('client address: the connection itself, with no proxy listed',
           ez._client_ip('10.0.0.5', xff('198.51.100.7')) == '10.0.0.5')
