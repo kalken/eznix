@@ -24,10 +24,11 @@ def generate(ctx):
     home-manager.users.<name>.home.packages using the same literal `<name>` wildcard segment the
     frontend already matches generically (WILDCARDS in index.html — the same mechanism behind
     e.g. users.users.<name>), so it applies to whatever real username ends up in a config.
-    A flake with no home-manager input at all says so and adds nothing (resolved inside the
+    A flake with no home-manager input at all adds nothing (resolved inside the
     same expression, not a separate probe, so the check costs one attribute lookup already-
-    evaluated `target` has to do anyway). It was silent until 2026-10-17, when the user pressed
-    Autocomplete on a flake without one and was left to wonder why nothing came.
+    evaluated `target` has to do anyway). It said nothing at all until 2026-10-17, then said so on
+    every run; now it says so when asked for by name or with -v (ctx.note()), the user finding
+    a line about what a flake does not have more noise than help.
     """
     expr = f"""
 let
@@ -82,7 +83,7 @@ in map (opt: {{
              "e.g. a home-manager input incompatible with this nixpkgs version would fail here)")
         return None
     if not result:
-        ctx.info("home-manager: the flake has no home-manager input, so there are no "
+        ctx.note("home-manager: the flake has no home-manager input, so there are no "
                  "home-manager.users.<name> options to add")
         return None
     ctx.info(f"  {len(result)} home-manager options (home-manager.users.<name>.*)")

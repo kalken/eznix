@@ -256,8 +256,10 @@ def generate_packages(flake_ref, include=None, exclude=None, no_nested=True):
 #
 # ctx is a Context: the flake (`target`, `flake_ref`), what was picked (`host`, `kind`,
 # `config_attr`), the plugin's own settings (`config`, [plugin.NAME] of the configuration),
-# `verbose`, `nix_eval()`, `info()`, `warn()` and `failed(file, why)` -- the same ones the rest of
-# this file uses, so a plugin prints and fails like the rest. `options` are what
+# `verbose`, `nix_eval()`, `info()`, `warn()`, `note()` and `failed(file, why)` -- the same ones the
+# rest of this file uses, so a plugin prints and fails like the rest. `note()` is for "there is
+# nothing for me here" (no home-manager input, no brew): said when the plugin was asked for by
+# name or with -v, and silent in an ordinary run, where most plugins have nothing to do. `options` are what
 # optionAttrSetToDocList gives here (path, description, type, default, example, required);
 # `choices` are written as write_choices() takes them. None says there is nothing to add, and
 # `failed()` leaves the file of the last run as it was and ends the run with an error; a plugin
@@ -272,12 +274,13 @@ KINDS = {v: k for k, v in CONFIG_ATTRS.items()}     # homeConfigurations -> home
 
 
 class Context:
-    def __init__(self, target, host, flake_ref, config):
+    def __init__(self, target, host, flake_ref, config, explicit=False):
         self.target, self.host, self.flake_ref, self.config = target, host, flake_ref, config
         self.config_attr = CONFIG_ATTR
         self.kind = KINDS[CONFIG_ATTR]
         self.verbose = VERBOSE
         self.nix_eval, self.info, self.warn, self.failed = nix_eval, info, warn, failed
+        self.note = info if (VERBOSE or explicit) else (lambda msg: None)
 
 
 def find_plugins(config_file, plugins_dirs):
@@ -332,13 +335,13 @@ def find_plugins(config_file, plugins_dirs):
     return found
 
 
-def run_plugin(name, plugin, context_args):
+def run_plugin(name, plugin, context_args, explicit=False):
     """What one plugin returns ({'options', 'choices'}, either may be missing), or None when it
     is not for this kind of configuration, has nothing to add, or fails (it is then told to the
     user, and a failed() has marked the run)."""
     module = plugin["module"]
     systems = getattr(module, "SYSTEMS", None)
-    ctx = Context(*context_args, plugin["config"])
+    ctx = Context(*context_args, plugin["config"], explicit)
     if systems and ctx.kind not in systems:
         return None
     try:
@@ -567,7 +570,7 @@ def main():
     # on a Mac) says so; with `all` it is just left out.
     results = {}
     for name in wanted:
-        r = run_plugin(name, plugins[name], (target, host, flake_ref))
+        r = run_plugin(name, plugins[name], (target, host, flake_ref), explicit=args.command == name)
         if r is None and command == name and not FAILED:
             systems = getattr(plugins[name]["module"], "SYSTEMS", None)
             if systems and KINDS[CONFIG_ATTR] not in systems:

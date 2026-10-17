@@ -7,7 +7,7 @@ system: `home-manager.users.<name>.*`.
 
 - Completing and describing the options of home-manager inside the system's own JSON files
 - Needs a home-manager input in the flake (found by what it provides, so any name will do);
-  without one the generator says so and adds nothing
+  without one it adds nothing (the generator says so with -v or when asked for by name)
 - Also offers `home-manager.users` itself, which typing `home` finds: the system's own options
   have it only when home-manager's NixOS or nix-darwin module is imported. Setting any of these
   needs that module in the flake (`home-manager.nixosModules.home-manager`, or

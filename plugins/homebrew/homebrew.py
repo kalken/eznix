@@ -66,7 +66,7 @@ def generate(ctx):
     Returns nothing at all without a working brew, leaving whatever was generated before."""
     brew = _brew_command()
     if not brew:
-        ctx.info("Homebrew not found — skipping its names in choices.json")
+        ctx.note("Homebrew not found — skipping its names in choices.json")
         return None
     ctx.info("Generating Homebrew's names in choices.json...")
     formulae = _brew(ctx, brew, ["formulae"])
