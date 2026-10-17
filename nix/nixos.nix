@@ -163,7 +163,11 @@ in
     # owner of each file stays who it was. That is on purpose -- git, and Nix reading a git
     # flake, refuse a repository that belongs to somebody else, and /etc/nixos is usually
     # root's. Dot-folders are skipped (.git, .direnv): the editor never writes into one, and
-    # they are what those ownership checks look at. Symlinks (`result`) are not followed.
+    # they are what those ownership checks look at. Symlinks (`result`) are not followed: find
+    # lists none, and chgrp -h and setfacl -P leave one that appears after it alone (chmod has no
+    # such switch). People in the group can write here while this runs as root, so a path that is
+    # swapped between the listing and the change is not ruled out; it gives them no more than the
+    # group already has (a .nix file they write is built as root at the next rebuild).
     # It is no wider a door than configDir already was: a *.json file there can hold any Nix
     # expression, and what it says is built as root at the next rebuild either way.
     system.activationScripts.eznix = {
@@ -179,10 +183,10 @@ in
           chgrp eznix ${lib.escapeShellArg cfg.flake}
           chmod g+rwxs ${lib.escapeShellArg cfg.flake}
           ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.flake} 2>/dev/null || true
-          shared d | ${pkgs.findutils}/bin/xargs -0 -r chgrp eznix
+          shared d | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
           shared d | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rwxs
-          shared d | ${pkgs.findutils}/bin/xargs -0 -r ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX 2>/dev/null || true
-          shared f | ${pkgs.findutils}/bin/xargs -0 -r chgrp eznix
+          shared d | ${pkgs.findutils}/bin/xargs -0 -r ${pkgs.acl}/bin/setfacl -P -m g:eznix:rwX -d -m g:eznix:rwX 2>/dev/null || true
+          shared f | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
           shared f | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rw
         fi
       '';
@@ -239,19 +243,33 @@ in
         # first, then the ACL: setfacl works the mask out from the entries it is given. A
         # failing setfacl stops the unit (no `|| true` here, unlike the folders above): a
         # terminal the editor cannot reach is better seen than one with an open key.
+        #
+        # This step is root's, so what it works in must be root's: the folder is root:root and
+        # the user has only the key file. It was the user's own folder (chown -R, mode 700),
+        # and the user could put a symlink where the key goes and press Restart: root then ran
+        # chmod and setfacl on whatever the link named, or made a file at its end (2026-10-17,
+        # found in review; confirmed by reading, not on a machine). The folder is taken over
+        # first, before anything in it is looked at, and a leftover that is not a plain file
+        # (a link from when it was the user's) is removed.
         ExecStartPre = "+" + pkgs.writeShellScript "eznix-terminal-key-${user}" ''
           set -e
+          dir=${lib.escapeShellArg (termDir user)}
+          key=${lib.escapeShellArg t.key_file}
           mkdir -p -m 755 /run/eznix-terminal
-          mkdir -p ${termDir user}
-          if [ ! -s ${t.key_file} ]; then
-            ( umask 077; ${pkgs.openssl}/bin/openssl rand -hex 32 > ${t.key_file} )
+          mkdir -p "$dir"
+          chown root:root "$dir"
+          chmod 755 "$dir"
+          ${pkgs.acl}/bin/setfacl -b "$dir"
+          if [ -L "$key" ] || { [ -e "$key" ] && [ ! -f "$key" ]; }; then
+            rm -rf "$key"
           fi
-          chown -R ${lib.escapeShellArg user}: ${termDir user}
-          chmod 700 ${termDir user}
-          chmod 600 ${t.key_file}
-          ${pkgs.acl}/bin/setfacl -b ${termDir user} ${t.key_file}
-          ${pkgs.acl}/bin/setfacl -m u:eznix:x ${termDir user}
-          ${pkgs.acl}/bin/setfacl -m u:eznix:r ${t.key_file}
+          if [ ! -s "$key" ]; then
+            ( umask 077; ${pkgs.openssl}/bin/openssl rand -hex 32 > "$key" )
+          fi
+          chown ${lib.escapeShellArg user}: "$key"
+          chmod 600 "$key"
+          ${pkgs.acl}/bin/setfacl -b "$key"
+          ${pkgs.acl}/bin/setfacl -m u:eznix:r "$key"
         '';
         ExecStart    = "${packages.eznix-terminal}/bin/eznix-terminal ${common.terminalArgs t}";
         Restart      = "on-failure";

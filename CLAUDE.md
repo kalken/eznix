@@ -146,7 +146,17 @@ user asked whether every file that needs protecting was protected). Evaluated on
 the NixOS template, then run by the user the same day on a NixOS machine: `getfacl` shows
 `user:eznix:r--`, `group::---` and `mask::r--`, the certificate keys on that machine were
 `0600` after the rebuild, and the terminal panel connected ("yes it works"). The script
-stops the unit if `setfacl` fails, which is meant.
+stops the unit if `setfacl` fails, which is meant. The key's folder
+(`/run/eznix-terminal/USER`) is root's, mode 755, since 2026-10-17, and only the key file is the
+user's: the start step runs as root, and with the folder the user's they could put a symlink
+where the key goes and press Restart (which runs it again), so that root ran `chmod` and
+`setfacl` on whatever the link named, or made a file at its end (a dangling link). Found in a
+review of the Nix modules, by reading; not tried on a machine. The step takes the folder over
+before it looks at anything in it and removes a key that is not a plain file. The activation
+script's `chgrp -h` and `setfacl -P` leave a link that appears after `find` alone; `chmod` has no
+such switch, and a path swapped between the listing and the change is not ruled out (it gives
+the group nothing it has not got: a `.nix` file it writes is built as root). Checked: the NixOS
+template evaluated, the unit's script read out of its derivation and syntax-checked; not run.
 
 **Private keys are written closed** (`_write_private()`): the CA's and the server's
 certificate key are `0600` whatever the umask. The NixOS service runs with `UMask = 0002`
