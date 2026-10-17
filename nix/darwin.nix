@@ -8,7 +8,8 @@
 # The terminal's job deliberately contains no store path. nix-darwin reloads a job whenever its
 # definition changes, and has no "don't restart this" switch, so a job naming a store path
 # would be restarted by every rebuild -- killing the shell the rebuild runs in. It runs
-# /run/current-system/sw/bin/eznix-terminal, which reads the same across rebuilds. The editor's
+# /run/current-system/sw/bin/eznix-terminal-start, a script on the system path that holds the
+# settings (port, key file, folder, shell), so that the job's own text never changes. The editor's
 # job does name store paths, and is meant to restart: an open page then reloads by itself.
 self:
 { config, lib, pkgs, ... }:
@@ -64,7 +65,17 @@ in
     services.eznix.users = lib.mkIf (cfg.password == null && cfg.passwordFile == null) (lib.mkDefault [ user ]);
 
     # eznix-terminal has to be on the system path for the terminal's job (see above).
-    environment.systemPackages = [ packages.eznix-terminal (common.autocompleteCommand "$HOME/.local/state/eznix/autocomplete") ];
+    environment.systemPackages = [
+      packages.eznix-terminal
+      (common.autocompleteCommand "$HOME/.local/state/eznix/autocomplete")
+    ] ++ lib.optional cfg.terminal (pkgs.writeShellScriptBin "eznix-terminal-start" ''
+      # What the terminal's job runs (see there): this changes with the settings, the job does not.
+      ${onlyFor}
+      umask 077; mkdir -p ${lib.escapeShellArg stateDir}
+      # The key is made here, before the terminal starts; the editor only ever reads it.
+      [ -s ${lib.escapeShellArg terminal.key_file} ] || /usr/bin/openssl rand -hex 32 > ${lib.escapeShellArg terminal.key_file}
+      exec /run/current-system/sw/bin/eznix-terminal ${common.terminalArgs terminal}
+    '');
 
     # nix-darwin only runs the activation scripts it knows by name; a custom name is never run.
     system.activationScripts.postActivation.text = common.configDirScript + ''
@@ -113,14 +124,13 @@ in
 
     launchd.user.agents.eznix-terminal = lib.mkIf cfg.terminal {
       serviceConfig = {
-        # The key is made here, before the terminal starts; the editor only ever reads it.
-        ProgramArguments = [ "/bin/sh" "-c" ''
-          ${onlyFor}
-          umask 077; mkdir -p ${lib.escapeShellArg stateDir}
-          [ -s ${lib.escapeShellArg terminal.key_file} ] || /usr/bin/openssl rand -hex 32 > ${lib.escapeShellArg terminal.key_file}
-          while [ ! -x /run/current-system/sw/bin/eznix-terminal ]; do sleep 1; done
-          exec /run/current-system/sw/bin/eznix-terminal ${common.terminalArgs terminal}
-        '' ];
+        # Nothing in this job may ever change, whatever the settings or the release: nix-darwin
+        # reloads a job whose definition differs, and that kills the shell a rebuild runs in. So it
+        # only waits for, and runs, a script that is reached through the system path (what that
+        # script says is free to change); the port, key file, folder and shell are in the script.
+        # A change to this text is a restart of every user's terminal at their next rebuild.
+        ProgramArguments = [ "/bin/sh" "-c"
+          "while [ ! -x /run/current-system/sw/bin/eznix-terminal-start ]; do sleep 1; done; exec /run/current-system/sw/bin/eznix-terminal-start" ];
         EnvironmentVariables.PATH = path;
         RunAtLoad         = true;
         KeepAlive.SuccessfulExit = false;

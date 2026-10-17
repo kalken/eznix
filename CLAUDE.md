@@ -208,8 +208,10 @@ on made-up numbers; not in a browser.
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
 false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch and reloads a
-job whenever its definition changes, so the terminal's job contains no store path at all and
-runs `/run/current-system/sw/bin/eznix-terminal`. Don't put anything that varies per build into
+job whenever its definition changes, so the terminal's job contains no store path and no setting: it
+waits for and runs `/run/current-system/sw/bin/eznix-terminal-start` (a script in `systemPackages`
+that holds the port, key file, folder and shell), so a changed setting is a changed script and not a
+changed job (since 2026-10-17; the settings were arguments in the job's text, and changing one reloaded it). Don't put anything that varies per build into
 that job. The page instead offers a restart when the running terminal differs from the
 current one. A terminal has one checksum (`STAMP`) over its program file and how it was
 started (port/key file/dir/shell); `_terminal_for()` in the server computes the same thing
@@ -219,6 +221,13 @@ only the answer, `terminal_stale`; the page compares nothing. It was four values
 and two ways of learning them until 2026-10; don't grow it back. The terminal's package has
 no version in its name (`packages.nix`), or its store path, and with it the unit NixOS
 watches, would change with every commit.
+
+**macOS logs are in `~/Library/Logs`** (`eznix.log`, `eznix-terminal.log`), since 2026-10-17; they were
+in `/tmp`, readable by every account. Changing the terminal's job for that made nix-darwin reload it on
+the first rebuild, which killed the eznix shell the user ran the rebuild in and left the switch half done
+(the terminal agent unloaded, old plists on disk). Run again from Terminal.app it went through ("that
+works"). The job is now fixed text (see "A terminal is never restarted by a rebuild"); any edit to that text
+restarts everyone's terminal once, so say so before committing it.
 
 **Run by hand, eznix starts its own terminal** as a child (`_start_terminal_for_self()`),
 writing the key first, registered for whoever logs in (`TERMINALS['*']`).
