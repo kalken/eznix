@@ -258,8 +258,10 @@ in
           mkdir -p -m 755 /run/eznix-terminal
           mkdir -p "$dir"
           chown root:root "$dir"
-          chmod 755 "$dir"
+          # The ACL first: chmod on a folder that has one changes only its mask, and removing the
+          # ACL afterwards left the group bits it had before (seen on the Pi as 705, not 755).
           ${pkgs.acl}/bin/setfacl -b "$dir"
+          chmod 755 "$dir"
           if [ -L "$key" ] || { [ -e "$key" ] && [ ! -f "$key" ]; }; then
             rm -rf "$key"
           fi
