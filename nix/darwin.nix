@@ -106,8 +106,9 @@ in
       EnvironmentVariables.PATH = path;
       RunAtLoad         = true;
       KeepAlive.SuccessfulExit = false;
-      StandardOutPath   = "/tmp/eznix.log";
-      StandardErrorPath = "/tmp/eznix.log";
+      # The logs are in the user's own Library, not /tmp, which every account on the Mac can read.
+      StandardOutPath   = "${home}/Library/Logs/eznix.log";
+      StandardErrorPath = "${home}/Library/Logs/eznix.log";
     };
 
     launchd.user.agents.eznix-terminal = lib.mkIf cfg.terminal {
@@ -123,8 +124,8 @@ in
         EnvironmentVariables.PATH = path;
         RunAtLoad         = true;
         KeepAlive.SuccessfulExit = false;
-        StandardOutPath   = "/tmp/eznix-terminal.log";
-        StandardErrorPath = "/tmp/eznix-terminal.log";
+        StandardOutPath   = "${home}/Library/Logs/eznix-terminal.log";
+        StandardErrorPath = "${home}/Library/Logs/eznix-terminal.log";
       };
     };
   };
