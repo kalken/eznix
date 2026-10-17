@@ -1,0 +1,5 @@
+{
+  "name": "kernels",
+  "description": "Autocomplete: the kernels boot.kernelPackages can be set to (NixOS).",
+  "autocomplete": "kernels.py"
+}

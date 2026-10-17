@@ -1,0 +1,5 @@
+{
+  "name": "home-manager",
+  "description": "Autocomplete: home-manager's options as home-manager.users.<name>.* (NixOS and nix-darwin).",
+  "autocomplete": "home_manager.py"
+}

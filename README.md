@@ -401,7 +401,7 @@ outright, so they suit a machine only you can reach.
 
 Some features are plugins: a folder of page files, and optionally server code, that eznix
 loads when it starts. A plugin is something that needs nothing from the system eznix runs on,
-so it works the same everywhere and can be left out. Four ship with it:
+so it works the same everywhere and can be left out. Seven ship with it:
 
 | Plugin | |
 |---|---|
@@ -409,6 +409,12 @@ so it works the same everywhere and can be left out. Four ship with it:
 | [`documents`](plugins/documents/README.md) | the Documents button: read the flake's Markdown files beside the editor |
 | [`files`](plugins/files/README.md) | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
 | [`password`](plugins/password/README.md) | log in with one configured password |
+| [`kernels`](plugins/kernels/README.md) | suggestions: the kernels `boot.kernelPackages` can be set to (NixOS) |
+| [`homebrew`](plugins/homebrew/README.md) | suggestions: the names `homebrew.brews` and `homebrew.casks` can be filled in from (nix-darwin) |
+| [`home-manager`](plugins/home-manager/README.md) | suggestions: home-manager's options inside a NixOS or nix-darwin system |
+
+The last three have no page files: they add to what the **Autocomplete** button generates, each
+only on the kind of system it is for.
 
 Each has a page of its own, linked above, with what it does and every setting. Leave one
 out, or change its settings, by name:
@@ -427,6 +433,11 @@ To write your own, make a folder with a `plugin.json` and add it with
 ```json
 { "name": "hello", "scripts": ["hello.js"], "styles": ["hello.css"], "server": "hello.py" }
 ```
+
+A plugin can also add to the suggestions: name a file as `"autocomplete"` in `plugin.json`, with a
+`generate(ctx)` that returns `{"options": [...], "choices": {...}}` (see "Plugins" in
+`bin/eznix-autocomplete.py`; the three above are the examples). It runs when Autocomplete is
+pressed, and `SYSTEMS = ("nixos", ...)` in the file limits it to those kinds of system.
 
 The scripts run in the page, after eznix's own, and can add buttons and react to events
 (listed at the top of the script in `webroot/index.html`, under "Plugins"). The optional

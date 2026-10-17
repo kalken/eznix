@@ -125,6 +125,8 @@ let
   appEntries =
     lib.optional prog.enable (mkApp { inherit (prog) url; name = "eznix"; label = labelOf prog.url; })
     ++ lib.mapAttrsToList (name: url: mkApp { inherit url; name = "eznix-${name}"; label = labelOf url; }) prog.apps;
+  # In the let, so that the generator command below can be given it too.
+  toml = (pkgs.formats.toml { }).generate "eznix.toml" settings;
 in
 {
   inherit isLocal certDir generateCert;
@@ -154,7 +156,7 @@ in
     };
   };
 
-  toml = (pkgs.formats.toml { }).generate "eznix.toml" settings;
+  inherit toml;
 
   # Arguments for a terminal the module runs, matching the [terminals.NAME] table above.
   terminalArgs = t: lib.escapeShellArgs ([ "--port" (toString t.port) "--key-file" t.key_file "--dir" cfg.flake ]
@@ -214,9 +216,10 @@ in
     '';
 
   # The eznix-autocomplete command put on PATH: the generator, already told this install's flake
-  # and where the editor reads suggestions from. `out` is a shell expression (it may use $HOME).
+  # and where the editor reads suggestions from, and given eznix.toml for the plugins that add to
+  # them (your own, and which of the shipped ones are on). `out` is a shell expression (it may use $HOME).
   autocompleteCommand = out: pkgs.writeShellScriptBin "eznix-autocomplete" ''
-    exec ${packages.eznix-autocomplete}/bin/eznix-autocomplete --flake ${lib.escapeShellArg cfg.flake} --output "${out}" "$@"
+    exec ${packages.eznix-autocomplete}/bin/eznix-autocomplete --flake ${lib.escapeShellArg cfg.flake} --output "${out}" --config ${toml} "$@"
   '';
 
   # The folder of *.json files. Nothing is put in it: what turns the files into configuration

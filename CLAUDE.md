@@ -102,11 +102,11 @@ runs as root, and there is no compatibility with ezconf's configuration.
 |---|---|
 | `bin/eznix.py` | the server, one file: static files, the API, logins, the terminal proxy, plugin loading |
 | `bin/eznix-terminal.py` | the terminal: a PTY behind a WebSocket, a separate process per user |
-| `bin/eznix-autocomplete.py` | generates the suggestions (`nix eval` over the flake) |
+| `bin/eznix-autocomplete.py` | generates the suggestions (`nix eval` over the flake): the options and packages every system has, and what the plugins add |
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12) |
+| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12); and `kernels`, `homebrew`, `home-manager`, which hold only a generator file (see "The generator's plugins") |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
@@ -958,6 +958,31 @@ Seen by the user in the test server, with vim: as `nixfiles` ("wow that works pe
 and as this plugin the cross that deletes, with the tab closing ("thats good"). What else
 of the menus and the dialog they tried was not said.
 
+**The generator's plugins** (2026-10-17, the user's idea: "today we have home manager, brew
+etc that are special"): what only some systems have is a plugin, not a branch of
+`eznix-autocomplete.py`. `plugin.json` names a file as `"autocomplete"` with `generate(ctx)`,
+`SYSTEMS` (the kinds of configuration it is for) and `OPTIONS` (it adds to `options.json`),
+documented above `find_plugins()`. The kernels (NixOS), Homebrew's names (nix-darwin) and
+home-manager's options (NixOS and nix-darwin) were functions there, each with its own `if` in
+`main()`; they are `plugins/kernels`, `plugins/homebrew` and `plugins/home-manager`, moved
+without change, and the generator knows none of them by name. Still one command and one press:
+`all` runs every plugin that applies, and a plugin for another kind of system is left out
+without a word. The generator finds plugins in `plugins/` beside `bin/` (the Nix package passes
+`--plugins-dir` for its copy) and in `plugins_dir`, and honours `[plugin.NAME] enabled = false`,
+all through `--config` (the button's command has it since `_autocomplete_command()` knows
+`CONFIG_FILE`; `autocompleteCommand` in `options.nix` passes the module's `eznix.toml`). A
+command named after a plugin runs that one; one that adds to `options.json` runs as `options`,
+so the file is never only its share. A plugin that raises is warned about and skipped; one that
+calls `ctx.failed()` leaves its file as it was and ends the run with an error, as the kernels
+did. **This is an exception to "a plugin needs nothing from the system"**: these three are for
+one system each, and have no service, which is what that rule was about. Checked by running the
+old and the new generator on the same flakes and comparing the files: the user's nix-darwin
+flake (1,204 options, Homebrew's 8,661 formulas and 7,781 casks, identical), and a throwaway
+NixOS flake with home-manager 26.05 as a module (29,894 options of which 5,315 home-manager's,
+and 20 kernels, identical); also `test_server.py` (`generator_plugins()`), the command's text
+evaluated on the darwin template. Not tried: pressing the button in the page, a user plugin on
+a real machine, the module's `eznix.toml` read by the generator on NixOS.
+
 Core, not plugins, by decision: the terminal, Save, ordinary import/export of files, file backups on save,
 themes (a theme stays a plain CSS file anyone can install without trusting code), and support
 for each system (that is the Nix modules' job, before the server ever runs).
@@ -1014,8 +1039,8 @@ name. Until 2026-10-12 it did: `isKernelPath()` tested for `boot.kernelPackages`
 `nameListFor()` for `homebrew.brews` and `homebrew.casks`, each with a file of its own
 (`kernels.json`, `brews.json`, `casks.json`, which the generator now removes), the two
 places the user's rule against naming an option was still broken. Which option a list
-belongs to is said in the generator, which has to know where the list comes from anyway. A
-new kind of list is an entry there and nothing in the page. Data generated before that day
+belongs to is said where the list comes from, in the plugin that generates it (see "The
+generator's plugins"). A new kind of list is an entry there and nothing in the page. Data generated before that day
 has no `choices.json`, so those two things are not offered until the generator has run
 again. Checked by running the generator for the kernels (a NixOS flake, 12) and for
 Homebrew (a Mac, 8,652 formulas and 7,804 casks) and the two lookups on what it wrote; the
@@ -1120,5 +1145,7 @@ what nobody went through.
   module refuses `users` and asks for `passwordFile` (or `password`), the user's choice the
   same day after it was first only documented ("why do we have that option even if only one
   works"): home-manager on NixOS, where it worked, has the NixOS module for that.
-- home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator
-  has a path for its options, untried on a real flake.
+- home-manager as a module inside a NixOS flake (`home-manager.users.<name>`): the generator's
+  home-manager plugin was run on a throwaway NixOS flake with home-manager 26.05 as a module on
+  2026-10-17 (5,315 options came out, the same as the generator before the plugins); not on a
+  real flake of the user's.

@@ -1,18 +1,28 @@
 #!/usr/bin/env python3
-"""Generate options.json, packages.json and choices.json from a NixOS, nix-darwin or home-manager flake."""
+"""Generate options.json, packages.json and choices.json from a NixOS, nix-darwin or home-manager flake.
+
+What every system has is generated here: its options and its packages. What only some have
+comes from plugins (see "Plugins" below): the kernels, Homebrew's names, home-manager's options."""
 
 import argparse
 import atexit
 import getpass
+import importlib.util
 import json
 import os
-import pwd
 import re
-import shutil
 import socket
 import subprocess
 import sys
 from pathlib import Path
+
+try:
+    import tomllib
+except ImportError:
+    try:
+        import tomli as tomllib
+    except ImportError:
+        tomllib = None
 
 GREEN  = "\033[0;32m"
 YELLOW = "\033[1;33m"
@@ -234,208 +244,114 @@ def generate_packages(flake_ref, include=None, exclude=None, no_nested=True):
     info(f"  {len(out)} packages")
 
 
-# --- kernels ---
+# --- plugins ---
+#
+# A source of suggestions that only some systems have is a plugin, the folder eznix loads its
+# page and server code from (plugins/NAME/ beside bin/, and plugins_dir of the configuration):
+# its plugin.json names a Python file as "autocomplete", and that file holds
+#
+#     SYSTEMS = ("nixos", "darwin")   # which kinds of configuration it is for; unset: all
+#     OPTIONS = True                  # it adds to options.json (default: only to choices.json)
+#     def generate(ctx): ...          # returns {"options": [...], "choices": {...}} or None
+#
+# ctx is a Context: the flake (`target`, `flake_ref`), what was picked (`host`, `kind`,
+# `config_attr`), the plugin's own settings (`config`, [plugin.NAME] of the configuration),
+# `verbose`, `nix_eval()`, `info()`, `warn()` and `failed(file, why)` -- the same ones the rest of
+# this file uses, so a plugin prints and fails like the rest. `options` are what
+# optionAttrSetToDocList gives here (path, description, type, default, example, required);
+# `choices` are written as write_choices() takes them. None says there is nothing to add, and
+# `failed()` leaves the file of the last run as it was and ends the run with an error; a plugin
+# that only warns lets the rest be written.
+#
+# It runs when Autocomplete is pressed, as the user who presses it: a plugin is trusted like
+# any program, as the server half of one is. [plugin.NAME] enabled = false leaves it out here
+# too. Until 2026-10-17 the kernels, Homebrew and home-manager's options were functions in
+# this file, each with its own branch in main().
 
-KERNELS_EXPR = r"""
-pkgs:
-let
-    names = builtins.filter
-        (n: builtins.substring 0 13 n == "linuxPackages")
-        (builtins.attrNames pkgs);
-    safeGet = name:
-        let r = builtins.tryEval (
-            let p = pkgs.${name}; in
-            if p ? kernel
-            then { name = name; description = p.kernel.meta.description or null; }
-            else null
-        );
-        in if r.success then r.value else null;
-in builtins.filter (x: x != null) (map safeGet names)
-"""
-
-def generate_kernels(flake_ref):
-    """The kernels boot.kernelPackages can be set to, as expressions (pkgs.linuxPackages_...)."""
-    info("Generating the kernels in choices.json...")
-    result = nix_eval([f"{flake_ref}.pkgs", "--apply", KERNELS_EXPR])
-    if result is None:
-        failed("choices.json", "the kernels could not be evaluated")
-        return
-    write_choices({"boot.kernelPackages": {"expr": True, "values": [
-        {"value": "pkgs." + k["name"], "description": k.get("description")} for k in result]}})
-    info(f"  {len(result)} kernels")
+KINDS = {v: k for k, v in CONFIG_ATTRS.items()}     # homeConfigurations -> home
 
 
-# --- homebrew ---
-
-def _brew_command():
-    """How to invoke brew, or None when it isn't installed. Homebrew refuses to run as root, which
-    is what this runs as under eznix's own service -- there it's called as whoever owns the
-    Homebrew installation instead."""
-    brew = shutil.which("brew") or next(
-        (p for p in ("/opt/homebrew/bin/brew", "/usr/local/bin/brew") if os.path.exists(p)), None)
-    if not brew:
-        return None
-    if os.geteuid() != 0:
-        return [brew]
-    try:
-        owner = pwd.getpwuid(os.stat(os.path.realpath(brew)).st_uid).pw_name
-    except (OSError, KeyError):
-        return None
-    if owner == "root":
-        return None
-    return ["sudo", "-H", "-u", owner, "--", brew]
+class Context:
+    def __init__(self, target, host, flake_ref, config):
+        self.target, self.host, self.flake_ref, self.config = target, host, flake_ref, config
+        self.config_attr = CONFIG_ATTR
+        self.kind = KINDS[CONFIG_ATTR]
+        self.verbose = VERBOSE
+        self.nix_eval, self.info, self.warn, self.failed = nix_eval, info, warn, failed
 
 
-def _brew(brew, args):
-    """Run one brew command; its stdout, or None on any failure.
-
-    HOMEBREW_FORCE_RUBY_COMMAND: `brew formulae` and `brew casks` are otherwise answered by a
-    shell script that prints brew's cached list of names (api/formula_names.txt in its cache
-    folder) and nothing at all when that file is not there, with exit status 0. It is not there
-    from one brew update until some command next loads the list: on the user's Mac it came and
-    went within minutes (2026-10-11), and the editor's list of formulas with it. Brew's own
-    command, which that variable asks for and brew's script falls back to itself, loads the
-    names and writes the file again. Some seconds slower each."""
-    env = {**os.environ, "HOMEBREW_NO_AUTO_UPDATE": "1", "HOMEBREW_NO_ANALYTICS": "1",
-           "HOMEBREW_FORCE_RUBY_COMMAND": "1"}
-    try:
-        r = subprocess.run(brew + args, capture_output=True, text=True, env=env, timeout=120)
-    except (OSError, subprocess.TimeoutExpired) as e:
-        warn(f"brew {' '.join(args)}: {e}")
-        return None
-    if r.returncode != 0:
-        if VERBOSE:
-            for line in r.stderr.strip().splitlines():
-                print(f"  {line}", file=sys.stderr)
-        return None
-    return r.stdout
-
-
-def generate_homebrew(flake_ref):
-    """The names homebrew.brews and homebrew.casks can be filled in from, in choices.json.
-    Everything comes from the local brew -- its own lists for the core formulas and casks, plus
-    what each tap named in the configuration's homebrew.taps provides (asked for tap by tap:
-    brew leaves a tap it doesn't consider trusted out of its combined list). A tap's entries are
-    written as tap/name, the form that's unambiguous in a Brewfile. Only an installed tap can be
-    listed, so one that was just added to the configuration shows up after the next rebuild.
-
-    Writes nothing at all without a working brew, leaving whatever was generated before."""
-    brew = _brew_command()
-    if not brew:
-        info("Homebrew not found — skipping its names in choices.json")
-        return []
-    info("Generating Homebrew's names in choices.json...")
-    formulae = _brew(brew, ["formulae"])
-    casks = _brew(brew, ["casks"])
-    # No names at all counts as brew not answering, like an error does: an empty list
-    # written from an empty answer took the list of formulas out of the editor on the user's
-    # Mac (2026-10-11; see _brew() for why the answer was empty), with the casks whole beside it.
-    brews = set((formulae or "").split())
-    casks = set((casks or "").split())
-    if not brews or not casks:
-        warn("could not list Homebrew formulas/casks — leaving choices.json as it was "
-             "(rerun with -v for details)")
-        return []
-
-    taps = nix_eval([f"{flake_ref}.config.homebrew.taps", "--apply", "map (t: t.name or t)"])
-    if taps:
-        out = _brew(brew, ["tap-info", "--json"] + taps)
+def find_plugins(config_file, plugins_dirs):
+    """{name: {'module', 'config'}} for every plugin with an "autocomplete" file, from the
+    shipped plugins (beside bin/) and the folders given, as the server finds them: a folder
+    named like one found before is skipped, and [plugin.NAME] enabled = false leaves one out."""
+    cfg = {}
+    if config_file:
+        if tomllib is None:
+            warn("reading a config file needs Python 3.11+ or the tomli package: plugin settings ignored")
+        else:
+            try:
+                with open(config_file, "rb") as f:
+                    cfg = tomllib.load(f)
+            except (OSError, ValueError) as e:
+                warn(f"{config_file}: {e}")
+    settings = cfg.get("plugin") if isinstance(cfg.get("plugin"), dict) else {}
+    bases = list(plugins_dirs) + ([cfg["plugins_dir"]] if cfg.get("plugins_dir") else [])
+    found = {}
+    for base in bases:
         try:
-            tap_info = json.loads(out) if out else []
-        except ValueError:
-            tap_info = []
-        for t in tap_info:
-            if not t.get("installed"):
-                info(f"  tap {t.get('name')} is not installed yet — its formulas appear after a rebuild")
+            names = sorted(os.listdir(base))
+        except OSError:
+            continue
+        for name in names:
+            folder = os.path.join(base, name)
+            try:
+                with open(os.path.join(folder, "plugin.json")) as f:
+                    manifest = json.load(f)
+            except (OSError, ValueError):
                 continue
-            brews.update(t.get("formula_names") or [])
-            casks.update(t.get("cask_tokens") or [])
+            rel = manifest.get("autocomplete")
+            conf = settings.get(name) if isinstance(settings.get(name), dict) else {}
+            if (not rel or name in found or conf.get("enabled") is False
+                    or manifest.get("name") != name or not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", name)):
+                continue
+            path = os.path.realpath(os.path.join(folder, str(rel)))
+            if not path.startswith(os.path.realpath(folder) + os.sep) or not os.path.isfile(path):
+                warn(f"plugin {name}: no such autocomplete file {rel!r}")
+                continue
+            try:
+                spec = importlib.util.spec_from_file_location(f"eznix_autocomplete_{name.replace('-', '_')}", path)
+                module = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(module)
+                if not callable(getattr(module, "generate", None)):
+                    raise TypeError("no generate(ctx)")
+            except Exception as e:
+                warn(f"plugin {name} left out: {type(e).__name__}: {e}")
+                continue
+            found[name] = {"module": module,
+                           "config": {k: v for k, v in conf.items() if k != "enabled"}}
+    return found
 
-    write_choices({"homebrew.brews": {"free": True, "values": sorted(brews)},
-                   "homebrew.casks": {"free": True, "values": sorted(casks)}})
-    info(f"  {len(brews)} formulas, {len(casks)} casks")
-    return ["choices.json"]
 
-
-# --- home-manager options ---
-
-def generate_home_options(target, host):
-    """Home-manager options for whichever host is being generated, with no flake changes and no
-    username required. `home-manager.users.<name>` (the nested-NixOS-module form) can't be walked
-    generically by lib.optionAttrSetToDocList: its submodule type needs a concrete instance name
-    to build (home-manager wires `home.username = mkDefault name;` etc. off it), so the generic
-    doc-list probe has nothing to hand it. Rather than require a real homeConfigurations.<user>
-    output (which forces picking one specific username up front, purely to satisfy that probe),
-    this builds a *throwaway* home-manager evaluation directly — home-manager.lib.homeManagerConfiguration
-    with an empty module list, reusing the host's own already-built `pkgs` (so no separate system
-    string needs guessing) — and reads *its* .options. An option's description/type/default never
-    depend on which username it'll eventually be set under, so a placeholder instance name is
-    exactly as accurate as a real one for this purpose, and this needs nothing from the consuming
-    flake beyond a `home-manager` input (the standard input name — this doesn't try alternate
-    names). Every path comes back home-manager-root-relative (e.g. "home.packages"); rewritten to
-    home-manager.users.<name>.home.packages using the same literal `<name>` wildcard segment the
-    frontend already matches generically (WILDCARDS in index.html — the same mechanism behind
-    e.g. users.users.<name>), so it applies to whatever real username ends up in a config.
-    A flake with no `home-manager` input at all (the common case) is a silent, expected no-op —
-    resolved with one cheap `or null` inside the same expression, not a separate probe, so the
-    common case costs nothing beyond one more attribute lookup already-evaluated `target` has to
-    do anyway."""
-    expr = f"""
-let
-    target = builtins.getFlake "path:{target}";
-    cfg = target.{CONFIG_ATTR}."{host}";
-    hmInput = target.inputs.home-manager or null;
-in if hmInput == null then [] else
-let
-    lib = target.inputs.nixpkgs.lib;
-    homeCfg = hmInput.lib.homeManagerConfiguration {{
-        pkgs = cfg.pkgs;
-        # A throwaway identity, not a real user: home-manager's own base modules (e.g.
-        # misc/nixpkgs.nix) force config.home.stateVersion while resolving _module.args.pkgs for
-        # every bundled module, including ones nothing enables — needed just to merge the option
-        # *declarations* at all, before any per-option safeGet below even runs. None of these
-        # three have a default (home-manager requires them explicitly, by design), so an empty
-        # modules list can't get past that. An option's description/type/default never depends on
-        # any of these three values, so their exact content doesn't matter, only that they exist.
-        modules = [ {{
-            home.username = "eznix";
-            home.homeDirectory = (if cfg.pkgs.stdenv.hostPlatform.isDarwin then "/Users" else "/home") + "/eznix";
-            home.stateVersion = lib.trivial.release;
-        }} ];
-    }};
-    opts = homeCfg.options;
-    unwrapValue = v:
-        if builtins.isAttrs v && builtins.elem (v._type or "") [ "literalExpression" "literalMD" "literalDocBook" ]
-        then v.text
-        else v;
-    safeGet = f: opt:
-        let v = unwrapValue (f opt);
-            result = builtins.tryEval (builtins.deepSeq v v);
-        in if result.success then result.value else null;
-    # The same as for the system's options below: no internal ones, and none hidden (removed).
-    rawList = builtins.filter (opt: !(opt.internal or false) && (opt.visible or true)) (lib.optionAttrSetToDocList opts);
-in map (opt: {{
-    path = "home-manager.users.<name>." + opt.name;
-    description = safeGet (o: o.description or null) opt;
-    type = safeGet (o: o.type or null) opt;
-    default = safeGet (o: o.default or null) opt;
-    example = safeGet (o: o.example or null) opt;
-    required = safeGet (o: !(o ? default) && !(o.internal or false) && (o.visible or true) && !(o.readOnly or false)) opt;
-}}) rawList
-"""
-    result = nix_eval(["--impure", "--expr", expr])
-    if result is None:
-        warn("failed to evaluate home-manager options — skipping (rerun with -v for details, "
-             "e.g. a home-manager input incompatible with this nixpkgs version would fail here)")
-        return []
-    if result:
-        info(f"  {len(result)} home-manager options (home-manager.users.<name>.*)")
-    return result
+def run_plugin(name, plugin, context_args):
+    """What one plugin returns ({'options', 'choices'}, either may be missing), or None when it
+    is not for this kind of configuration, has nothing to add, or fails (it is then told to the
+    user, and a failed() has marked the run)."""
+    module = plugin["module"]
+    systems = getattr(module, "SYSTEMS", None)
+    ctx = Context(*context_args, plugin["config"])
+    if systems and ctx.kind not in systems:
+        return None
+    try:
+        result = module.generate(ctx)
+    except Exception as e:
+        warn(f"plugin {name} failed: {type(e).__name__}: {e}")
+        return None
+    return result if isinstance(result, dict) else None
 
 
 # --- options ---
 
-def generate_options(target, host):
+def generate_options(target, host, extra=()):
     info("Generating options.json...")
     expr = f"""
 let
@@ -476,10 +392,8 @@ in map (opt: {{
                "hardware-configuration.nix import would fail here, for one)")
         return
 
-    # (A standalone home-manager configuration's own options already *are* home-manager's, at
-    # the top level; there is no system they would be nested under.)
-    if CONFIG_ATTR != "homeConfigurations":
-        result += generate_home_options(target, host)
+    # What plugins add (home-manager's, for one) goes in before the rest is done to all of them.
+    result += list(extra)
 
     # Clear required on options whose description says they are alternatives to another option.
     # NixOS has no formal "mutually exclusive" metadata; the only signal is prose like
@@ -516,14 +430,14 @@ def main():
 
     parser = argparse.ArgumentParser(
         prog="eznix-autocomplete",
-        description="Generate eznix's autocomplete data (options, packages, kernels, Homebrew\n"
-                    "names) from a NixOS, nix-darwin or home-manager flake",
+        description="Generate eznix's autocomplete data (options, packages, and what the plugins\n"
+                    "add: kernels, Homebrew names, home-manager options) from a NixOS,\n"
+                    "nix-darwin or home-manager flake",
         formatter_class=argparse.RawTextHelpFormatter,
     )
     parser.add_argument(
         "command", nargs="?", default="all",
-        choices=["options", "packages", "kernels", "homebrew", "all"],
-        help="What to generate (default: all)",
+        help="What to generate: options, packages, the name of a plugin, or all (default)",
     )
     parser.add_argument("hostname", nargs="?", default="",
                         help="Configuration host name")
@@ -548,6 +462,12 @@ def main():
                         help=f"The flake to read (default: {DEFAULT_TARGET})")
     parser.add_argument("-o", "--output", metavar="DIR", default="webroot/autocomplete",
                         help="Directory to write generated files to (default: webroot/autocomplete/)")
+    parser.add_argument("-c", "--config", metavar="FILE", default=None,
+                        help="eznix.toml: plugins_dir (your own plugins) and [plugin.NAME] settings,\n"
+                             "enabled = false leaving a plugin out")
+    parser.add_argument("--plugins-dir", metavar="DIR", action="append", default=[],
+                        help="A folder of plugins, one folder each (default: plugins/ beside bin/);\n"
+                             "can be given more than once")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="Show full nix error output for failing evaluations")
     nested = parser.add_mutually_exclusive_group()
@@ -627,25 +547,44 @@ def main():
     # Quoted: a home-manager name like "alice@laptop" isn't a plain attribute name.
     flake_ref = f'{flake}#{CONFIG_ATTR}."{host}"'
 
+    plugins = find_plugins(args.config, args.plugins_dir or [os.path.join(os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))), "plugins")])
+    command = args.command
+    if command not in ("options", "packages", "all") and command not in plugins:
+        error(f"Unknown command '{command}'. Choose options, packages, all"
+              + "".join(f", {n}" for n in plugins))
+    # A plugin that adds to options.json is part of making it: asked for by name, that is the
+    # options as a whole, not an options.json with only its share in it.
+    if command in plugins and getattr(plugins[command]["module"], "OPTIONS", False):
+        command = "options"
+    wanted = [n for n, p in plugins.items()
+              if command == "all" or command == n
+              or (command == "options" and getattr(p["module"], "OPTIONS", False))]
+
+    # What a plugin returns, by plugin. A name given for what does not apply here (the kernels
+    # on a Mac) says so; with `all` it is just left out.
+    results = {}
+    for name in wanted:
+        r = run_plugin(name, plugins[name], (target, host, flake_ref))
+        if r is None and command == name and not FAILED:
+            systems = getattr(plugins[name]["module"], "SYSTEMS", None)
+            if systems and KINDS[CONFIG_ATTR] not in systems:
+                info(f"{name} is for {', '.join(systems)}, not {KINDS[CONFIG_ATTR]}")
+        if r:
+            results[name] = r
+
     generated = []
-    if args.command in ("packages", "all"):
+    if command in ("packages", "all"):
         generate_packages(flake_ref, include=args.include, exclude=args.exclude, no_nested=no_nested)
         generated.append("packages.json")
-    if args.command in ("options", "all"):
-        generate_options(target, host)
+    if command in ("options", "all"):
+        generate_options(target, host, [o for r in results.values() for o in r.get("options", [])])
         generated.append("options.json")
-    # A nix-darwin system has no kernel to choose. Nothing is written for it at all rather than
-    # an empty list: eznix.py treats an empty output file as a failed run.
-    if CONFIG_ATTR == "darwinConfigurations":
-        if args.command == "kernels":
-            info("No kernels to list for a nix-darwin configuration")
-        if args.command in ("homebrew", "all"):
-            generated += generate_homebrew(flake_ref)
-    elif CONFIG_ATTR == "homeConfigurations":
-        if args.command == "kernels":
-            info("No kernels to list for a home-manager configuration")
-    elif args.command in ("kernels", "all"):
-        generate_kernels(flake_ref)
+    choices = {}
+    for r in results.values():
+        choices.update(r.get("choices") or {})
+    if choices:
+        write_choices(choices)
         generated.append("choices.json")
 
     generated = [g for g in generated if g not in FAILED]

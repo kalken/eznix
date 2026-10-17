@@ -135,6 +135,7 @@ CONFIG_DIR       = None          # the folder of *.json files being edited
 EXCLUDE          = []            # what in it is not configuration, as rules (see _exclude_rule())
 DEFAULT_FILE     = None          # file to prefer as the first tab
 STATE_DIR        = os.path.expanduser('~/.local/state/eznix')
+CONFIG_FILE      = None          # the eznix.toml in use, if any: the generator reads plugins from it
 AUTOCOMPLETE_DIR = None          # generated suggestions; <state>/autocomplete unless set
 WEBROOT          = None          # the page's own files
 BACKUP_DIR       = None          # per-file backups, made on every save
@@ -1258,8 +1259,10 @@ def _autocomplete_command():
     script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eznix-autocomplete.py')
     if not os.path.isfile(script):
         return 'eznix-autocomplete'
-    return ' '.join(shlex.quote(a) for a in
-                    (sys.executable, script, '--flake', FLAKE_DIR, '--output', AUTOCOMPLETE_DIR))
+    argv = [sys.executable, script, '--flake', FLAKE_DIR, '--output', AUTOCOMPLETE_DIR]
+    if CONFIG_FILE:
+        argv += ['--config', CONFIG_FILE]     # the plugins that add to the suggestions, as set here
+    return ' '.join(shlex.quote(a) for a in argv)
 
 
 def _render_index():
@@ -2684,7 +2687,7 @@ def _bind_to_interface(sock, name):
 
 
 def main():
-    global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
+    global CONFIG_FILE, FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
@@ -2738,6 +2741,7 @@ def main():
 
     cfg = load_toml(args.config) if args.config else (
         load_toml('eznix.toml') if os.path.exists('eznix.toml') else {})
+    CONFIG_FILE = os.path.abspath(args.config or 'eznix.toml') if cfg or args.config else None
     path = lambda p: os.path.abspath(os.path.expanduser(p))
 
     DEBUG = bool(args.debug or cfg.get('debug', False))

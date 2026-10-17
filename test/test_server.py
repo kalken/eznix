@@ -215,6 +215,55 @@ def login_limit():
           ez._client_ip('192.0.2.1', xff('198.51.100.7')) == '192.0.2.1')
 
 
+def generator_plugins():
+    """What the generator takes from plugins: which it finds, what it leaves out, and what one
+    does for a kind of configuration it is not for. No nix needed."""
+    spec = importlib.util.spec_from_file_location('eznix_autocomplete', os.path.join(ROOT, 'bin', 'eznix-autocomplete.py'))
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    shipped = gen.find_plugins(None, [os.path.join(ROOT, 'plugins')])
+    check('generator: the kernels, Homebrew and home-manager are plugins',
+          {'kernels', 'homebrew', 'home-manager'} <= set(shipped), sorted(shipped))
+    check('generator: and say what they are for',
+          shipped['kernels']['module'].SYSTEMS == ('nixos',) and shipped['homebrew']['module'].SYSTEMS == ('darwin',)
+          and set(shipped['home-manager']['module'].SYSTEMS) == {'nixos', 'darwin'}
+          and shipped['home-manager']['module'].OPTIONS is True)
+    with tempfile.TemporaryDirectory() as tmp:
+        def plugin(name, code, manifest=None):
+            os.makedirs(f'{tmp}/plugins/{name}')
+            with open(f'{tmp}/plugins/{name}/plugin.json', 'w') as f:
+                json.dump({'name': name, 'autocomplete': 'a.py', **(manifest or {})}, f)
+            with open(f'{tmp}/plugins/{name}/a.py', 'w') as f:
+                f.write(code)
+        plugin('mine', 'def generate(ctx):\n    return {"choices": {"x.y": {"values": [ctx.kind, ctx.config["n"]]}}}\n')
+        plugin('only-mac', 'SYSTEMS = ("darwin",)\ndef generate(ctx):\n    return {"choices": {}}\n')
+        plugin('off', 'def generate(ctx):\n    return {}\n')
+        plugin('broken', 'def generate(ctx) return\n')
+        plugin('no-hook', 'x = 1\n')
+        plugin('kernels', 'def generate(ctx):\n    return {"choices": {"mine": 1}}\n')   # named like a shipped one
+        plugin('none', 'def generate(ctx):\n    return None\n', {'autocomplete': None})
+        with open(f'{tmp}/eznix.toml', 'w') as f:
+            f.write(f'plugins_dir = "{tmp}/plugins"\n[plugin.mine]\nn = "three"\n[plugin.off]\nenabled = false\n'
+                    '[plugin.home-manager]\nenabled = false\n')
+        found = gen.find_plugins(f'{tmp}/eznix.toml', [os.path.join(ROOT, 'plugins')])
+        check('generator: a plugin of your own (plugins_dir) is found, with its settings',
+              'mine' in found and found['mine']['config'] == {'n': 'three'})
+        check('generator: enabled = false leaves one out, a shipped one too',
+              'off' not in found and 'home-manager' not in found and 'kernels' in found)
+        check('generator: one that does not load, has no generate() or no autocomplete file is left out',
+              not {'broken', 'no-hook', 'none'} & set(found))
+        check('generator: a folder named like a shipped plugin does not replace it',
+              found['kernels']['module'].SYSTEMS == ('nixos',))
+        gen.CONFIG_ATTR = 'darwinConfigurations'
+        ctx_args = ('/flake', 'host', 'path:/flake#x')
+        check('generator: a plugin is given what kind of configuration it runs for and its settings',
+              gen.run_plugin('mine', found['mine'], ctx_args) == {'choices': {'x.y': {'values': ['darwin', 'three']}}})
+        gen.CONFIG_ATTR = 'nixosConfigurations'
+        check('generator: one for another kind is not run',
+              gen.run_plugin('only-mac', {'module': importlib.import_module('types').SimpleNamespace(
+                  SYSTEMS=('darwin',), generate=lambda ctx: {'choices': {'a': 1}}), 'config': {}}, ctx_args) is None)
+
+
 def private_keys():
     """The certificate authority's key and the server's are for this user alone, under the
     NixOS service's umask (0002, which shares its other files with the group) as under a
@@ -254,6 +303,7 @@ def main():
     terminal_history()
     sessions()
     login_limit()
+    generator_plugins()
     private_keys()
     excludes()
     with tempfile.TemporaryDirectory() as tmp:

@@ -76,6 +76,8 @@ rec {
   eznix-autocomplete = pkgs.writeShellApplication {
     name          = "eznix-autocomplete";
     runtimeInputs = [ pkgs.nix pkgs.python3 ];
-    text          = ''exec python3 "${../bin/eznix-autocomplete.py}" "$@"'';
+    # The shipped plugins are given as the folder the generator looks in: what only some systems
+    # have (kernels, Homebrew, home-manager) is a plugin of its own.
+    text          = ''exec python3 "${../bin/eznix-autocomplete.py}" --plugins-dir "${../plugins}" "$@"'';
   };
 }

@@ -1,0 +1,5 @@
+{
+  "name": "homebrew",
+  "description": "Autocomplete: the names homebrew.brews and homebrew.casks can be filled in from (nix-darwin).",
+  "autocomplete": "homebrew.py"
+}
