@@ -969,7 +969,7 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
         if (parsed.path == '/terminal' and
                 self.headers.get('Upgrade', '').lower() == 'websocket'):
             name = parse_qs(parsed.query).get('session', [''])[0]
-            if _session_from_cookie(self.headers) != SESSION_KEY:
+            if not secrets.compare_digest(_session_from_cookie(self.headers).encode(), SESSION_KEY.encode()):
                 self.send_response(401)
                 self.end_headers()
             elif not _SESSION_NAME.fullmatch(name):

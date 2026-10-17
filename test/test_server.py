@@ -14,6 +14,7 @@ import os
 import re
 import shutil
 import subprocess
+import threading
 import sys
 import tempfile
 import time
@@ -175,6 +176,45 @@ def sessions():
     check('session: until the days are over', ez._session(cookie(token)) is None)
 
 
+def login_limit():
+    """The limit on tries at a login: counted before the password is checked, so tries sent at
+    once cannot all get past it, and per client address, which behind a proxy is the one in
+    X-Forwarded-For and only from a proxy that is trusted. No server needed."""
+    spec = importlib.util.spec_from_file_location('eznix_login', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+
+    passed, lock = [], threading.Lock()
+    def one():
+        if not ez._login_begin('203.0.113.9')[0]:
+            with lock:
+                passed.append(1)
+    threads = [threading.Thread(target=one) for _ in range(100)]
+    for t in threads: t.start()
+    for t in threads: t.join()
+    check('login limit: 100 tries at once, only the first 5 get to the password',
+          len(passed) == ez.LOGIN_MAX_ATTEMPTS, len(passed))
+    check('login limit: and the rest are told how long to wait', 0 < ez._login_begin('203.0.113.9')[0] <= ez.LOGIN_WINDOW_SECONDS)
+    check('login limit: another address is not affected', ez._login_begin('203.0.113.10')[0] == 0)
+    ez._clear_login_failures('203.0.113.9')
+    check('login limit: a login that works forgets the count', ez._login_begin('203.0.113.9')[0] == 0)
+
+    xff = lambda v: {'X-Forwarded-For': v}
+    check('client address: the connection itself, with no proxy listed',
+          ez._client_ip('10.0.0.5', xff('198.51.100.7')) == '10.0.0.5')
+    ez.TRUSTED_PROXIES = {'10.0.0.5', '10.0.0.6'}
+    check('client address: from a listed proxy, the one it says', ez._client_ip('10.0.0.5', xff('198.51.100.7')) == '198.51.100.7')
+    check('client address: not a claim written to the left of what the proxy added',
+          ez._client_ip('10.0.0.5', xff('1.2.3.4, 198.51.100.7')) == '198.51.100.7')
+    check('client address: proxies after each other are skipped',
+          ez._client_ip('10.0.0.5', xff('198.51.100.7, 10.0.0.6')) == '198.51.100.7')
+    check('client address: an entry that is no address is not believed',
+          ez._client_ip('10.0.0.5', xff('198.51.100.7, not-an-address')) == '10.0.0.5')
+    check('client address: nothing said, the proxy itself', ez._client_ip('10.0.0.5', {}) == '10.0.0.5')
+    check('client address: from a connection that is not a listed proxy, the header is ignored',
+          ez._client_ip('192.0.2.1', xff('198.51.100.7')) == '192.0.2.1')
+
+
 def private_keys():
     """The certificate authority's key and the server's are for this user alone, under the
     NixOS service's umask (0002, which shares its other files with the group) as under a
@@ -213,6 +253,7 @@ def private_keys():
 def main():
     terminal_history()
     sessions()
+    login_limit()
     private_keys()
     excludes()
     with tempfile.TemporaryDirectory() as tmp:

@@ -32,6 +32,10 @@ port   = 9090
 # hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
 #                                     # behind a proxy that changes the Host header, add the
 #                                     # page's address too: "https://nix.example.org"
+# trusted_proxies = ["127.0.0.1"]     # a proxy in front of eznix: the failed-login limit is
+#                                     # per address, and without this everyone behind the
+#                                     # proxy counts as one. The client's address is then
+#                                     # read from X-Forwarded-For, which the proxy must set.
 
 # HTTPS: a certificate and its key. (`eznix --generate-ca DIR` makes a pair, and the local
 # authority that signs it; `ca` offers that authority for download on the login page.)

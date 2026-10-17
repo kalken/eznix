@@ -143,6 +143,7 @@ BACKUP_COUNT     = 5
 INTERFACES       = None          # `interfaces`: the network interfaces to be reached through, and no other; []: any
 LISTEN           = []            # `listen_addresses`: the addresses answered on, of those the interfaces have; []: all
 WEB_PORT         = 9090
+TRUSTED_PROXIES  = set()         # addresses whose X-Forwarded-For is believed, for the login limit (_client_ip())
 TRUSTED_HOSTS    = set()         # extra Host names accepted by _valid_host(), and origins by _valid_origin(); "*" accepts any
 CERT_FILE        = None          # HTTPS when both are set
 KEY_FILE         = None
@@ -657,29 +658,44 @@ def _terminal_end(user):
         print(f'[terminal] could not end the shell: {e}', file=sys.stderr)
 
 
-def _login_retry_after(ip):
-    """Seconds until `ip` may attempt to log in again, or 0 if it isn't currently rate-limited.
-    Also prunes failures older than LOGIN_WINDOW_SECONDS so _LOGIN_FAILURES doesn't grow
-    unbounded over a long-running process."""
+def _login_begin(ip):
+    """One step, under one lock: (seconds `ip` has to wait, 0 if it may try; how many tries it
+    has had in the window, this one included). A try is counted here, before the password is
+    checked, and not when it fails: checking a system password takes a couple of seconds
+    (PAM's delay), the server answers requests in parallel, and counting afterwards let any
+    number sent at once all pass the limit before the first of them was counted (2026-10-17).
+    A login that succeeds forgets the count (_clear_login_failures()). Also prunes tries older
+    than LOGIN_WINDOW_SECONDS so _LOGIN_FAILURES doesn't grow unbounded."""
     now = time.time()
     with _LOGIN_LOCK:
         attempts = [t for t in _LOGIN_FAILURES.get(ip, []) if now - t < LOGIN_WINDOW_SECONDS]
-        if attempts:
+        if len(attempts) >= LOGIN_MAX_ATTEMPTS:
             _LOGIN_FAILURES[ip] = attempts
-        else:
-            _LOGIN_FAILURES.pop(ip, None)
-        if len(attempts) < LOGIN_MAX_ATTEMPTS:
-            return 0
-        return max(1, int(LOGIN_WINDOW_SECONDS - (now - attempts[0])))
+            return max(1, int(LOGIN_WINDOW_SECONDS - (now - attempts[0]))), len(attempts)
+        attempts.append(now)
+        _LOGIN_FAILURES[ip] = attempts
+        return 0, len(attempts)
 
 
-def _record_login_failure(ip):
-    """Returns the attempt count within the current window after recording this one, for the
-    [auth] log line in do_POST -- avoids a second lock-protected read just to report it."""
-    with _LOGIN_LOCK:
-        attempts = _LOGIN_FAILURES.setdefault(ip, [])
-        attempts.append(time.time())
-        return len(attempts)
+def _client_ip(peer, headers):
+    """Who a request is from, for the login limit. The address of the connection, unless that
+    is one of `trusted_proxies`: a proxy's clients all arrive from its address, so one person's
+    failed tries would lock the others out, and then the address it says in X-Forwarded-For is
+    used. That header is read from the right, skipping the proxies themselves, since each
+    proxy adds the address it got the request from at the end and whatever stands to the left
+    of that is the client's own claim. Never read from a connection that is not a trusted
+    proxy, where anyone could write it, and an entry that is not an address is not believed."""
+    if peer not in TRUSTED_PROXIES:
+        return peer
+    for part in reversed(headers.get('X-Forwarded-For', '').split(',')):
+        part = part.strip()
+        try:
+            part = str(ipaddress.ip_address(part))
+        except ValueError:
+            return peer
+        if part not in TRUSTED_PROXIES:
+            return part
+    return peer
 
 
 def _clear_login_failures(ip):
@@ -1651,8 +1667,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         if self._body_too_big(parsed):
             return
         if parsed.path == '/login':
-            ip = self.client_address[0]
-            retry_after = _login_retry_after(ip)
+            ip = _client_ip(self.client_address[0], self.headers)
+            retry_after, count = _login_begin(ip)
             if retry_after:
                 print(f'[auth] {ip} rate-limited, retry in {retry_after}s')
                 self._deny(f'Too many failed attempts. Try again in {retry_after}s.')
@@ -1670,7 +1686,6 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 self.send_header('Set-Cookie', _session_cookie(_new_session(username)))
                 self.end_headers()
             else:
-                count = _record_login_failure(ip)
                 print(f'[auth] login failed for {username!r} from {ip} ({count}/{LOGIN_MAX_ATTEMPTS} attempts)')
                 self._deny('Invalid username or password.')
             return
@@ -2671,7 +2686,7 @@ def _bind_to_interface(sock, name):
 def main():
     global FLAKE_DIR, CONFIG_DIR, EXCLUDE, DEFAULT_FILE, STATE_DIR, AUTOCOMPLETE_DIR, WEBROOT
     global BACKUP_DIR, BACKUP_COUNT
-    global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
+    global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
     global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL
@@ -2774,6 +2789,7 @@ def main():
             INTERFACES.append(name)
     WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
     TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
+    TRUSTED_PROXIES = {str(h) for h in cfg.get('trusted_proxies', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
     if args.https and not CERT_FILE:
         # Run by hand there is no module to make the certificate first (see generateCert in

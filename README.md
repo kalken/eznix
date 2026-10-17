@@ -564,6 +564,12 @@ address the browser sent it to. A proxy has to pass the browser's `Host` header 
 (nginx: `proxy_set_header Host $http_host;`). If it can't, add the page's address to `hosts`
 as well, in full: `hosts = ["nix.example.org", "https://nix.example.org"]`.
 
+Failed logins are limited per address (5 in 5 minutes). Behind a proxy everyone arrives from
+the proxy's address, so one person's failed tries would lock the others out: list the proxy in
+`trustedProxies` (`trusted_proxies` in `eznix.toml`) and set `X-Forwarded-For` in it
+(nginx: `proxy_set_header X-Forwarded-For $remote_addr;`). The header is read only from a
+connection that comes from a listed proxy.
+
 ## 📌 In the application menu
 
 On NixOS and with home-manager, eznix can be an entry in the application menu, with

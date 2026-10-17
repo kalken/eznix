@@ -51,6 +51,7 @@ let
     # generateCa), so it is a name the browser will use. Without it a save is refused (403).
     hosts            = cfg.hosts ++ cfg.certNames
                        ++ listenNames;
+    trusted_proxies  = cfg.trustedProxies;
     users            = cfg.users;
     session          = {
       days  = cfg.session.days;
@@ -314,6 +315,13 @@ in
       type        = types.listOf types.str;
       default     = [ ];
       description = "Extra host names requests may be addressed to, such as the server_name of a reverse proxy in front of eznix. If that proxy does not pass the browser's Host header on, add the page's address as well (\"https://nix.example.org\"). [ \"*\" ] accepts any.";
+    };
+
+    trustedProxies = mkOption {
+      type        = types.listOf types.str;
+      default     = [ ];
+      example     = [ "127.0.0.1" ];
+      description = "Addresses of reverse proxies in front of eznix. The limit on failed logins is counted per address, and everyone behind a proxy arrives from the proxy's address, so without this one person's failed tries would lock the others out. For a connection from one of these, the client's address is read from the X-Forwarded-For header, which the proxy has to set; from any other connection that header is ignored.";
     };
 
     users = mkOption {
