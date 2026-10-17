@@ -5,7 +5,7 @@
 # to be the login session: a rebuild modifies /Applications, which macOS only lets a process
 # in the user's own session do (and ask permission for). Login is that user's macOS password.
 #
-# The terminal's job deliberately contains no store path. nix-darwin reloads a job whenever its
+# The terminal's job is not nix-darwin's (see terminalPlist) and deliberately contains no store path. nix-darwin reloads a job whenever its
 # definition changes, and has no "don't restart this" switch, so a job naming a store path
 # would be restarted by every rebuild -- killing the shell the rebuild runs in. It runs
 # /run/current-system/sw/bin/eznix-terminal-start, a script on the system path that holds the
@@ -26,7 +26,7 @@ let
   };
   stateDir = "${home}/.local/state/eznix";
   terminal = { port = cfg.terminalPort; key_file = "${stateDir}/terminal.key"; };
-  label    = "org.nixos.eznix-terminal";      # how nix-darwin names launchd.user.agents.eznix-terminal
+  label    = "org.nixos.eznix-terminal";      # the name nix-darwin gave it as launchd.user.agents.eznix-terminal
 
   common = import ./options.nix {
     inherit lib pkgs cfg packages stateDir;
@@ -41,6 +41,20 @@ let
 
   # A user agent is loaded for whoever logs in at this Mac; only the primary user's does anything.
   onlyFor = ''[ "$(/usr/bin/id -un)" = ${lib.escapeShellArg user} ] || exit 0'';
+  # The terminal's job. nix-darwin does not manage it (see postActivation below): it would
+  # unload and load it again whenever this text differs, which kills the shell a rebuild runs
+  # in, and it has no "leave it running" switch. This text is also kept fixed, whatever the
+  # settings: they are in the script it runs, which is reached through the system path.
+  terminalPlist = pkgs.writeText "${label}.plist" (lib.generators.toPlist { escape = true; } {
+    Label = label;
+    ProgramArguments = [ "/bin/sh" "-c"
+      "while [ ! -x /run/current-system/sw/bin/eznix-terminal-start ]; do sleep 1; done; exec /run/current-system/sw/bin/eznix-terminal-start" ];
+    EnvironmentVariables.PATH = path;
+    RunAtLoad = true;
+    KeepAlive.SuccessfulExit = false;
+    StandardOutPath   = "${home}/Library/Logs/eznix-terminal.log";
+    StandardErrorPath = "${home}/Library/Logs/eznix-terminal.log";
+  });
   path    = "/run/current-system/sw/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin";
 in
 {
@@ -80,6 +94,24 @@ in
     # nix-darwin only runs the activation scripts it knows by name; a custom name is never run.
     system.activationScripts.postActivation.text = common.configDirScript + ''
       chown -R ${lib.escapeShellArg user} ${lib.escapeShellArg cfg.configDir}
+    '' + ''
+      # The terminal's job, installed here and not through launchd.user.agents so that a rebuild
+      # never reloads it (see terminalPlist). The file is kept up to date; a job that is loaded
+      # is left running, and the new text counts from its next load, as with
+      # restartIfChanged = false on NixOS. Loaded only when it is not.
+      agent=${lib.escapeShellArg "${home}/Library/LaunchAgents/${label}.plist"}
+      uid=$(id -u ${lib.escapeShellArg user})
+      ${if cfg.terminal then ''
+        sudo --user=${lib.escapeShellArg user} -- mkdir -p "$(dirname "$agent")" ${lib.escapeShellArg "${home}/Library/Logs"}
+        cmp -s ${terminalPlist} "$agent" || sudo --user=${lib.escapeShellArg user} -- cp -f ${terminalPlist} "$agent"
+        launchctl asuser "$uid" sudo --user=${lib.escapeShellArg user} -- launchctl list ${label} >/dev/null 2>&1 \
+          || launchctl asuser "$uid" sudo --user=${lib.escapeShellArg user} -- launchctl load -w "$agent"
+      '' else ''
+        if [ -e "$agent" ]; then
+          launchctl asuser "$uid" sudo --user=${lib.escapeShellArg user} -- launchctl unload "$agent" || true
+          sudo --user=${lib.escapeShellArg user} -- rm -f "$agent"
+        fi
+      ''}
     '' + lib.optionalString cfg.trustCert ''
       # trustCert. The authority is made here as well as by the editor's job, as the user, so
       # that there is one to trust at the very rebuild that switches this on. Firefox gets it
@@ -120,23 +152,6 @@ in
       # The logs are in the user's own Library, not /tmp, which every account on the Mac can read.
       StandardOutPath   = "${home}/Library/Logs/eznix.log";
       StandardErrorPath = "${home}/Library/Logs/eznix.log";
-    };
-
-    launchd.user.agents.eznix-terminal = lib.mkIf cfg.terminal {
-      serviceConfig = {
-        # Nothing in this job may ever change, whatever the settings or the release: nix-darwin
-        # reloads a job whose definition differs, and that kills the shell a rebuild runs in. So it
-        # only waits for, and runs, a script that is reached through the system path (what that
-        # script says is free to change); the port, key file, folder and shell are in the script.
-        # A change to this text is a restart of every user's terminal at their next rebuild.
-        ProgramArguments = [ "/bin/sh" "-c"
-          "while [ ! -x /run/current-system/sw/bin/eznix-terminal-start ]; do sleep 1; done; exec /run/current-system/sw/bin/eznix-terminal-start" ];
-        EnvironmentVariables.PATH = path;
-        RunAtLoad         = true;
-        KeepAlive.SuccessfulExit = false;
-        StandardOutPath   = "${home}/Library/Logs/eznix-terminal.log";
-        StandardErrorPath = "${home}/Library/Logs/eznix-terminal.log";
-      };
     };
   };
 }

@@ -211,7 +211,10 @@ false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch
 job whenever its definition changes, so the terminal's job contains no store path and no setting: it
 waits for and runs `/run/current-system/sw/bin/eznix-terminal-start` (a script in `systemPackages`
 that holds the port, key file, folder and shell), so a changed setting is a changed script and not a
-changed job (since 2026-10-17; the settings were arguments in the job's text, and changing one reloaded it). Don't put anything that varies per build into
+changed job, and nix-darwin does not manage the job at all: `postActivation` copies its plist into
+`~/Library/LaunchAgents` and loads it only when it is not loaded (`terminalPlist`), the macOS
+counterpart of `restartIfChanged = false`, so not even a nix-darwin update that renders plists
+differently reloads it; a changed file counts from its next load (since 2026-10-17; the settings were arguments in the job's text, and changing one reloaded it). Don't put anything that varies per build into
 that job. The page instead offers a restart when the running terminal differs from the
 current one. A terminal has one checksum (`STAMP`) over its program file and how it was
 started (port/key file/dir/shell); `_terminal_for()` in the server computes the same thing
@@ -226,8 +229,9 @@ watches, would change with every commit.
 in `/tmp`, readable by every account. Changing the terminal's job for that made nix-darwin reload it on
 the first rebuild, which killed the eznix shell the user ran the rebuild in and left the switch half done
 (the terminal agent unloaded, old plists on disk). Run again from Terminal.app it went through ("that
-works"). The job is now fixed text (see "A terminal is never restarted by a rebuild"); any edit to that text
-restarts everyone's terminal once, so say so before committing it.
+works"). The job is now outside nix-darwin's hands (see "A terminal is never restarted by a rebuild"). The first
+rebuild that moved it there had to be run from Terminal.app, since nix-darwin removed the old job and
+that killed the eznix shell it ran in (the user always rebuilds in eznix's terminal).
 
 **Run by hand, eznix starts its own terminal** as a child (`_start_terminal_for_self()`),
 writing the key first, registered for whoever logs in (`TERMINALS['*']`).
