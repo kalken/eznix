@@ -3648,7 +3648,9 @@ function renderArrayField(container, key, arr, path) {
   // showed no way to add to it at all, and the user asked why ("i need a way to add").
   // The list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
   // The words became a "+" the day after they went under every list (_addButton()).
-  if (!isPkgArrayPath(path) && !enumOpts) {
+  // Only while the list is empty again since 2026-10-18 (the user's wish): with items in it, Enter
+  // in a plain value and "Add item" on an item's menu add the next one.
+  if (!isPkgArrayPath(path) && !enumOpts && !arr.length) {
     const hint = document.createElement('div');
     hint.className = 'list-add';
     hint.appendChild(_addButton('Add item', addItem));
