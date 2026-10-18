@@ -1093,7 +1093,20 @@ was a plain list until Autocomplete was pressed once, and had its chips again af
 works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
-the user. Options that are not `visible` (how `mkRemovedOptionModule` and
+the user. Of several configurations it takes the one named like the machine (for home-manager
+`user@host` or `user`), else the first; since 2026-10-18, at the user's wish, the first also
+when the machine's own entry's options do not evaluate (`pick_options()`), and the options are
+evaluated before the plugins and packages so that all three come from the one host. A host
+named on the command line has no fallback. Tried on a throwaway flake with a host named like
+this Mac that imports a missing file: `options` and `all` fall back, a named host and two
+broken ones fail as before. A fallback for `packages` alone was not built.
+The suggestions' folder is shared by everyone in `users` on NixOS (2775, no sticky bit), so
+the generator never writes or reads there through a link (since 2026-10-18, found in a
+review): `.generating` is removed and made with `O_EXCL | O_NOFOLLOW`, a file is written
+beside its name under a `mkstemp` name and moved over it, and `choices.json` is read with
+`O_NOFOLLOW`. Before, a link another user put at `.generating` (or at the temporary file's
+name, the process number) had the generator overwrite and open up the file it pointed at.
+In `test_server.py` (`generator_links()`, which fails on the old code); not on NixOS. Options that are not `visible` (how `mkRemovedOptionModule` and
 `mkRenamedOptionModule` declare theirs) are left out as the NixOS manual leaves them out,
 since 2026-10-15: `programs.eznix.browser` was still offered after its removal, among
 1,735 such options of 26,350 on NixOS. The user confirmed the fix on Linux after a rebuild

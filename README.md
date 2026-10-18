@@ -340,6 +340,11 @@ The command the modules install already knows your flake. It is also a package o
 usable on any flake: `eznix-autocomplete --flake DIR --output DIR` (`--type nixos`, `darwin` or
 `home` when it can't tell).
 
+In a flake with several configurations it uses the one named like this machine, and the
+first one when none is, or when that one's options cannot be evaluated (a
+`hardware-configuration.nix` that is not in the flake, say). Name one to use that and no
+other: `eznix-autocomplete all NAME`.
+
 ## 🔑 Running commands as root
 
 Nothing in eznix is root, so a command that needs it asks through `sudo`. How much it asks is

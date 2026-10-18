@@ -267,6 +267,38 @@ def generator_plugins():
                   SYSTEMS=('darwin',), generate=lambda ctx: {'choices': {'a': 1}}), 'config': {}}, ctx_args) is None)
 
 
+def generator_links():
+    """The suggestions' folder is shared on NixOS: a link another user puts at a name the
+    generator writes or reads is replaced or refused, never followed. No nix needed."""
+    import stat
+    spec = importlib.util.spec_from_file_location('eznix_autocomplete_links', os.path.join(ROOT, 'bin', 'eznix-autocomplete.py'))
+    gen = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gen)
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(f'{d}/out')
+        with open(f'{d}/victim', 'w') as f:
+            f.write('{"mine": "secret"}')
+        os.chmod(f'{d}/victim', 0o600)
+        gen.OUTPUT_DIR = f'{d}/out'
+        for name in ('.generating', 'choices.json', 'options.json'):
+            os.symlink(f'{d}/victim', f'{d}/out/{name}')
+        gen.mark_running()
+        gen.write_json('options.json', [])
+        gen.write_choices({'x.y': {'values': [1]}})
+        with open(f'{d}/victim') as f:
+            untouched = f.read() == '{"mine": "secret"}'
+        written = {n: (os.path.islink(f'{d}/out/{n}'), oct(stat.S_IMODE(os.stat(f'{d}/out/{n}').st_mode)))
+                   for n in ('.generating', 'choices.json', 'options.json')}
+        check('generator: a link at a name it writes is replaced, the file it points at left alone',
+              untouched and stat.S_IMODE(os.stat(f'{d}/victim').st_mode) == 0o600
+              and all(v == (False, '0o664') for v in written.values()), written)
+        with open(f'{d}/out/choices.json') as f:
+            check('generator: and what a link at choices.json pointed at is not read into it',
+                  json.load(f) == {'x.y': {'values': [1]}})
+        check('generator: nothing is left behind beside the files',
+              sorted(os.listdir(f'{d}/out')) == ['.generating', 'choices.json', 'options.json'], os.listdir(f'{d}/out'))
+
+
 def private_keys():
     """The certificate authority's key and the server's are for this user alone, under the
     NixOS service's umask (0002, which shares its other files with the group) as under a
@@ -360,6 +392,7 @@ def main():
     sessions()
     login_limit()
     generator_plugins()
+    generator_links()
     private_keys()
     excludes()
     with tempfile.TemporaryDirectory() as tmp:
