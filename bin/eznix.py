@@ -287,18 +287,27 @@ def _wanted_san_strings(extra_sans=None):
     return result
 
 
-def _write_private(path, data):
+def _write_private(path, data, mode=0o600):
     """Write a private key readable by this user alone, whatever the umask is and whether the
     file was there before: the NixOS service runs with UMask 0002 so that its other files are
     shared with the group, and a key made under it was readable and writable by every user in
     `users` (found 2026-10-16). The mode is also set on a file that already exists, so a key
-    made by an earlier version is closed by the next start."""
-    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    made by an earlier version is closed by the next start.
+
+    A certificate goes through here too, as 0644 (_write_public()): readable by all, written by
+    this user alone. Under that UMask it was 0664, and any user in `users` could put an
+    authority of their own in ca.pem, which trustCert then added to the other users' browsers
+    and /download-ca handed out (found in review, 2026-10-18)."""
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, mode)
     try:
-        os.fchmod(fd, 0o600)
+        os.fchmod(fd, mode)
         os.write(fd, data)
     finally:
         os.close(fd)
+
+
+def _write_public(path, data):
+    _write_private(path, data, 0o644)
 
 
 def _generate_server_cert(out_dir, ca_key, ca_cert, extra_sans=None):
@@ -315,8 +324,7 @@ def _generate_server_cert(out_dir, ca_key, ca_cert, extra_sans=None):
     )
     _write_private(os.path.join(out_dir, 'localhost-key.pem'),
                    srv_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
-    with open(os.path.join(out_dir, 'localhost.pem'), 'wb') as f:
-        f.write(srv_cert.public_bytes(serialization.Encoding.PEM))
+    _write_public(os.path.join(out_dir, 'localhost.pem'), srv_cert.public_bytes(serialization.Encoding.PEM))
 
 
 def generate_local_ca(out_dir, extra_sans=None):
@@ -357,14 +365,15 @@ def generate_local_ca(out_dir, extra_sans=None):
         )
         _write_private(ca_key_path,
                        ca_key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
-        with open(ca_cert_path, 'wb') as f:
-            f.write(ca_cert.public_bytes(serialization.Encoding.PEM))
+        _write_public(ca_cert_path, ca_cert.public_bytes(serialization.Encoding.PEM))
         ca_generated = True
     else:
-        # Keys made before they were written closed (see _write_private()) are closed here.
-        for k in (ca_key_path, os.path.join(out_dir, 'localhost-key.pem')):
+        # Keys and certificates made before they were written closed (see _write_private())
+        # are closed here.
+        for k, mode in ((ca_key_path, 0o600), (os.path.join(out_dir, 'localhost-key.pem'), 0o600),
+                        (ca_cert_path, 0o644), (cert_path, 0o644)):
             try:
-                os.chmod(k, 0o600)
+                os.chmod(k, mode)
             except OSError:
                 pass
         with open(ca_key_path, 'rb') as f:
@@ -404,8 +413,7 @@ def generate_self_signed_cert(cert_path, key_path):
         serialization.PrivateFormat.TraditionalOpenSSL,
         serialization.NoEncryption(),
     ))
-    with open(cert_path, 'wb') as f:
-        f.write(cert.public_bytes(serialization.Encoding.PEM))
+    _write_public(cert_path, cert.public_bytes(serialization.Encoding.PEM))
 
 
 def check_pam(username, password):
@@ -724,11 +732,22 @@ def _flatten_stem(rel):
     return '--'.join(folders + [os.path.splitext(name)[0]])
 
 
+def _closed_folder(path):
+    """Make a folder of eznix's own (the backups) that only this user writes in, whatever the
+    umask: under the NixOS service's UMask 0002 it was 0775, and any user in `users` could put
+    files of their own among the backups. One made like that before is closed here too."""
+    os.makedirs(path, mode=0o755, exist_ok=True)
+    try:
+        os.chmod(path, 0o755)
+    except OSError:
+        pass
+
+
 def backup_config(path):
     """Copy path into BACKUP_DIR, pruning to BACKUP_COUNT newest backups sharing its stem."""
     if BACKUP_COUNT <= 0 or not os.path.exists(path):
         return
-    os.makedirs(BACKUP_DIR, exist_ok=True)
+    _closed_folder(BACKUP_DIR)
     rel = os.path.relpath(path, os.path.realpath(CONFIG_DIR))
     stem = _flatten_stem(rel)
     ts = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
@@ -738,6 +757,7 @@ def backup_config(path):
         dest = os.path.join(BACKUP_DIR, f'{stem}-{ts}-{i}.json')
         i += 1
     shutil.copy2(path, dest)
+    os.chmod(dest, 0o644)
     prefix = f'{stem}-'
     backups = [f for f in os.listdir(BACKUP_DIR) if f.startswith(prefix) and f.endswith('.json')]
     backups.sort(key=lambda f: os.path.getmtime(os.path.join(BACKUP_DIR, f)), reverse=True)
@@ -2536,9 +2556,16 @@ def _valid_origin(headers):
     pass. A proxy that hands on another Host than the browser's is the one case where the two
     differ, and for it `hosts` may hold the page's whole origin ("https://nix.example.org").
 
-    No Origin at all is let through: that is curl or a script, which need no page to trick."""
+    No Origin at all is let through: that is curl or a script, which need no page to trick.
+
+    '*' in `hosts` does not switch this off. It is for a machine whose address cannot be known
+    in advance (an installer on DHCP), and this compares the Origin with whatever Host the
+    request came with, so it needs no name to be known. Until 2026-10-18 '*' skipped it, and on
+    such a machine a page on another port could save files and open the terminal with the
+    user's cookie (found in review). Behind a proxy that changes Host, the page's origin is
+    listed in `hosts`, with '*' as without."""
     origin = headers.get('Origin')
-    if origin is None or '*' in TRUSTED_HOSTS:
+    if origin is None:
         return True
     origin = origin.strip().lower().rstrip('/')
     if origin.partition('://')[2] == headers.get('Host', '').strip().lower() != '':

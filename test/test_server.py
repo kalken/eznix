@@ -287,13 +287,15 @@ def private_keys():
             check('keys: under umask 0002 both private keys are 0600',
                   mode(d, 'ca-key.pem') == 0o600 and mode(d, 'localhost-key.pem') == 0o600,
                   {f: oct(mode(d, f)) for f in os.listdir(d)})
-            check('keys: and the certificates stay readable', mode(d, 'ca.pem') & 0o044 == 0o044
-                  and mode(d, 'localhost.pem') & 0o044 == 0o044)
-            os.chmod(os.path.join(d, 'ca-key.pem'), 0o664)
-            os.chmod(os.path.join(d, 'localhost-key.pem'), 0o664)
+            check('keys: and the certificates are readable by all and writable by this user alone',
+                  mode(d, 'ca.pem') == 0o644 and mode(d, 'localhost.pem') == 0o644,
+                  {f: oct(mode(d, f)) for f in os.listdir(d)})
+            for f in ('ca-key.pem', 'localhost-key.pem', 'ca.pem', 'localhost.pem'):
+                os.chmod(os.path.join(d, f), 0o664)
             ez.generate_local_ca(d)
-            check('keys: ones made open by an earlier version are closed by the next start',
-                  mode(d, 'ca-key.pem') == 0o600 and mode(d, 'localhost-key.pem') == 0o600)
+            check('keys: ones made open by an earlier version are closed by the next start, certificates too',
+                  mode(d, 'ca-key.pem') == 0o600 and mode(d, 'localhost-key.pem') == 0o600
+                  and mode(d, 'ca.pem') == 0o644 and mode(d, 'localhost.pem') == 0o644)
             os.chmod(os.path.join(d, 'localhost-key.pem'), 0o664)
             ez.generate_local_ca(d, extra_sans=['another.example'])
             check('keys: and a server key made again for other names is closed',
@@ -302,8 +304,59 @@ def private_keys():
         os.umask(was)
 
 
+def backups_closed():
+    """The backups of single files are eznix's alone to write, under the NixOS service's umask
+    (0002) as under a private one, and a folder made open before is closed. No server needed."""
+    import stat
+    spec = importlib.util.spec_from_file_location('eznix_backups', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    mode = lambda p: stat.S_IMODE(os.stat(p).st_mode)
+    was = os.umask(0o002)
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            ez.CONFIG_DIR, ez.BACKUP_DIR, ez.BACKUP_COUNT = f'{d}/conf', f'{d}/backups', 5
+            os.makedirs(ez.CONFIG_DIR)
+            with open(f'{d}/conf/a.json', 'w') as f:
+                f.write('{}')
+            os.chmod(f'{d}/conf/a.json', 0o664)
+            ez.backup_config(f'{d}/conf/a.json')
+            made = [f'{d}/backups/{n}' for n in os.listdir(f'{d}/backups')]
+            check('backups: under umask 0002 the folder is 0755 and a backup 0644',
+                  mode(f'{d}/backups') == 0o755 and made and all(mode(p) == 0o644 for p in made),
+                  [oct(mode(f'{d}/backups'))] + [oct(mode(p)) for p in made])
+            os.chmod(f'{d}/backups', 0o775)
+            ez.backup_config(f'{d}/conf/a.json')
+            check('backups: a folder made open before is closed by the next backup', mode(f'{d}/backups') == 0o755)
+    finally:
+        os.umask(was)
+
+
+def origin_check():
+    """Whether a request came from eznix's own page: its Origin names the address the request
+    was sent to. '*' in hosts leaves the name open, not this. No server needed."""
+    spec = importlib.util.spec_from_file_location('eznix_origin', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    req = lambda origin, host='10.0.0.7:9090': {'Host': host, **({'Origin': origin} if origin else {})}
+    for hosts in (set(), {'*'}):
+        ez.TRUSTED_HOSTS = hosts
+        said = f'hosts = {sorted(hosts)}'
+        check(f'origin ({said}): the page itself passes, by address or by name',
+              ez._valid_origin(req('http://10.0.0.7:9090'))
+              and ez._valid_origin(req('https://box.lan:9090', 'box.lan:9090')))
+        check(f'origin ({said}): another port of the same host does not',
+              not ez._valid_origin(req('http://10.0.0.7:8080')) and not ez._valid_origin(req('null')))
+        check(f'origin ({said}): no Origin (curl, a script) passes', ez._valid_origin(req(None)))
+    ez.TRUSTED_HOSTS = {'*', 'https://nix.example.org'}
+    check("origin: behind a proxy that changes Host, the page's origin listed beside '*' passes",
+          ez._valid_origin(req('https://nix.example.org', '127.0.0.1:9090')))
+
+
 def main():
     terminal_history()
+    backups_closed()
+    origin_check()
     sessions()
     login_limit()
     generator_plugins()

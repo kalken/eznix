@@ -165,6 +165,14 @@ writable by every user in `users`, which with `trustCert` is a key that makes ce
 the other users' browsers trust. Mac and home-manager were `0600` only by their start
 scripts' `umask 077`. A key made earlier is closed at the next start. In `test_server.py`
 (`private_keys()`, which needs `cryptography` and says so when it is not there).
+Since 2026-10-18 the certificates are written `0644` the same way (`_write_public()`), and
+the backup folders (`backups/`, `system-backups/`) are `0755` with their files `0644`
+(`_closed_folder()`, and in the system plugin): under that UMask they were `0664` and
+`0775`, so a user in `users` could put an authority of their own in `ca.pem`, which
+`trustCert` then added to the other users' browsers, or plant a backup. Found in a review,
+by reading; in `test_server.py` (`private_keys()`, run with a Nix Python that has
+`cryptography`, and `backups_closed()`), not on a NixOS machine. Backups made before keep
+their mode until they are pruned.
 
 **A page that reconnects gets the terminal's history back**, up to 5000 lines: the terminal
 keeps each line that scrolls off the top of its record of the screen (`_VirtualScreen`,
@@ -374,7 +382,10 @@ request was sent to, port included. The cookie's `SameSite=Strict` does not cove
 a page on another port of the same host counts as the same site. `hosts` is deliberately not
 used for it, except for an entry that is a whole origin (`"https://name"`, for a proxy that
 changes `Host`): the modules put the certificate's names in `hosts`, so matching host names
-would let any port of the protected host through. `/logout` is a GET and is not
+would let any port of the protected host through. `"*"` in `hosts` opens the host-name
+check only, not this one (since 2026-10-18; it skipped both, so on the installer a page on
+another port could save and open the terminal); `origin_check()` in `test_server.py`.
+The terminal program compares its key in constant time everywhere, as of the same day. `/logout` is a GET and is not
 checked: a page on another port of the host could log the user out, which also ends their
 shell (`terminal_end_on_logout`). Any other GET that changes something would need the check.
 

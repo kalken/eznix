@@ -76,7 +76,14 @@ def setup(api):
         (its name, how many files it holds), or None when backups are switched off."""
         if keep <= 0:
             return None
-        os.makedirs(backup_dir, exist_ok=True)
+        # Written by eznix alone, whatever the umask: under the NixOS service's UMask 0002 the
+        # folder was 0775 and the zips 0664, so any user in `users` could put a "backup" of
+        # their own there for someone else to restore (2026-10-18).
+        os.makedirs(backup_dir, mode=0o755, exist_ok=True)
+        try:
+            os.chmod(backup_dir, 0o755)
+        except OSError:
+            pass
         stamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
         dest, i = os.path.join(backup_dir, f'{PREFIX}{stamp}.zip'), 1
         while os.path.exists(dest):
@@ -86,6 +93,7 @@ def setup(api):
             for full, arcname in tree_files():
                 zf.write(full, arcname)
                 count += 1
+        os.chmod(dest, 0o644)
         for old in [b['name'] for b in listing()][keep:]:
             try:
                 os.remove(os.path.join(backup_dir, old))

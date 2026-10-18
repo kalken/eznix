@@ -983,7 +983,7 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
             # /api/v1/ping can learn this running process's STAMP whether or not anyone has the
             # terminal panel open. (It used to travel in the WebSocket's 'ready' message as
             # well; a page with the panel closed then never learned it.)
-            if _session_from_cookie(self.headers) == SESSION_KEY:
+            if secrets.compare_digest(_session_from_cookie(self.headers).encode(), SESSION_KEY.encode()):
                 data = json.dumps({'hash': STAMP}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
@@ -1003,7 +1003,7 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
         # it, and _session_reader() then tears the session down and tells any tab still attached.
         if urlparse(self.path).path != '/terminal/end':
             self.send_error(404); return
-        if _session_from_cookie(self.headers) != SESSION_KEY:
+        if not secrets.compare_digest(_session_from_cookie(self.headers).encode(), SESSION_KEY.encode()):
             self.send_response(401); self.end_headers(); return
         with _SESSION_LOCK:
             sessions = list(_SESSIONS.values())
