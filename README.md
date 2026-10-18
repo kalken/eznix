@@ -657,6 +657,14 @@ settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
 - **Without Nix**, `python3 bin/eznix.py --flake DIR --password PW` from a checkout does what
   `nix run` does. Run by hand, eznix and its terminal run as you and keep their data in
   `~/.local/state/eznix`; add `--https` for HTTPS with a certificate eznix makes itself.
+- **eznix needs a flake.** Systems configured without one (only `/etc/nixos/configuration.nix`
+  and channels) are not supported: the suggestions are read from the flake's
+  `nixosConfigurations` (or `darwinConfigurations`, `homeConfigurations`), and a system export
+  is the flake as a whole, so without one there is nothing for either to work on. The NixOS
+  Quick Start turns such a system into a flake without losing anything: the template keeps
+  your `configuration.nix` and adds eznix beside it (see
+  [Migrating from configuration.nix](#-migrating-from-configurationnix) to move it into the
+  editor later).
 - **The configuration is called `default`** in the templates, so there is no host name to
   fill in; that is why the rebuild commands end in `#default`. The quotes around the flake
   path matter in some shells (zsh with `extendedglob`), where a bare `#` is part of a pattern.
