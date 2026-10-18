@@ -351,7 +351,7 @@ in
     passwordFile = mkOption {
       type        = types.nullOr types.path;
       default     = null;
-      description = "A file holding the password to log in with, read when eznix starts.";
+      description = "A file holding the password to log in with, read when eznix starts, so the password stays out of the Nix store; a secret from sops-nix or agenix works (`config.sops.secrets.NAME.path`), as long as the user eznix runs as can read it. Give it as a string (\"/home/you/.config/eznix/password\"), not a path inside the flake (./password): a flake is copied into the Nix store whole, where every account on the machine can read it.";
     };
 
     terminal = mkOption {

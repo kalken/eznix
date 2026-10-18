@@ -265,7 +265,9 @@ services.eznix = {
 Two user services, running as you. It edits your home-manager flake
 (`~/.config/home-manager`), and rebuilding is `home-manager switch`, with no root involved.
 You log in with the password in `passwordFile`; system passwords (`users`) are for NixOS and
-macOS.
+macOS. Write the path as a string, as above, and not as a path in the flake (`./password`):
+a flake is copied into the Nix store, where every account can read it. A secret from
+sops-nix or agenix works too (`config.sops.secrets.NAME.path`).
 
 ## 🔁 Migrating from configuration.nix
 
