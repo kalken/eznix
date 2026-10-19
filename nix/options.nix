@@ -48,7 +48,7 @@ let
     listen_addresses = if cfg.listenAddresses == [ ] then null else cfg.listenAddresses;
     port             = cfg.port;
     # The address itself, when it is one in particular: the certificate is made for it (see
-    # generateCa), so it is a name the browser will use. Without it a save is refused (403).
+    # generateCa), so it is a name the browser will use. Without it every request by that name is refused (403).
     hosts            = cfg.hosts ++ cfg.certNames
                        ++ listenNames;
     trusted_proxies  = cfg.trustedProxies;
@@ -317,7 +317,7 @@ in
     hosts = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "Extra host names requests may be addressed to, such as the server_name of a reverse proxy in front of eznix. If that proxy does not pass the browser's Host header on, add the page's address as well (\"https://nix.example.org\"). [ \"*\" ] accepts any.";
+      description = "Extra host names requests may be addressed to, such as the server_name of a reverse proxy in front of eznix. If that proxy does not pass the browser's Host header on, add the page's address as well (\"https://nix.example.org\"). [ \"*\" ] accepts any, which also lets in a website that points its own name at this machine; an address needs no entry, and this machine's own name is added by itself.";
     };
 
     trustedProxies = mkOption {
