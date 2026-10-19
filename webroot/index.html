@@ -237,6 +237,7 @@ networking.hostName = "myhost";</pre>
 //     'dirty'  (dirty) whenever "are there unsaved changes" has been re-checked
 //     'theme'  a theme's stylesheets have finished loading
 //     'ping'   (data) every answer to the periodic GET /api/v1/ping
+//     'empty'  (el) the editor has no files and shows what to do instead: a line may be added to el
 //     'terminal'  ({ el, session, run, onExit }) asks for a terminal of its own in `el`; heard by
 //              the terminal panel when there is one (eznix.listens('terminal')), see there
 const eznix = {
@@ -2932,13 +2933,20 @@ function renderEditor() {
   if (!activeFile) {
     const empty = document.createElement('div');
     empty.className = 'editor-empty-state';
-    empty.innerHTML = 'No configuration files yet.<br>Right-click here (or the tab bar above) to create your first one.';
+    empty.innerHTML = 'No configuration files yet.<br>Right-click here for a new file or to import nix/json.';
     area.appendChild(empty);
+    // A plugin can add a line of its own (the system plugin: importing a whole system).
+    eznix.emit('empty', empty);
     area.oncontextmenu = e => {
-      showContextMenu(e, _menu({ add: [
-        { label: 'New file', onclick: () => createFile() },
-        { label: 'New folder', onclick: () => createFolder() },
-      ] }));
+      showContextMenu(e, _menu({
+        add: [
+          { label: 'New file', onclick: () => createFile() },
+          { label: 'New folder', onclick: () => createFolder() },
+        ],
+        transfer: [
+          { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
+        ],
+      }));
     };
     return;
   }
@@ -4859,7 +4867,10 @@ function setImportExample(el) {
 function showImportModal(targetFile) {
   const ta = document.getElementById('import-textarea');
   ta.value = '';
-  document.getElementById('import-target-file').value = (typeof targetFile === 'string' && targetFile) || activeFile || '';
+  const target = document.getElementById('import-target-file');
+  target.value = (typeof targetFile === 'string' && targetFile) || activeFile || '';
+  target.classList.remove('input-error');
+  target.oninput = () => target.classList.remove('input-error');
   _importClearError();
   document.getElementById('import-modal').classList.remove('hidden');
 }
@@ -4966,6 +4977,15 @@ function doImport() {
     return;
   }
   const rawName = document.getElementById('import-target-file').value.trim();
+  // With no file open there is nothing to fall back on: say so, at the field, instead of
+  // doing nothing (which is what Import did on an empty editor).
+  if (!rawName && !activeFile) {
+    const field = document.getElementById('import-target-file');
+    _importShowError('Choose the file to import into, e.g. configuration.json.');
+    field.classList.add('input-error');
+    field.focus();
+    return;
+  }
   const targetName = rawName ? _normalizeFileName(rawName) : activeFile;
   if (targetName === null) return; // _normalizeFileName already reported the error
 

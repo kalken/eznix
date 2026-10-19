@@ -188,6 +188,17 @@ async function showSystemMenu(event) {
   showContextMenu(anchor, items, { triggerEl: btn });
 }
 
+// With no files at all, the editor says so; a whole system is the other way to start.
+eznix.on('empty', el => {
+  const line = document.createElement('div');
+  const link = document.createElement('a');
+  link.href = '#';
+  link.textContent = 'System \u25b8 Import';
+  link.onclick = e => { e.preventDefault(); importSystem(); };
+  line.append('A whole system can be imported through ', link, '.');
+  el.appendChild(line);
+});
+
 eznix.on('init', () => {
   const input = document.createElement('input');
   input.type = 'file'; input.id = 'system-import-input'; input.accept = '.zip';
