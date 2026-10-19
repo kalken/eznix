@@ -129,6 +129,8 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
 <div class="tab-bar-row">
   <div class="tab-bar" id="tab-bar"></div>
   <div class="tab-bar-actions">
+    <!-- Between the buttons addButton('tabs') puts in front and Search (the user, 2026-10-19). -->
+    <div class="header-sep"></div>
     <button class="btn" id="search-toggle-btn" onclick="toggleSearchPanel()" data-tooltip="Search option paths and values (Ctrl+F)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
   </div>
 </div>

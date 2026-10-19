@@ -43,6 +43,9 @@ body {
    so a page without plugins has no line leading its buttons. */
 .header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
 .header-actions .btn ~ .header-sep { display: block; }
+/* The same line before Search in the tab bar, when a button there is shown (Documents and the
+   files' menus are hidden until the flake has files of their kind). */
+.tab-bar-actions .btn:not(.hidden) ~ .header-sep { display: block; }
 /* The same line between the two groups on the left, which is always there. */
 .header-sep-shown { display: block; }
 
