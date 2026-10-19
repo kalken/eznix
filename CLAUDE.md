@@ -52,7 +52,7 @@ live when it was not. If in doubt, see what holds the port (`lsof -nP -iTCP:9690
 http://127.0.0.1:9690, password `eznix`. eznix starts its own terminal there (port 9691), so
 restarting the server restarts the shell too.
 
-To fill in suggestions, press Autocomplete (in the tab bar, beside Search): run from a checkout it types
+To fill in suggestions, press Autocomplete in the header: run from a checkout it types
 `python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the
 terminal (`_autocomplete_command()`).
 
@@ -1136,7 +1136,7 @@ In `test_server.py` (`generator_links()`, which fails on the old code); not on N
 `mkRenamedOptionModule` declare theirs) are left out as the NixOS manual leaves them out,
 since 2026-10-15: `programs.eznix.browser` was still offered after its removal, among
 1,735 such options of 26,350 on NixOS. The user confirmed the fix on Linux after a rebuild
-that brought the new generator, and Autocomplete. Since 2026-10-10 there is an Autocomplete button for it (in the header, in the tab bar beside Search since 2026-10-19), on the user's wish,
+that brought the new generator, and Autocomplete. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
 which only types that command into the terminal (it is part of `terminal-panel/`, so there is
 none without a terminal); before that the templates carried it as one of their buttons.
 It is there in install mode as well since 2026-10-13 (it was left out there, and the

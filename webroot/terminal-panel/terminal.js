@@ -832,7 +832,7 @@ function _spinAutocomplete(running, stamp) {
   btn.disabled = busy;
 }
 if (_TERM_CONFIG.autocomplete) {
-  eznix.addButton('tabs', {
+  eznix.addButton('header', {
     id: 'autocomplete-btn',
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
     html: _RELOAD_ICON + 'Autocomplete',
