@@ -390,32 +390,6 @@ def generate_local_ca(out_dir, extra_sans=None):
     return ca_generated, srv_generated
 
 
-def generate_self_signed_cert(cert_path, key_path):
-    if not _CRYPTO:
-        sys.exit('error: --generate-cert requires the cryptography package (pip install cryptography)')
-    key = _rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'localhost')])
-    cert = (x509.CertificateBuilder()
-        .subject_name(name)
-        .issuer_name(name)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(datetime.datetime(2000, 1, 1, tzinfo=datetime.timezone.utc))
-        .not_valid_after(datetime.datetime(9999, 12, 31, 23, 59, 59, tzinfo=datetime.timezone.utc))
-        .add_extension(x509.SubjectAlternativeName([
-            x509.DNSName('localhost'),
-            x509.IPAddress(ipaddress.IPv4Address('127.0.0.1')),
-        ]), critical=False)
-        .sign(key, hashes.SHA256())
-    )
-    _write_private(key_path, key.private_bytes(
-        serialization.Encoding.PEM,
-        serialization.PrivateFormat.TraditionalOpenSSL,
-        serialization.NoEncryption(),
-    ))
-    _write_public(cert_path, cert.public_bytes(serialization.Encoding.PEM))
-
-
 def check_pam(username, password):
     if _PAM is None:
         return False
