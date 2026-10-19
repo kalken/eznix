@@ -546,8 +546,8 @@ domain, and as `NAME.local`), on NixOS and macOS, and so are the addresses in
 
 - opened by its address (`https://192.168.1.2:9090`), eznix works, and the browser warns
   about the certificate each time. That is all a machine with an address from DHCP needs.
-- opened by a host name that is not listed, saving is refused, and the page says which
-  name to add.
+- opened by a host name that is not listed, eznix answers with nothing but a line saying
+  which name to add. That keeps out a website that points its own name at your machine.
 
 An address in `listenAddresses` is included by itself.
 

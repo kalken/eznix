@@ -29,7 +29,7 @@ default_file = "configuration.json"   # the file to open first
 #                                     # saving by that name is refused; by a plain address
 #                                     # it works without.
 port   = 9090
-# hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any
+# hosts = ["nix.example.org"]         # extra host names to accept; ["*"] accepts any, which lets a site that points its name here in (an address needs no entry)
 #                                     # behind a proxy that changes the Host header, add the
 #                                     # page's address too: "https://nix.example.org"
 # trusted_proxies = ["127.0.0.1"]     # a proxy in front of eznix: the failed-login limit is

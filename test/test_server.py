@@ -52,10 +52,11 @@ class Browser:
         status, body = self.request(path, data, method)
         return status, json.loads(body or b'null')
 
-    def terminal(self, origin=None):
+    def terminal(self, origin=None, host=None):
         """The status of a WebSocket handshake for the terminal, as a page at `origin` would
-        send it with this browser's cookies. 101 is a connection."""
-        headers = {'Connection': 'Upgrade', 'Upgrade': 'websocket', 'Sec-WebSocket-Version': '13',
+        send it with this browser's cookies (to `host`, as the Host header). 101 is a connection."""
+        headers = {**({'Host': host} if host else {}),
+                   'Connection': 'Upgrade', 'Upgrade': 'websocket', 'Sec-WebSocket-Version': '13',
                    'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
                    'Cookie': '; '.join(f'{c.name}={c.value}' for c in self.cookies)}
         if origin is not None:
@@ -850,6 +851,14 @@ def main():
             check('not for another page: another port of this host, another site, none',
                   [b.terminal(o) for o in (f'http://127.0.0.1:{PORT + 2}', 'https://evil.example', 'null')] == [403] * 3)
             check('nor without a login', Browser().terminal(BASE) == 401)
+            # DNS rebinding: a site whose name now points here is its own origin, Origin and Host
+            # alike, so only the name tells it apart; refused before the login, the terminal and
+            # anything read.
+            evil = f'evil.example:{PORT}'
+            with_host = lambda path, data=None: b.request(path, data, headers={'Host': evil})[0]
+            check('a name eznix was not told of gets nothing: not the login, the terminal or a file',
+                  b.terminal(f'http://{evil}', evil) == 403 and with_host('/api/v1/files') == 403
+                  and with_host('/login', b'username=x&password=pw') == 403 and with_host('/login.html') == 403)
 
             # In place of the one eznix started: the same program on the same port and key,
             # started by hand. "Not stale" is also the answer when eznix can't tell, so the

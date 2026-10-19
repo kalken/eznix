@@ -485,7 +485,7 @@ in
     certNames = mkOption {
       type        = types.listOf types.str;
       default     = [ ];
-      description = "More host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. For when eznix is reached from elsewhere by something it cannot know by itself: the certificate names localhost, this machine's host name (also with its domain, and as NAME.local) and the addresses in listenAddresses, the browser complains about it on every other name or address, and saving by a host name that is not listed is refused (by a plain address it is not).";
+      description = "More host names and addresses you open eznix by. The generated certificate is made for them, and requests addressed to them are accepted. For when eznix is reached from elsewhere by something it cannot know by itself: the certificate names localhost, this machine's host name (also with its domain, and as NAME.local) and the addresses in listenAddresses, the browser complains about it on every other name or address, and eznix answers nothing but a refusal by a host name that is not listed (by a plain address it answers), which keeps out a website that points its own name at this machine.";
     };
     cert = mkOption {
       type        = types.nullOr types.str;

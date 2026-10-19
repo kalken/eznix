@@ -385,6 +385,19 @@ changes `Host`): the modules put the certificate's names in `hosts`, so matching
 would let any port of the protected host through. `"*"` in `hosts` opens the host-name
 check only, not this one (since 2026-10-18; it skipped both, so on the installer a page on
 another port could save and open the terminal); `origin_check()` in `test_server.py`.
+
+**A host name eznix was not told of gets nothing** (`_wrong_host()`, first in `do_GET`,
+`do_POST` and `do_HEAD`), since 2026-10-19: a 403 that says which name to add to
+`certNames`, for every request, the login page and the login included. Against DNS
+rebinding: a site whose name is made to point at this machine is, to the browser, this
+server's own origin, so the Origin check above passes and only the name tells it apart.
+Before, only the POSTs after the login asked, and such a page could log in and open the
+terminal (its handshake is a GET); with curl against the test server under `Host:
+evil.example` the login gave a cookie and the terminal answered 101. It needed a password,
+except on the installer, which had `hosts = [ "*" ]` with its public one (`nixos`/`eznix`)
+and passwordless sudo; the installer dropped `"*"` the same day, an address being let
+through anyway and the machine's name being listed by the module. Found in a review the
+user asked for; in `test_server.py`. Not tried in a browser or on the installer.
 The terminal program compares its key in constant time everywhere, as of the same day. `/logout` is a GET and is not
 checked: a page on another port of the host could log the user out, which also ends their
 shell (`terminal_end_on_logout`). Any other GET that changes something would need the check.
@@ -450,7 +463,7 @@ can know it takes by itself since 2026-10-12: the machine's host name (`hostName
 NixOS and nix-darwin modules: the name, with its domain, and as `NAME.local`; home-manager
 has none to give) and the addresses in `listenAddresses`. eznix
 doesn't know what will be typed in the browser, so the certificate names only localhost and
-a save to any other name is refused until it is listed. A save to a plain address is not
+any other name is refused until it is listed (only saves were, until 2026-10-19). A plain address is not
 (`_valid_host()`, since 2026-10-12): the check is there against a foreign name pointed at
 this machine, and an address is no name. Before, an address had to be listed too and the
 rebuild stopped on an empty `certNames`; the user, with a VM on DHCP and `interface`

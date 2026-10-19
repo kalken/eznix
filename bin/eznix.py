@@ -1691,9 +1691,35 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             return True
         return False
 
+    def _wrong_host(self):
+        """Whether this request was sent to a host name eznix has not been told of (_valid_host()),
+        in which case it has been answered with a refusal that says which name to add. Asked first,
+        for every request: a site that makes its own name point at this machine (DNS rebinding) is
+        then this server's own origin to the browser, cookie, Origin header and all. Until
+        2026-10-19 only the POSTs after the login asked, and a page doing that could log in (with
+        a password it knew: on the installer it is public) and open the terminal, whose handshake
+        is a GET (found in review, and tried with curl against the test server)."""
+        if _valid_host(self.headers):
+            return False
+        host = self.headers.get('Host', '').split(':')[0]
+        why = f'eznix has not been told it is reached by the name "{host}": add that to certNames (hosts in eznix.toml)'
+        if self.command == 'POST':
+            # Said in words the page can show: a bare 403 left "Save failed" with no reason
+            # (the user, 2026-10-12).
+            data, kind = json.dumps({'error': why}).encode(), 'application/json'
+        else:
+            data, kind = (why + '\n').encode(), 'text/plain; charset=utf-8'
+        self.send_response(403)
+        self.send_header('Content-Type', kind)
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        if self.command != 'HEAD':
+            self.wfile.write(data)
+        return True
+
     def do_POST(self):
         parsed = urlparse(self.path)
-        if self._body_too_big(parsed):
+        if self._body_too_big(parsed) or self._wrong_host():
             return
         if parsed.path == '/login':
             ip = _client_ip(self.client_address[0], self.headers)
@@ -1718,14 +1744,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 print(f'[auth] login failed for {username!r} from {ip} ({count}/{LOGIN_MAX_ATTEMPTS} attempts)')
                 self._deny('Invalid username or password.')
             return
-        if not _valid_host(self.headers) or not _valid_origin(self.headers):
-            # Said in words the page can show: a bare 403 left "Save failed" with no reason,
-            # in a browser on another machine that had opened eznix by a name it was never
-            # told of, where everything but saving worked (the user, 2026-10-12).
-            host = self.headers.get('Host', '').split(':')[0]
-            why = (f'eznix has not been told it is reached by the name "{host}": add that to certNames (hosts in eznix.toml)'
-                   if not _valid_host(self.headers) else "the request did not come from eznix's own page")
-            data = json.dumps({'error': why}).encode()
+        if not _valid_origin(self.headers):
+            data = json.dumps({'error': "the request did not come from eznix's own page"}).encode()
             self.send_response(403)
             self.send_header('Content-Type', 'application/json')
             self.send_header('Content-Length', str(len(data)))
@@ -2031,6 +2051,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
 
     def do_GET(self):
         parsed = urlparse(self.path)
+        if self._wrong_host():
+            return
         if parsed.path == '/logout':
             # The shell belongs to the login, not to the machine: once the last session of the
             # person who was using it is gone, so is it (where that's switched on).
@@ -2194,6 +2216,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         super().do_GET()
 
     def do_HEAD(self):
+        if self._wrong_host():
+            return
         if not check_auth(self.headers):
             self._deny(); return
         super().do_HEAD()
@@ -2516,9 +2540,11 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
 
 
 def _valid_host(headers):
-    # '*' in trusted_hosts disables this check entirely — accepts any Host header. Meant for
-    # cases where the reachable address genuinely can't be known ahead of time (e.g. a NixOS
-    # installer ISO getting a DHCP lease), where listing exact hosts isn't possible.
+    # '*' in trusted_hosts disables this check entirely — accepts any Host header, and with it
+    # any site that points its name at this machine. It was meant for a machine whose address
+    # can't be known ahead of time (the installer ISO on DHCP), which no longer needs it: an
+    # address is let through below, and the modules list the machine's own name. The installer
+    # had it, with a public password, until 2026-10-19 (see _wrong_host()).
     if '*' in TRUSTED_HOSTS:
         return True
     host = headers.get('Host', '').lower()
