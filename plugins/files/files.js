@@ -1,4 +1,4 @@
-// The files plugin: menus of the flake's files by their kind, each a button in the tab bar.
+// The files plugin: menus of the flake's files by their kind, each a button in the header.
 // What menus there are is configuration ([plugin.files], see files.py): a name, the endings
 // of the files it lists, and the command a file is opened with. With nothing set there is
 // one, "Nix files", of the .nix files.

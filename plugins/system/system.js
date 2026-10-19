@@ -294,8 +294,7 @@ eznix.on('init', () => {
   document.querySelector('.header-actions').prepend(input);
   initSystemImportButton();
   // The icon is a disk drive (Lucide's "hard-drive"), with the name beside it as on Documents.
-  // In the top bar beside Log out ('system'): it acts on the whole system, where the tab bar's
-  // buttons go with the loaded flake (2026-10-19).
+  // Joined with Autocomplete ('system', after 'tools'), the user's layout of 2026-10-19.
   eznix.addButton('header', {
     id: 'system-btn',
     tooltip: 'Back up, restore, import or export the whole system',

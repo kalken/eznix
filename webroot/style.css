@@ -39,16 +39,14 @@ body {
   flex-shrink: 0;
 }
 .header-actions { display: flex; gap: 8px; margin-left: auto; }
-/* The line between the plugins' buttons and Log out. Only there when a button stands before it,
-   so a page without plugins has no line leading its buttons. */
+/* A line between groups of buttons, shown by the rules after it. */
 .header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
-.header-actions .header-group:has(.btn:not(.hidden)) ~ .header-sep { display: block; }
-/* The plugins' groups: one with nothing shown takes no room. In the tab bar the line is
-   after the files' group, when it has anything shown. */
-.header-group:not(:has(.btn:not(.hidden))) { display: none; }
-.tab-bar-actions .header-group:has(.btn:not(.hidden)) + .header-sep { display: block; }
-/* The same line between the two groups on the left, which is always there. */
+/* Between the two groups on the left, always. */
 .header-sep-shown { display: block; }
+/* Between the plugins' two groups when both have a button shown, and before Log out when
+   either has. */
+.header-group:has(.btn:not(.hidden)) + .header-sep-mid:has(+ .header-group .btn:not(.hidden)),
+.header-group:has(.btn:not(.hidden)) ~ .header-sep-end { display: block; }
 
 .btn {
   background: var(--bg3);
@@ -73,11 +71,11 @@ body {
 .btn.primary:hover { background: var(--btn-primary-hover); }
 .btn.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
 
-/* Both header groups (.btn-group's undo/redo/etc on the left, .header-actions' Import/Export/
-   etc on the right) share this .btn class with no explicit height, so their rendered height
-   depended on each button's own content — a lone glyph (↩ ↪ ↺ ✕) versus glyph+text ("⬇ Import")
-   can have a different intrinsic line-height even at the same font-size, making the two groups
-   look mismatched. An explicit height removes that dependency so every header button matches. */
+/* Every header button (undo/redo/etc, the plugins', Log out) shares this .btn class with no
+   explicit height, so its rendered height depended on its own content — a lone glyph (↩ ↪ ↺)
+   versus glyph+text ("Save") can have a different intrinsic line-height even at the same
+   font-size, making the groups look mismatched. An explicit height removes that dependency
+   so every header button matches. */
 .header .btn { height: 28px; }
 
 .btn-group { display: flex; gap: 0; }
@@ -85,8 +83,12 @@ body {
 .btn-group .btn:first-child { border-radius: var(--radius) 0 0 var(--radius); }
 .btn-group .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .btn-group .btn + .btn { border-left: none; }
-/* In a group whose buttons can be hidden (the plugins'), the ends are the shown ones. */
-.header-group .btn:nth-child(n) { border-radius: 0; border-left: 1px solid var(--border2); }
+/* The plugins' groups, joined like .btn-group, but their buttons can be hidden (Documents
+   until the flake has a .md file), so the rounded ends go by the shown ones; a group with
+   none shown takes no room. */
+.header-group { display: flex; }
+.header-group:not(:has(.btn:not(.hidden))) { display: none; }
+.header-group .btn { border-radius: 0; }
 .header-group .btn:not(.hidden) ~ .btn { border-left: none; }
 .header-group .btn:nth-child(1 of .btn:not(.hidden)) { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
 .header-group .btn:nth-last-child(1 of .btn:not(.hidden)) { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
