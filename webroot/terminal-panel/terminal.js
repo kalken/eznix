@@ -836,6 +836,7 @@ if (_TERM_CONFIG.autocomplete) {
     id: 'autocomplete-btn',
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
     html: _RELOAD_ICON + 'Autocomplete',
+    group: 'tools',
     onclick: () => {
       _autocompleteClickedAt = Date.now();
       _autocompleteSeen = false;

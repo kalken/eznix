@@ -117,9 +117,11 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
   </div>
   <div class="header-actions">
     <input type="file" id="import-file-input" accept=".json,.nix,.zip">
-    <!-- Between the plugins' buttons, which addButton() puts in front, and the page's own.
-         They stood in the middle of the window and in the tab bar for some hours on
-         2026-10-19, and the user had them back here. -->
+    <!-- The tools (addButton()'s group 'tools', Autocomplete) and what acts on the whole
+         system ('system'), then a line and Log out. What opens the flake's files is in the
+         tab bar, beside Search. -->
+    <div class="btn-group header-group" data-group="tools"></div>
+    <div class="btn-group header-group" data-group="system"></div>
     <div class="header-sep"></div>
     <button class="btn" onclick="location.href='/logout'" data-tooltip="Log out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
   </div>
@@ -128,6 +130,13 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
 <div class="tab-bar-row">
   <div class="tab-bar" id="tab-bar"></div>
   <div class="tab-bar-actions">
+    <!-- The bar of the loaded flake (the user, 2026-10-19): what opens the flake's files
+         (addButton()'s group 'files', Documents and the files' menus), joined, a line, and
+         Search, always furthest right. Beside the tabs, at the height of their
+         first row, so the bar is no taller for them; the tabs only have less width. The
+         plugins' buttons were all in the top bar, loose, until then. -->
+    <div class="btn-group header-group" data-group="files"></div>
+    <div class="header-sep"></div>
     <button class="btn" id="search-toggle-btn" onclick="toggleSearchPanel()" data-tooltip="Search option paths and values (Ctrl+F)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></button>
   </div>
 </div>
@@ -221,9 +230,13 @@ networking.hostName = "myhost";</pre>
 // eznix and not a plugin, but is loaded and talked to the same way.) Nobody outside eznix
 // depends on this interface yet, so it may still change.
 //   eznix.config.NAME   that plugin's settings, from the server
-//   eznix.addButton('header', { id, html, tooltip, onclick })  a button in the header, in
-//                       front of the ones there; returns it. ('header' is the one place there
-//                       is: the tab bar was another until its last user, Documents, moved.)
+//   eznix.addButton('header', { id, html, tooltip, onclick, group })  a button, in front of
+//                       the others of its group; returns it. `group` is its kind, which also
+//                       says where it goes: 'tools' (does something with the flake; the
+//                       default) and 'system' (acts on the whole system) in the top bar
+//                       beside Log out; 'files' (opens the flake's files) in the tab bar,
+//                       beside Search; each kind joined. (The first argument is from when
+//                       the top bar was the one place.)
 //   eznix.sidePanel({ group, title, onClose, autoHide })  a panel on the side, over the editor's right
 //                       part, for the plugin to fill: a tab in the window of its group; see there
 //   eznix.resizable(el, { edge, key, apply, min })  lets a panel be made larger and smaller
@@ -253,14 +266,15 @@ const eznix = {
     if (this.debugging) console.log('[eznix ' + new Date().toISOString().slice(11, 23) + ']', ...what);
   },
   _handlers: {},
-  addButton(where, { id, html, tooltip, onclick }) {
+  addButton(where, { id, html, tooltip, onclick, group }) {
     const btn = document.createElement('button');
     btn.className = 'btn';
     if (id) btn.id = id;
     btn.innerHTML = html;
     btn.onclick = onclick;
     if (tooltip) _wireHoverTooltip(btn, tooltip);
-    document.querySelector('.header-actions').prepend(btn);
+    (document.querySelector(`.header-group[data-group="${group}"]`)
+      || document.querySelector('.header-group[data-group="tools"]')).prepend(btn);
     return btn;
   },
   // A strip along one edge of a panel, to drag: the panel grows towards that edge. What comes

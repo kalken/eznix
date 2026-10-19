@@ -294,13 +294,13 @@ eznix.on('init', () => {
   document.querySelector('.header-actions').prepend(input);
   initSystemImportButton();
   // The icon is a disk drive (Lucide's "hard-drive"), with the name beside it as on Documents.
-  // It lands in front of Documents, which the user wanted (so this menu hangs further from the
-  // window's edge): addButton() puts each new header button first, and this one is added on
-  // 'init', after the documents plugin has added its own while loading.
+  // In the top bar beside Log out ('system'): it acts on the whole system, where the tab bar's
+  // buttons go with the loaded flake (2026-10-19).
   eznix.addButton('header', {
     id: 'system-btn',
     tooltip: 'Back up, restore, import or export the whole system',
     html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="22" y1="12" x2="2" y2="12"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/><line x1="6" y1="16" x2="6.01" y2="16"/><line x1="10" y1="16" x2="10.01" y2="16"/></svg>System',
     onclick: showSystemMenu,
+    group: 'system',
   });
 });

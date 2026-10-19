@@ -42,7 +42,11 @@ body {
 /* The line between the plugins' buttons and Log out. Only there when a button stands before it,
    so a page without plugins has no line leading its buttons. */
 .header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
-.header-actions .btn ~ .header-sep { display: block; }
+.header-actions .header-group:has(.btn:not(.hidden)) ~ .header-sep { display: block; }
+/* The plugins' groups: one with nothing shown takes no room. In the tab bar the line is
+   after the files' group, when it has anything shown. */
+.header-group:not(:has(.btn:not(.hidden))) { display: none; }
+.tab-bar-actions .header-group:has(.btn:not(.hidden)) + .header-sep { display: block; }
 /* The same line between the two groups on the left, which is always there. */
 .header-sep-shown { display: block; }
 
@@ -81,6 +85,11 @@ body {
 .btn-group .btn:first-child { border-radius: var(--radius) 0 0 var(--radius); }
 .btn-group .btn:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
 .btn-group .btn + .btn { border-left: none; }
+/* In a group whose buttons can be hidden (the plugins'), the ends are the shown ones. */
+.header-group .btn:nth-child(n) { border-radius: 0; border-left: 1px solid var(--border2); }
+.header-group .btn:not(.hidden) ~ .btn { border-left: none; }
+.header-group .btn:nth-child(1 of .btn:not(.hidden)) { border-top-left-radius: var(--radius); border-bottom-left-radius: var(--radius); }
+.header-group .btn:nth-last-child(1 of .btn:not(.hidden)) { border-top-right-radius: var(--radius); border-bottom-right-radius: var(--radius); }
 
 /* ── Tab bar (multi-file mode) ── */
 /* .tab-bar-row carries the bar's own background/border — split out from #tab-bar so the
