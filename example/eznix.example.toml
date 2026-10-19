@@ -122,6 +122,10 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # replaces it
 # keep     = ["hardware-configuration.nix"]
 #                                     # what an import leaves as it is on this machine
+# sources  = ["https://github.com/me/systems/archive/refs/heads/main.zip", "/etc/templates/index.json"]
+#                                     # where systems can be imported from: a zip (every folder
+#                                     # with a flake.nix in it is one) or an index (JSON), at an
+#                                     # https address or a path here; or { name = "…", url = "…" }
 
 # [plugin.documents]
 # enabled = false

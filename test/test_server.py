@@ -386,7 +386,85 @@ def origin_check():
           ez._valid_origin(req('https://nix.example.org', '127.0.0.1:9090')))
 
 
+def system_sources():
+    """The system plugin's `sources`: what a zip or an index offers, and importing one of
+    them. Local files only; nothing is downloaded. No server needed."""
+    spec = importlib.util.spec_from_file_location('eznix_sources', os.path.join(ROOT, 'bin', 'eznix.py'))
+    ez = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ez)
+    spec = importlib.util.spec_from_file_location('system_plugin', os.path.join(ROOT, 'plugins', 'system', 'system.py'))
+    system = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(system)
+
+    def zipped(path, files):
+        with zipfile.ZipFile(path, 'w') as zf:
+            for n, t in files.items():
+                zf.writestr(n, t)
+
+    with tempfile.TemporaryDirectory() as d:
+        os.makedirs(f'{d}/flake/eznix')
+        os.makedirs(f'{d}/src/sub')
+        for n, t in {'flake.nix': 'mine', 'hardware-configuration.nix': 'this machine', 'eznix/a.json': '{}'}.items():
+            with open(f'{d}/flake/{n}', 'w') as f:
+                f.write(t)
+        zipped(f'{d}/src/one.zip', {'flake.nix': 'one', 'eznix/b.json': '{"b": 1}', 'hardware-configuration.nix': 'other'})
+        zipped(f'{d}/src/sub/repo-main.zip', {'repo-main/flake.nix': 'root', 'repo-main/README.md': '#',
+                                              'repo-main/templates/nixos/flake.nix': 'nixos',
+                                              'repo-main/templates/nixos/eznix/c.json': '{"c": 1}',
+                                              'repo-main/templates/home/flake.nix': 'home',
+                                              'repo-main/.github/x/flake.nix': 'hidden'})
+        zipped(f'{d}/src/none.zip', {'README.md': '#'})
+        with open(f'{d}/src/index.json', 'w') as f:
+            json.dump({'name': 'Ours', 'items': [
+                {'name': 'Desktops', 'items': [{'name': 'Home', 'url': 'sub/repo-main.zip', 'path': 'repo-main/templates/home',
+                                                'description': 'a home'}]},
+                {'url': 'one.zip'}, {'name': 'Plain', 'url': 'http://example.org/x.zip'}]}, f)
+        ez.FLAKE_DIR, ez.STATE_DIR = f'{d}/flake', f'{d}/state'
+        api = ez.PluginApi('system', {'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
+                                                  f'{d}/src/index.json', f'{d}/src/none.zip', f'{d}/src/missing.zip', 'relative.zip']})
+        system.setup(api)
+        get = lambda path, query={}, body=b'': api.routes[path](ez.PluginRequest(query, body, 'alice'))
+        listed = get(('GET', 'sources'))['sources']
+        one, repo, index, none, missing, relative = listed
+        check('sources: a zip with one system is that system', one == {'name': 'one', 'url': f'{d}/src/one.zip', 'path': ''}, one)
+        check('sources: a repository zip is a tree of its flakes, the folder around them left out, dot-folders skipped',
+              repo['name'] == 'Repo' and [n['name'] for n in repo['items']] == ['repo-main', 'templates']
+              and repo['items'][0]['path'] == 'repo-main'
+              and [(n['name'], n['path']) for n in repo['items'][1]['items']]
+              == [('home', 'repo-main/templates/home'), ('nixos', 'repo-main/templates/nixos')]
+              and not any('items' in n for n in repo['items'][1]['items']), repo)
+        desk, plain_one, plain = index['items']
+        check('sources: an index, with folders, relative urls, a path and a description',
+              index['name'] == 'Ours' and desk['items'][0] == {'name': 'Home', 'url': f'{d}/src/sub/repo-main.zip',
+                                                               'path': 'repo-main/templates/home', 'description': 'a home'}
+              and plain_one['path'] == '' and 'error' in plain, index)
+        check('sources: no flake.nix, a missing file and a relative path in the setting are errors',
+              all('error' in n for n in (none, missing, relative)), [none, missing, relative])
+        status = lambda body: (lambda: get(('POST', 'import-source'), body=json.dumps(body).encode()))
+        def refused(call):
+            try:
+                call()
+                return None
+            except ez.PluginError as e:
+                return e.status
+        check('sources: only what the setting leads to is imported',
+              refused(status({'url': f'{d}/src/other.zip', 'path': ''})) == 400
+              and refused(status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/.github/x'})) == 400
+              and refused(status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/templates'})) == 400)
+        result = status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/templates/nixos'})()
+        tree = sorted(os.path.relpath(os.path.join(p, n), f'{d}/flake') for p, _, ns in os.walk(f'{d}/flake') for n in ns)
+        check("sources: a folder of a zip is imported as a system, this machine's hardware file kept",
+              tree == ['eznix/c.json', 'flake.nix', 'hardware-configuration.nix']
+              and open(f'{d}/flake/flake.nix').read() == 'nixos' and result['removed'] == ['eznix/a.json']
+              and len(os.listdir(f'{d}/state/system-backups')) == 1, (tree, result))
+        result = status({'url': f'{d}/src/one.zip', 'path': ''})()
+        check('sources: and a whole zip', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
+              and open(f'{d}/flake/hardware-configuration.nix').read() == 'this machine'
+              and result['kept'] == ['hardware-configuration.nix'], result)
+
+
 def main():
+    system_sources()
     terminal_history()
     backups_closed()
     origin_check()

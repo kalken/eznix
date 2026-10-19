@@ -117,7 +117,10 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
   </div>
   <div class="header-actions">
     <input type="file" id="import-file-input" accept=".json,.nix,.zip">
-    <!-- Between the plugins' buttons, which addButton() puts in front, and the page's own. -->
+    <!-- Between the buttons addButton('header') puts in front (System), and the page's own.
+         The buttons for the flake that is loaded (Autocomplete, Documents, the files' menus)
+         stood here too until 2026-10-19, when the user moved them to the tab bar beside
+         Search ('tabs'). -->
     <div class="header-sep"></div>
     <button class="btn" onclick="location.href='/logout'" data-tooltip="Log out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
   </div>
@@ -219,9 +222,10 @@ networking.hostName = "myhost";</pre>
 // eznix and not a plugin, but is loaded and talked to the same way.) Nobody outside eznix
 // depends on this interface yet, so it may still change.
 //   eznix.config.NAME   that plugin's settings, from the server
-//   eznix.addButton('header', { id, html, tooltip, onclick })  a button in the header, in
-//                       front of the ones there; returns it. ('header' is the one place there
-//                       is: the tab bar was another until its last user, Documents, moved.)
+//   eznix.addButton(where, { id, html, tooltip, onclick })  a button, in front of the ones
+//                       already there; returns it. `where` is 'header', the top row beside
+//                       Log out, for what acts on the whole system, or 'tabs', the tab bar's right
+//                       end beside Search, for what goes with the flake that is loaded.
 //   eznix.sidePanel({ group, title, onClose, autoHide })  a panel on the side, over the editor's right
 //                       part, for the plugin to fill: a tab in the window of its group; see there
 //   eznix.resizable(el, { edge, key, apply, min })  lets a panel be made larger and smaller
@@ -258,7 +262,7 @@ const eznix = {
     btn.innerHTML = html;
     btn.onclick = onclick;
     if (tooltip) _wireHoverTooltip(btn, tooltip);
-    document.querySelector('.header-actions').prepend(btn);
+    document.querySelector(where === 'tabs' ? '.tab-bar-actions' : '.header-actions').prepend(btn);
     return btn;
   },
   // A strip along one edge of a panel, to drag: the panel grows towards that edge. What comes
@@ -882,9 +886,13 @@ function _ctxMenuOutsideHandler(e) {
 }
 function _ctxMenuEscHandler(e) { if (e.key === 'Escape') _closeContextMenu(); }
 
-function _positionMenuEl(menu, x, y) {
+// `right`, for a menu that hangs from a button: the button's right edge. A menu with no room
+// on the button's right then ends where the button ends, instead of where the window does,
+// which left it out of line with its button (the tab bar's buttons, beside Search at the
+// window's right edge, 2026-10-19).
+function _positionMenuEl(menu, x, y, right) {
   const rect = menu.getBoundingClientRect();
-  if (x + rect.width > window.innerWidth) x = Math.max(0, window.innerWidth - rect.width - 4);
+  if (x + rect.width > window.innerWidth) x = Math.max(0, (right != null ? Math.min(right, window.innerWidth - 4) : window.innerWidth - 4) - rect.width);
   if (y + rect.height > window.innerHeight) y = Math.max(0, window.innerHeight - rect.height - 4);
   menu.style.left = x + 'px';
   menu.style.top = y + 'px';
@@ -1062,7 +1070,7 @@ function showContextMenu(event, items, opts = {}) {
   document.body.appendChild(menu);
   if (opts.sideOfAnchor) _positionSubmenu(menu, opts.anchorRect);
   else if (opts.anchorRect) _positionMenuAboveAnchor(menu, opts.anchorRect);
-  else _positionMenuEl(menu, event.clientX, event.clientY);
+  else _positionMenuEl(menu, event.clientX, event.clientY, event.anchorRight);
   _markSubmenuSides(menu, 0);
   _ctxMenuStack = [menu];
   _openMenuTriggerEl = opts.triggerEl || null;

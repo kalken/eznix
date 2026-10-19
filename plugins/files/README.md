@@ -1,6 +1,6 @@
 # files
 
-Menus of your flake's files, by their kind. Each menu is a button in eznix's header; a file
+Menus of your flake's files, by their kind. Each menu is a button in eznix's tab bar, beside Search; a file
 opens in your own editor, in a terminal of its own that is a tab beside the configuration.
 
 ## ✨ What it does

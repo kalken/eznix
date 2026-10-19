@@ -412,7 +412,7 @@ so it works the same everywhere and can be left out. Seven ship with it:
 
 | Plugin | |
 |---|---|
-| [`system`](plugins/system/README.md) | the System button: back the whole flake up, restore a backup, import a zip over it, export it as one |
+| [`system`](plugins/system/README.md) | the System button: back the whole flake up, restore a backup, import a zip over it, or a system from a list of places on the web, export it as one |
 | [`documents`](plugins/documents/README.md) | the Documents button: read the flake's Markdown files beside the editor |
 | [`files`](plugins/files/README.md) | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
 | [`password`](plugins/password/README.md) | log in with one configured password |

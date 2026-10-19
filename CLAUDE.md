@@ -52,7 +52,7 @@ live when it was not. If in doubt, see what holds the port (`lsof -nP -iTCP:9690
 http://127.0.0.1:9690, password `eznix`. eznix starts its own terminal there (port 9691), so
 restarting the server restarts the shell too.
 
-To fill in suggestions, press Autocomplete in the header: run from a checkout it types
+To fill in suggestions, press Autocomplete (in the tab bar, beside Search): run from a checkout it types
 `python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the
 terminal (`_autocomplete_command()`).
 
@@ -558,6 +558,19 @@ unprivileged eznix can do. A restore keeps nothing back. In `test_server.py`. An
 through the page was tried by the user the same day: export, one Markdown file removed,
 the export imported again, which brought the file back, with the backup taken first the
 smaller for it ("it seems to work"); on which system was not said.
+
+**Systems can be imported from places named in the configuration** (`sources` in the
+system plugin, 2026-10-19, the user's idea: "import systems from an url, listing a
+folder/zip hierarchy"): a zip, whose every folder with a `flake.nix` is a system (a GitHub
+archive as it is, its one folder around everything left out of the names), or a JSON index
+of zips, folders and other indexes. The server downloads (https only, or a path on the
+machine; kept in `system-sources/` for ten minutes, and used when the place cannot be
+reached), lists them as a tree for the System menu, and imports one folder of a zip by
+making it a zip of its own and handing that to `prepare()` and `apply()`, so it is an
+import like any other. The page names a system by location and folder, and only a location
+a listing of the setting reached is taken (`reached`): nothing typed in the page is ever
+fetched. In `test_server.py` (`system_sources()`, local files only); downloading and the
+menu in the page were not tried.
 
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
@@ -1123,7 +1136,7 @@ In `test_server.py` (`generator_links()`, which fails on the old code); not on N
 `mkRenamedOptionModule` declare theirs) are left out as the NixOS manual leaves them out,
 since 2026-10-15: `programs.eznix.browser` was still offered after its removal, among
 1,735 such options of 26,350 on NixOS. The user confirmed the fix on Linux after a rebuild
-that brought the new generator, and Autocomplete. Since 2026-10-10 the header has an Autocomplete button for it, on the user's wish,
+that brought the new generator, and Autocomplete. Since 2026-10-10 there is an Autocomplete button for it (in the header, in the tab bar beside Search since 2026-10-19), on the user's wish,
 which only types that command into the terminal (it is part of `terminal-panel/`, so there is
 none without a terminal); before that the templates carried it as one of their buttons.
 It is there in install mode as well since 2026-10-13 (it was left out there, and the

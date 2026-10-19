@@ -5,6 +5,7 @@
 // want them leaves it out ([plugin.system] enabled = false). The work itself is done by
 // system.py in this folder; this file is the buttons and the confirmations.
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
+const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
 
 // Unlike exportAll() (which zips the in-memory fileConfigs — unsaved edits included, but only
 // eznix's own *.json tabs), this is the *on-disk* NIXOS_TARGET tree, flake and all — the server
@@ -109,25 +110,110 @@ function initSystemImportButton() {
         body: file,
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok) { setStatus('Import failed: ' + (data.error || res.status), 5000, 'err'); return; }
-      const parts = [`Imported ${data.written.length} file(s) into ${NIXOS_TARGET}`];
-      if (data.removed && data.removed.length) parts.push(`removed ${data.removed.length}`);
-      if (data.skipped && data.skipped.length) parts.push(`skipped ${data.skipped.length}`);
-      if (data.kept && data.kept.length) parts.push(`kept this machine's ${data.kept.join(', ')}`);
-      // This writes straight into NIXOS_TARGET on disk, which CONFIG_DIR lives under — the
-      // in-memory files/fileConfigs state has no way to know its tab list or content might now
-      // be stale, so a reload is the only way to pick that up. Same "don't clobber unsaved
-      // edits" rule as restart detection: reload immediately only if nothing's dirty, otherwise
-      // just say so — the edits themselves are unaffected by this import either way.
-      if (isAnyDirty()) {
-        setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
-      } else {
-        location.reload();
-      }
+      _afterSystemImport(res, data);
     } catch (err) {
       setStatus('Import failed: ' + err.message, 5000, 'err');
     }
   });
+}
+
+function _afterSystemImport(res, data) {
+  if (!res.ok) { setStatus('Import failed: ' + (data.error || res.status), 5000, 'err'); return; }
+  const parts = [`Imported ${data.written.length} file(s) into ${NIXOS_TARGET}`];
+  if (data.removed && data.removed.length) parts.push(`removed ${data.removed.length}`);
+  if (data.skipped && data.skipped.length) parts.push(`skipped ${data.skipped.length}`);
+  if (data.kept && data.kept.length) parts.push(`kept this machine's ${data.kept.join(', ')}`);
+  // This writes straight into NIXOS_TARGET on disk, which CONFIG_DIR lives under — the
+  // in-memory files/fileConfigs state has no way to know its tab list or content might now
+  // be stale, so a reload is the only way to pick that up. Same "don't clobber unsaved
+  // edits" rule as restart detection: reload immediately only if nothing's dirty, otherwise
+  // just say so — the edits themselves are unaffected by this import either way.
+  if (isAnyDirty()) {
+    setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
+  } else {
+    location.reload();
+  }
+}
+
+// The systems the `sources` setting offers ([plugin.system] sources), as a tree from the
+// server: a system is { name, url, path, description }, a folder { name, items } (and both, a
+// folder that is a system itself), a source that could not be read { name, error }. Asked
+// for when the page is ready and kept, so the menu does not wait for a download; "Check
+// again" fetches them anew.
+let _systemSources = null;
+let _systemSourcesLoading = null;
+function loadSystemSources(refresh) {
+  if (_systemSourcesLoading) return _systemSourcesLoading;
+  _systemSourcesLoading = (async () => {
+    try {
+      const res = await apiFetch('/plugin/system/sources' + (refresh ? '?refresh=1' : ''));
+      const data = await res.json().catch(() => ({}));
+      _systemSources = res.ok ? data.sources : [{ name: 'sources', error: data.error || String(res.status) }];
+    } catch (e) {
+      _systemSources = [{ name: 'sources', error: e.message }];
+    } finally {
+      _systemSourcesLoading = null;
+    }
+  })();
+  return _systemSourcesLoading;
+}
+
+async function importSystemSource(system) {
+  const where = system.url + (system.path ? ' (' + system.path + ')' : '');
+  if (!confirm(
+    `Import ${system.name} into ${NIXOS_TARGET}?\n\nFrom ${where}\n\n` +
+    `This writes directly to disk immediately — there is no Save step and no undo (the current ` +
+    `state is itself backed up first, so this is recoverable from there, but not from within eznix). ` +
+    `Existing files with the same name are overwritten, and anything not in the system is DELETED, ` +
+    `so the tree ends up matching exactly what was imported.`
+  )) return;
+  setStatus('Importing ' + system.name + '…', 30000);
+  try {
+    const res = await apiFetch('/plugin/system/import-source', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: system.url, path: system.path }),
+    });
+    _afterSystemImport(res, await res.json().catch(() => ({})));
+  } catch (err) {
+    setStatus('Import failed: ' + err.message, 5000, 'err');
+  }
+}
+
+// The systems of the sources as lines of this menu, a heading per source, each system named
+// by its folders ("templates/nixos"), and not as submenus: the menu hangs from a button at the
+// window's right edge, so a submenu opened on the left, a box out over the page, which the
+// user found very strange (2026-10-19), as with Restore before.
+function _sourceLines(node, name, out) {
+  if (node.error) { out.push({ label: name + ': ' + node.error, disabled: true }); return out; }
+  if (node.url) out.push({ label: name, title: node.description || node.path || node.url, onclick: () => importSystemSource(node) });
+  (node.items || []).forEach(n => _sourceLines(n, name ? name + '/' + n.name : n.name, out));
+  return out;
+}
+
+async function _checkSourcesAgain() {
+  setStatus('Checking the sources again…', 30000);
+  await loadSystemSources(true);
+  const failed = _systemSources.filter(s => s.error).length;
+  setStatus(failed ? `${failed} source(s) could not be read` : 'The sources are up to date', 4000, failed ? 'err' : 'ok');
+}
+
+function _sourceMenuItems() {
+  if (!SYSTEM_SOURCES) return [];
+  const items = [{ separator: true }];
+  if (!_systemSources) {
+    loadSystemSources();
+    items.push({ label: 'Import from: loading…', disabled: true });
+    return items;
+  }
+  _systemSources.forEach(s => {
+    items.push({ label: 'Import from ' + s.name + (s.error ? ': ' + s.error : ''), disabled: true });
+    if (s.error) return;
+    if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
+    else s.items.forEach(n => _sourceLines(n, n.name, items));
+  });
+  items.push({ label: 'Check again', title: 'Download the sources again', onclick: _checkSourcesAgain });
+  return items;
 }
 
 // One button, System, opening a dropdown with everything this plugin does: Export, Import, Backup,
@@ -154,10 +240,10 @@ async function showSystemMenu(event) {
   const btn = event.currentTarget;
   const rect = btn.getBoundingClientRect();
   const anchor = {
-    clientX: rect.left, clientY: rect.bottom + 2,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
+    clientX: rect.left, clientY: rect.bottom + 2, anchorRight: rect.right,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
-  // Import, Export, Backup, then the backups to restore: the order the user asked for, as a
+  // Import, Export, Backup, the systems of the sources, then the backups to restore: the order the user asked for, as a
   // file's right-click menu has the first two (Export stood first until 2026-10-13), which
   // also puts the one part whose length varies last.
   const items = [];
@@ -170,8 +256,9 @@ async function showSystemMenu(event) {
   }
   items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
   items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
+  if (SYSTEM_BACKUP_ENABLED) items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
+  items.push(..._sourceMenuItems());
   if (SYSTEM_BACKUP_ENABLED) {
-    items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
     items.push({ separator: true });
     // The backups are lines of this menu, under a heading, and not a submenu of a "Restore"
     // entry as they first were: the button is at the window's right edge, so the submenu had
@@ -199,15 +286,16 @@ eznix.on('empty', el => {
   el.appendChild(line);
 });
 
+eznix.on('ready', () => { if (SYSTEM_SOURCES) loadSystemSources(); });
+
 eznix.on('init', () => {
   const input = document.createElement('input');
   input.type = 'file'; input.id = 'system-import-input'; input.accept = '.zip';
   document.querySelector('.header-actions').prepend(input);
   initSystemImportButton();
   // The icon is a disk drive (Lucide's "hard-drive"), with the name beside it as on Documents.
-  // It lands in front of Documents, which the user wanted (so this menu hangs further from the
-  // window's edge): addButton() puts each new header button first, and this one is added on
-  // 'init', after the documents plugin has added its own while loading.
+  // Alone in the header since 2026-10-19: it acts on the whole system, where the buttons in
+  // the tab bar go with the flake that is loaded.
   eznix.addButton('header', {
     id: 'system-btn',
     tooltip: 'Back up, restore, import or export the whole system',

@@ -6,6 +6,8 @@
   POST backup           make one now
   POST delete?name=N    remove one
   POST restore?name=N   replace the flake's files with a backup's
+  GET  sources[?refresh=1]  the systems the `sources` setting offers, as a tree
+  POST import-source    {"url", "path"}: import one of them, as an import of a zip does
 
 Import and restore are the same operation on a zip from two places. Both write straight to
 disk, and both delete every in-scope file the zip doesn't mention, so the tree ends up matching
@@ -31,11 +33,32 @@ Settings ([plugin.system] in eznix.toml):
             with the other machine's (the user, 2026-10-13, about to import a template
             made on a VM). eznix cannot make a new one, which takes root. A restore keeps
             nothing back: a backup is this machine's own.
+  sources   where systems can be imported from (2026-10-19, the user's idea), each a location
+            or {name, url}. A location is an https address or a path on this machine (an
+            installer's own templates), and what is there is a zip or an index, told apart by
+            their first bytes. In a zip every folder with a flake.nix is a system, so one
+            zip can hold many and a repository downloaded from GitHub works as it is (its
+            one folder around everything is left out of the names). An index is JSON:
+            {"items": [...]} or the list alone, an item {name, url, path, description} or
+            {name, items} for a folder of its own; a url in it is relative to the index, and
+            one in an index on the web has to be https too. Only what the setting leads to
+            can be imported: the page names a system by its zip's location and folder, and
+            that location must have been reached from the setting. Plain http is refused,
+            since what is imported is built as root at the next rebuild. A download is kept
+            in the state folder for SOURCE_TTL and used again, and used when fetching it
+            again fails.
 """
 import datetime
+import hashlib
 import io
+import json
 import os
 import shutil
+import tempfile
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import zipfile
 
 PREFIX = 'system-'
@@ -46,6 +69,13 @@ MAX_ENTRIES  = 100_000
 MAX_UNPACKED = 2 << 30
 MAX_FILE     = 1 << 30
 
+# What a source may be: how much is downloaded, how long a download is used again, how long
+# one may take, and how deep indexes may lead to more indexes.
+MAX_DOWNLOAD = 256 << 20
+SOURCE_TTL   = 600
+FETCH_TIMEOUT = 30
+MAX_DEPTH    = 4
+
 
 def setup(api):
     flake = os.path.realpath(api.flake)
@@ -53,7 +83,10 @@ def setup(api):
     keep = int(api.config.get('backups', 5))
     excluded = api.ignore(api.config.get('exclude', ['.*']))
     stays = api.ignore(api.config.get('keep', ['hardware-configuration.nix']))
-    api.page = {'backups': keep > 0}
+    sources = [e if isinstance(e, dict) else {'url': e} for e in api.config.get('sources', [])]
+    source_dir = os.path.join(api.state_dir, 'system-sources')
+    reached = set()     # every zip's location a listing of `sources` has led to
+    api.page = {'backups': keep > 0, 'sources': bool(sources)}
 
     def tree_files():
         """(absolute path, path in the zip) for every file an export holds: all but what
@@ -214,6 +247,184 @@ def setup(api):
         return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
                 'unchanged': plan['unchanged'], 'kept': plan['kept']}
 
+    def is_web(loc):
+        return loc.startswith('https://')
+
+    def location(base, ref):
+        """Where `ref` in an index at `base` points (`base` None: `ref` is from the setting).
+        An https address, or an absolute path on this machine; from an index on the web, only
+        an https address."""
+        ref = str(ref).strip()
+        if ref.startswith('file://'):
+            ref = urllib.parse.unquote(urllib.parse.urlparse(ref).path)
+        if base and is_web(base):
+            loc = urllib.parse.urljoin(base, ref)
+            if not is_web(loc):
+                raise ValueError('an index on the web can only lead to https addresses')
+            return loc
+        if is_web(ref) or os.path.isabs(ref):
+            return ref
+        if '://' in ref:
+            raise ValueError('only https addresses and paths on this machine')
+        if not base:
+            raise ValueError('a path has to start at /')
+        return os.path.normpath(os.path.join(os.path.dirname(base), ref))
+
+    def fetch(loc, refresh=False):
+        """What is at a location: a file read, or a download kept in the state folder."""
+        if not is_web(loc):
+            if os.path.getsize(loc) > MAX_DOWNLOAD:
+                raise ValueError(f'more than {MAX_DOWNLOAD >> 20} MiB')
+            with open(loc, 'rb') as f:
+                return f.read()
+        kept = os.path.join(source_dir, hashlib.sha256(loc.encode()).hexdigest()[:32])
+        if not refresh and os.path.isfile(kept) and time.time() - os.path.getmtime(kept) < SOURCE_TTL:
+            with open(kept, 'rb') as f:
+                return f.read()
+        try:
+            req = urllib.request.Request(loc, headers={'User-Agent': 'eznix'})
+            with urllib.request.urlopen(req, timeout=FETCH_TIMEOUT) as r:
+                if not is_web(r.geturl()):
+                    raise ValueError('it was redirected away from https')
+                data = r.read(MAX_DOWNLOAD + 1)
+            if len(data) > MAX_DOWNLOAD:
+                raise ValueError(f'more than {MAX_DOWNLOAD >> 20} MiB')
+        except Exception:
+            if os.path.isfile(kept):
+                api.debug(f'source {loc}: fetching failed, using what was downloaded before')
+                with open(kept, 'rb') as f:
+                    return f.read()
+            raise
+        # Written by eznix alone, as the backups are.
+        os.makedirs(source_dir, mode=0o755, exist_ok=True)
+        try:
+            os.chmod(source_dir, 0o755)
+        except OSError:
+            pass
+        fd, tmp = tempfile.mkstemp(dir=source_dir)
+        with os.fdopen(fd, 'wb') as f:
+            f.write(data)
+        os.chmod(tmp, 0o644)
+        os.replace(tmp, kept)
+        return data
+
+    def systems_in(zf):
+        """The folders of a zip that hold a flake.nix, and the one folder around everything
+        (a repository downloaded from GitHub), or ''."""
+        names = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
+        found = sorted({os.path.dirname(n) for n in names if n == 'flake.nix' or n.endswith('/flake.nix')})
+        found = [d for d in found if not d or all(p not in ('.', '..') and not p.startswith('.') for p in d.split('/'))]
+        tops = {n.split('/')[0] for n in names}
+        around = next(iter(tops)) if len(tops) == 1 and all('/' in n for n in names) else ''
+        return found, around
+
+    def zip_node(name, loc, data, path=None, description=None):
+        """`name` empty: the folder around everything, else the file's name."""
+        zf = zipfile.ZipFile(io.BytesIO(data))
+        found, around = systems_in(zf)
+        reached.add(loc)
+        name = name or around or os.path.splitext(os.path.basename(loc.rstrip('/')))[0] or loc
+        leaf = lambda label, folder: {'name': label, 'url': loc, 'path': folder,
+                                      **({'description': description} if description else {})}
+        if path is not None:
+            path = path.strip('/')
+            if path not in found:
+                raise ValueError(f'there is no flake.nix in {path or "its top"}')
+            return leaf(name, path)
+        if not found:
+            raise ValueError('it holds no flake.nix')
+        if len(found) == 1:
+            return leaf(name, found[0])
+        # A tree by folder; a folder that is a system and holds others is both.
+        root = {'name': name, 'items': []}
+        if description:
+            root['description'] = description
+        for folder in found:
+            shown = folder[len(around):].strip('/') if around else folder
+            node = root
+            for part in [p for p in shown.split('/') if p]:
+                sub = next((n for n in node['items'] if n['name'] == part and 'items' in n), None)
+                if not sub:
+                    sub = {'name': part, 'items': []}
+                    node['items'].append(sub)
+                node = sub
+            if node is root:
+                root['items'].insert(0, leaf(around or name, folder))
+            else:
+                node['url'], node['path'] = loc, folder
+        def leaves(n):
+            for sub in n.get('items', []):
+                leaves(sub)
+            if 'items' in n and not n['items'] and n is not root:
+                del n['items']
+        leaves(root)
+        return root
+
+    def node(item, base, depth, refresh):
+        """One entry of the setting or of an index, as the page shows it: a system {name,
+        url, path}, a folder {name, items}, or {name, error}."""
+        name = str(item.get('name') or '')
+        try:
+            if 'items' in item:
+                return {'name': name or 'systems', 'items': [node(i, base, depth, refresh) for i in item['items']]}
+            loc = location(base, item['url'])
+            data = fetch(loc, refresh)
+            if data[:2] == b'PK':
+                return zip_node(name, loc, data, item.get('path'), item.get('description'))
+            name = name or os.path.splitext(os.path.basename(loc.rstrip('/')))[0] or loc
+            if depth >= MAX_DEPTH:
+                raise ValueError('indexes lead to indexes too deep')
+            index = json.loads(data.decode('utf-8'))
+            items = index if isinstance(index, list) else index.get('items', [])
+            if not isinstance(index, list):
+                name = item.get('name') or index.get('name') or name
+            return {'name': name, 'items': [node(i if isinstance(i, dict) else {'url': i}, loc, depth + 1, refresh)
+                                            for i in items]}
+        except Exception as e:
+            api.debug(f'source {item!r}: {e}')
+            why = e.reason if isinstance(e, urllib.error.URLError) else (e.strerror or e) if isinstance(e, OSError) else e
+            return {'name': name or str(item.get('url', '')), 'error': str(why)}
+
+    def list_sources(refresh=False):
+        return {'sources': [node(s, None, 0, refresh) for s in sources]}
+
+    def import_source(req):
+        try:
+            asked = json.loads(req.body or b'{}')
+            loc, path = asked['url'], asked.get('path') or ''
+        except (ValueError, KeyError, TypeError):
+            raise api.Error(400, 'name a system as {"url", "path"}')
+        if loc not in reached:
+            list_sources()
+        if loc not in reached:
+            raise api.Error(400, 'that is not one of the systems in `sources`')
+        try:
+            data = fetch(loc)
+            zf = zipfile.ZipFile(io.BytesIO(data))
+        except (OSError, ValueError, zipfile.BadZipFile) as e:
+            raise api.Error(502, f'could not get {loc}: {e}')
+        with zf:
+            if path not in systems_in(zf)[0]:
+                raise api.Error(400, f'there is no system in {path or "the top"} of {loc}')
+            sub = zf if not path else folder_zip(zf, path)
+            plan = prepare(sub, keeping=True)
+            backup()
+            return apply(sub, plan)
+
+    def folder_zip(zf, path):
+        """One folder of a zip as a zip of its own, its files at the top, for prepare(). The
+        limits are prepare()'s, checked here before anything is copied."""
+        prefix = path + '/'
+        infos = [i for i in zf.infolist() if not i.is_dir() and i.filename.replace('\\', '/').startswith(prefix)]
+        if (len(infos) > MAX_ENTRIES or sum(i.file_size for i in infos) > MAX_UNPACKED
+                or any(i.file_size > MAX_FILE for i in infos)):
+            raise api.Error(413, 'that system is too big; nothing was changed')
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_STORED) as out:
+            for i in infos:
+                out.writestr(i.filename.replace('\\', '/')[len(prefix):], zf.read(i))
+        return zipfile.ZipFile(buf)
+
     def export(req):
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
@@ -272,3 +483,5 @@ def setup(api):
     api.post('delete', delete)
     api.post('import', import_)
     api.post('restore', restore)
+    api.get('sources', lambda req: list_sources(req.query.get('refresh') == '1'))
+    api.post('import-source', import_source)

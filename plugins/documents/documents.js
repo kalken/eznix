@@ -1,10 +1,11 @@
-// The documents plugin: a "Documents" button in the header listing every *.md file in the
+// The documents plugin: a "Documents" button in the tab bar listing every *.md file in the
 // flake, each opening as a panel on the side (eznix.sidePanel()). documents.py in this folder
 // lists and reads the files; everything else is here.
-// In the header beside Backup/Restore/Import/Export, with an icon like theirs (a page with
-// lines, Lucide's "file-text") and its name, which the user asked to keep beside the icon. It was a button reading "Documents" at the end of the tab bar until
-// 2026-10, when the user wanted it on the row with those.
-const _mdMenuBtn = eznix.addButton('header', {
+// Beside Search at the end of the tab bar, with the other buttons for the flake that is loaded,
+// with an icon (a page with lines, Lucide's "file-text") and its name, which the user asked to
+// keep beside the icon. It was a button reading "Documents" there until 2026-10, then in the
+// header until 2026-10-19, when the user wanted only System there.
+const _mdMenuBtn = eznix.addButton('tabs', {
   id: 'md-menu-btn', tooltip: 'Browse .md files in the flake',
   html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>Documents',
   onclick: e => showMarkdownMenu(e),
@@ -244,7 +245,7 @@ async function showMarkdownMenu(event) {
   const btn = event.currentTarget;
   const rect = btn.getBoundingClientRect();
   const anchor = {
-    clientX: rect.left, clientY: rect.bottom + 2,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
+    clientX: rect.left, clientY: rect.bottom + 2, anchorRight: rect.right,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
   try {

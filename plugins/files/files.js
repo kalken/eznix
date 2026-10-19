@@ -1,4 +1,4 @@
-// The files plugin: menus of the flake's files by their kind, each a button in the header.
+// The files plugin: menus of the flake's files by their kind, each a button in the tab bar, beside Search.
 // What menus there are is configuration ([plugin.files], see files.py): a name, the endings
 // of the files it lists, and the command a file is opened with. With nothing set there is
 // one, "Nix files", of the .nix files.
@@ -22,7 +22,7 @@ const _filesOpen = new Map();     // the files that are open: path -> its panel
 // they are made from the last on), with an icon like its neighbours' (a page, Lucide's
 // "file") and its name beside it.
 const _filesButtons = (_filesConfig.menus || []).map((menu, n) => [menu, n]).reverse().map(([menu, n]) => {
-  const btn = eznix.addButton('header', {
+  const btn = eznix.addButton('tabs', {
     tooltip: 'Open one of the flake\'s ' + menu.extensions.join(', ') + ' files',
     html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7z"/><path d="M14 2v5h6"/></svg><span></span>',
     onclick: e => showFilesMenu(e, menu, n),
@@ -38,7 +38,7 @@ async function showFilesMenu(event, menu, n) {
   const btn = event.currentTarget;
   const rect = btn.getBoundingClientRect();
   const anchor = {
-    clientX: rect.left, clientY: rect.bottom + 2,
+    clientX: rect.left, clientY: rect.bottom + 2, anchorRight: rect.right,
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
   let names = [];

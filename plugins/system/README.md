@@ -8,6 +8,8 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 - **Import** a zip over the flake: the files end up exactly as in the zip, except this
   machine's own `hardware-configuration.nix`, which stays
 - **Backup** the flake now, and **restore** any backup from the list
+- **Import from** a list of places: zips and indexes of systems, on the web or on this
+  machine, shown as a menu
 - A backup is made by itself before every import and restore
 
 ## 📋 Options
@@ -17,6 +19,10 @@ services.eznix.plugins.system = {
   backups = 10;
   exclude = [ ".*" "result" "*.key" ];
   keep    = [ "hardware-configuration.nix" ];
+  sources = [
+    "https://github.com/me/systems/archive/refs/heads/main.zip"
+    { name = "Templates"; url = "https://example.org/systems/index.json"; }
+  ];
 };
 ```
 
@@ -25,7 +31,39 @@ services.eznix.plugins.system = {
 | `backups` | `5` | how many backups are kept; `0` for none |
 | `exclude` | `[ ".*" ]` | what an export leaves out, read like the lines of a `.gitignore` |
 | `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
+| `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url }` |
 | `enabled` | `true` | `false` leaves the plugin out |
+
+## 🌍 Sources
+
+Each source is a heading in the System menu, **Import from NAME**, and the systems in it are
+the lines under it, named by their folders. Choosing one imports it as an import of a zip does: the backup first,
+this machine's hardware file kept.
+
+- **A zip**: every folder in it that has a `flake.nix` is a system, so one zip can hold
+  many, in folders and subfolders. A repository downloaded from GitHub
+  (`…/archive/refs/heads/main.zip`) works as it is: the one folder around everything is
+  left out of the names.
+- **An index**: a JSON file that lists systems, for a menu of your own making:
+
+  ```json
+  { "name": "Our systems", "items": [
+    { "name": "Desktops", "items": [
+      { "name": "Gaming", "url": "gaming.zip", "description": "Steam and the rest" }
+    ] },
+    { "name": "Router", "url": "https://example.org/all.zip", "path": "router" },
+    { "url": "more/index.json" }
+  ] }
+  ```
+
+  `url` is a zip or another index, relative to this one; `path` picks one folder of a zip
+  that holds several; `items` is a folder of the menu.
+
+What is imported is built as root at the next rebuild, so a source is only ever named in
+the configuration, never typed into the page, and plain `http` is refused (an index on the
+web can only lead to `https`). A download is kept for ten minutes, and used again when the
+place cannot be reached; **Check again** below them downloads the sources anew.
+At most 256 MiB is downloaded.
 
 ## 📝 Notes
 
