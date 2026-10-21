@@ -8,6 +8,8 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 - **Import** a zip over the flake: the files end up exactly as in the zip, except this
   machine's own `hardware-configuration.nix`, which stays
 - **Backup** the flake now, and **restore** any backup from the list
+- **New system** (install mode, or `templates = true`) from one of the starting flakes eznix
+  ships (`nixos`, `darwin`, `home`), added over the current files without removing any
 - **Import from** a list of places: zips and indexes of systems, on the web or on this
   machine, shown as a menu
 - A backup is made by itself before every import and restore
@@ -34,6 +36,7 @@ services.eznix.plugins.system = {
 | `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url }` |
 | `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
+| `templates` | `false`, `true` in install mode | offer a **New system** from the starting flakes eznix ships |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 🌍 Sources

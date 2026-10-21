@@ -420,7 +420,7 @@ def system_sources():
                                                 'description': 'a home'}]},
                 {'url': 'one.zip'}, {'name': 'Plain', 'url': 'http://example.org/x.zip'}]}, f)
         ez.FLAKE_DIR, ez.STATE_DIR = f'{d}/flake', f'{d}/state'
-        api = ez.PluginApi('system', {'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
+        api = ez.PluginApi('system', {'templates': True, 'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
                                                   f'{d}/src/index.json', f'{d}/src/none.zip', f'{d}/src/missing.zip', 'relative.zip']})
         system.setup(api)
         get = lambda path, query={}, body=b'': api.routes[path](ez.PluginRequest(query, body, 'alice'))
@@ -461,6 +461,28 @@ def system_sources():
         check('sources: and a whole zip', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
               and open(f'{d}/flake/hardware-configuration.nix').read() == 'this machine'
               and result['kept'] == ['hardware-configuration.nix'], result)
+        listed = get(('GET', 'templates'))['templates']
+        check('templates: the folders of templates/ that hold a flake.nix are offered', listed == ['darwin', 'home', 'nixos'], listed)
+        with open(f'{d}/flake/configuration.nix', 'w') as f:
+            f.write('the installer')
+        result = get(('POST', 'new-system'), {'name': 'nixos'})
+        check("templates: a new system adds the template's files and removes none",
+              open(f'{d}/flake/configuration.nix').read() == 'the installer'
+              and os.path.isfile(f'{d}/flake/eznix/system.json') and os.path.isfile(f'{d}/flake/eznix/b.json')
+              and open(f'{d}/flake/flake.nix').read() != 'one' and result['removed'] == [], result)
+        def templates_of(config, mode):
+            ez.EZNIX_MODE = mode
+            other = ez.PluginApi('system', config)
+            system.setup(other)
+            ez.EZNIX_MODE = None
+            ask = lambda method, path, query={}: other.routes[(method, path)](ez.PluginRequest(query, b'', 'alice'))
+            return ask('GET', 'templates')['templates'], refused(lambda: ask('POST', 'new-system', {'name': 'nixos'}))
+        check('templates: not offered unless it is install mode or `templates` says so',
+              templates_of({}, None) == ([], 400) and templates_of({}, 'install')[0] == ['darwin', 'home', 'nixos']
+              and templates_of({'templates': True}, None)[0] == ['darwin', 'home', 'nixos']
+              and templates_of({'templates': False}, 'install') == ([], 400))
+        check('templates: only a name from the list is taken',
+              all(refused(lambda n=n: get(('POST', 'new-system'), {'name': n})) == 400 for n in ('../plugins', 'missing', '', 'nixos/eznix')))
 
 
 def main():

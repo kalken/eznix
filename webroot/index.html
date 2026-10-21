@@ -998,6 +998,15 @@ function _markSubmenuSides(menu, depth) {
 function _buildMenuLevel(items, depth) {
   const menu = document.createElement('div');
   menu.className = 'context-menu';
+  // An item with `fold` ([items]) is a heading whose lines stay hidden until it is clicked, and
+  // hidden again by another click: the lines stand in this level, no submenu (the menus hang
+  // from the right edge, where a submenu opens on the left).
+  const flat = [];
+  items.forEach((it, n) => {
+    if (!it.fold) { flat.push(it); return; }
+    flat.push({ ...it, _foldHead: n });
+    it.fold.forEach(c => flat.push({ ...c, _inFold: n }));
+  });
   // Shared by every item at this level, not just submenu triggers -- hovering a plain leaf item
   // needs to close a sibling's already-open submenu too, otherwise moving from an expanded
   // submenu trigger to a plain sibling button left the submenu stuck open (nothing else ever
@@ -1006,7 +1015,7 @@ function _buildMenuLevel(items, depth) {
     _ctxMenuStack.slice(depth + 1).forEach(m => m.remove());
     _ctxMenuStack = _ctxMenuStack.slice(0, depth + 1);
   };
-  items.forEach(item => {
+  flat.forEach(item => {
     if (item.separator) {
       const sep = document.createElement('div');
       sep.className = 'context-menu-sep';
@@ -1015,6 +1024,8 @@ function _buildMenuLevel(items, depth) {
     }
     const btn = document.createElement('button');
     btn.className = 'context-menu-item' + (item.danger ? ' danger' : '') + (item.items ? ' has-submenu' : '');
+    if (item._inFold !== undefined) { btn.classList.add('fold-hidden'); btn.dataset.fold = item._inFold; }
+    if (item._foldHead !== undefined) btn.classList.add('foldable');
     // item.heading: a line that names the lines under it, dim like a disabled one but not
     // disabled, so that its `aside` (a mark at its end) can still be pressed. The line itself
     // does nothing.
@@ -1053,7 +1064,15 @@ function _buildMenuLevel(items, depth) {
       // hover doesn't fire at all on touch.
       btn.addEventListener('mouseenter', openSubmenu);
     } else {
-      btn.onclick = () => { if (item.heading) return; _closeContextMenu(); item.onclick(); };
+      btn.onclick = () => {
+        if (item._foldHead !== undefined) {
+          const open = btn.classList.toggle('open');
+          menu.querySelectorAll('[data-fold="' + item._foldHead + '"]').forEach(b => b.classList.toggle('fold-hidden', !open));
+          return;
+        }
+        if (item.heading) return;
+        _closeContextMenu(); item.onclick();
+      };
       btn.addEventListener('mouseenter', closeDeeper);
       // A second thing to do with the entry, as a small mark at the end of its line:
       // item.aside = { label, title, onclick }, the ✕ that deletes a backup for one. It was a

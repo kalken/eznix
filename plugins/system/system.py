@@ -164,11 +164,12 @@ def setup(api):
             folder = os.path.dirname(folder)
         return os.access(folder, os.W_OK | os.X_OK)
 
-    def prepare(zf, keeping=False):
+    def prepare(zf, keeping=False, removing=True):
         """What making the tree match the zip takes, decided before anything is touched (the
         snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
         'unchanged', 'kept'}. `keeping`, for an import: what the `keep` setting names stays
-        as it is on this machine ('kept').
+        as it is on this machine ('kept'). `removing` false: nothing is removed, the zip is only
+        added over what is there (a new system from a template).
 
         An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
         that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
@@ -223,7 +224,7 @@ def setup(api):
             else:
                 write.append((target, info))
         remove = [(full, arcname) for full, arcname in tree_files()
-                  if arcname not in names and not (keeping and stays(arcname))]
+                  if removing and arcname not in names and not (keeping and stays(arcname))]
         denied = ([os.path.relpath(t, flake) for t, _ in write if not writable(t)]
                   + [name for full, name in remove if not os.access(os.path.dirname(full), os.W_OK | os.X_OK)])
         if denied:
@@ -447,6 +448,44 @@ def setup(api):
             backup()
             return apply(sub, plan)
 
+    # The starting flakes eznix ships (`templates/` beside `plugins/`, in a checkout and in the
+    # package alike): each folder is one, offered as a new system. Starting from one only adds
+    # its files over what is there and removes none: the NixOS one imports the installer's
+    # configuration.nix, which an import that makes the tree match would take away.
+    templates_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'templates'))
+
+    # Off unless eznix is an installer's editor (`mode = "install"`), where a machine starts with
+    # nothing; `templates` sets it either way. Elsewhere it would be one more way to overwrite
+    # a flake that is already someone's.
+    templates_on = api.config.get('templates', api.mode == 'install') is True
+
+    def template_names():
+        if not templates_on:
+            return []
+        try:
+            return sorted(n for n in os.listdir(templates_dir)
+                          if os.path.isfile(os.path.join(templates_dir, n, 'flake.nix')))
+        except OSError:
+            return []
+
+    def new_system(req):
+        name = req.query.get('name', '')
+        if name not in template_names():
+            raise api.Error(400, 'no such template')
+        base = os.path.join(templates_dir, name)
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as out:
+            for dirpath, dirnames, filenames in os.walk(base):
+                dirnames[:] = [d for d in dirnames if not d.startswith('.')]
+                for fn in sorted(filenames):
+                    full = os.path.join(dirpath, fn)
+                    if not fn.startswith('.') and not os.path.islink(full):
+                        out.write(full, os.path.relpath(full, base).replace(os.sep, '/'))
+        with zipfile.ZipFile(io.BytesIO(buf.getvalue())) as zf:
+            plan = prepare(zf, keeping=True, removing=False)
+            backup()
+            return apply(zf, plan)
+
     def folder_zip(zf, path):
         """One folder of a zip as a zip of its own, its files at the top, for prepare(). The
         limits are prepare()'s, checked here before anything is copied."""
@@ -522,3 +561,5 @@ def setup(api):
     api.get('sources', lambda req: list_sources(req.query.get('refresh') == '1',
                                                 int(req.query['only']) if req.query.get('only', '').isdigit() else None))
     api.post('import-source', import_source)
+    api.get('templates', lambda req: {'templates': template_names()})
+    api.post('new-system', new_system)

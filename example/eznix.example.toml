@@ -126,6 +126,8 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # where systems can be imported from: a zip (every folder
 #                                     # with a flake.nix in it is one) or an index (JSON), at an
 #                                     # https address or a path here; or { name = "…", url = "…" }
+# templates = false                   # a "New system" from the starting flakes eznix ships; on by
+#                                     # itself in install mode
 # autocomplete = false                # generate the suggestions after an import (the Autocomplete
 #                                     # button's job), since the system has other options
 
