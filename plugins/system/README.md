@@ -44,6 +44,11 @@ this machine's hardware file kept.
   many, in folders and subfolders. A repository downloaded from GitHub
   (`…/archive/refs/heads/main.zip`) works as it is: the one folder around everything is
   left out of the names.
+- **A folder on GitHub**: the address as the browser shows it,
+  `https://github.com/OWNER/REPO/tree/BRANCH/PATH`. The zips in it are systems, named by
+  their file names, and its folders are listed the same way, down to four levels; a folder
+  with no zip below it is left out. The branch is one name without a slash. GitHub allows
+  60 such listings an hour without a login, and a listing is kept for ten minutes.
 - **An index**: a JSON file that lists systems, for a menu of your own making:
 
   ```json
@@ -62,7 +67,7 @@ this machine's hardware file kept.
 What is imported is built as root at the next rebuild, so a source is only ever named in
 the configuration, never typed into the page, and plain `http` is refused (an index on the
 web can only lead to `https`). A download is kept for ten minutes, and used again when the
-place cannot be reached; **Check again** below them downloads the sources anew.
+place cannot be reached; the ↻ at the end of a source's heading downloads that source anew.
 At most 256 MiB is downloaded.
 
 ## 📝 Notes

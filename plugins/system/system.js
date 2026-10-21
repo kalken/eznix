@@ -96,13 +96,7 @@ function initSystemImportButton() {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    if (!confirm(
-      `Import ${file.name} into ${NIXOS_TARGET}?\n\n` +
-      `This writes directly to disk immediately — there is no Save step and no undo (the current ` +
-      `state is itself backed up first, so this is recoverable from there, but not from within eznix). ` +
-      `Existing files with the same name are overwritten, and anything not in the zip is DELETED, ` +
-      `so the tree ends up matching exactly what was imported.`
-    )) return;
+    if (!confirm(`Import ${file.name}?\n\nIt replaces the current system. A backup is made first.`)) return;
     try {
       const res = await apiFetch('/plugin/system/import', {
         method: 'POST',
@@ -142,11 +136,11 @@ function _afterSystemImport(res, data) {
 // again" fetches them anew.
 let _systemSources = null;
 let _systemSourcesLoading = null;
-function loadSystemSources(refresh) {
+function loadSystemSources(refresh, only) {
   if (_systemSourcesLoading) return _systemSourcesLoading;
   _systemSourcesLoading = (async () => {
     try {
-      const res = await apiFetch('/plugin/system/sources' + (refresh ? '?refresh=1' : ''));
+      const res = await apiFetch('/plugin/system/sources' + (refresh ? '?refresh=1' + (only != null ? '&only=' + only : '') : ''));
       const data = await res.json().catch(() => ({}));
       _systemSources = res.ok ? data.sources : [{ name: 'sources', error: data.error || String(res.status) }];
     } catch (e) {
@@ -159,14 +153,7 @@ function loadSystemSources(refresh) {
 }
 
 async function importSystemSource(system) {
-  const where = system.url + (system.path ? ' (' + system.path + ')' : '');
-  if (!confirm(
-    `Import ${system.name} into ${NIXOS_TARGET}?\n\nFrom ${where}\n\n` +
-    `This writes directly to disk immediately — there is no Save step and no undo (the current ` +
-    `state is itself backed up first, so this is recoverable from there, but not from within eznix). ` +
-    `Existing files with the same name are overwritten, and anything not in the system is DELETED, ` +
-    `so the tree ends up matching exactly what was imported.`
-  )) return;
+  if (!confirm(`Import ${system.name}?\n\nIt replaces the current system. A backup is made first.`)) return;
   setStatus('Importing ' + system.name + '…', 30000);
   try {
     const res = await apiFetch('/plugin/system/import-source', {
@@ -191,9 +178,9 @@ function _sourceLines(node, name, out) {
   return out;
 }
 
-async function _checkSourcesAgain() {
+async function _checkSourcesAgain(only) {
   setStatus('Checking the sources again…', 30000);
-  await loadSystemSources(true);
+  await loadSystemSources(true, only);
   const failed = _systemSources.filter(s => s.error).length;
   setStatus(failed ? `${failed} source(s) could not be read` : 'The sources are up to date', 4000, failed ? 'err' : 'ok');
 }
@@ -206,13 +193,14 @@ function _sourceMenuItems() {
     items.push({ label: 'Import from: loading…', disabled: true });
     return items;
   }
-  _systemSources.forEach(s => {
-    items.push({ label: 'Import from ' + s.name + (s.error ? ': ' + s.error : ''), disabled: true });
+  _systemSources.forEach((s, i) => {
+    // The heading looks like Restore's; the mark at its end downloads that source again.
+    items.push({ label: 'Import from ' + s.name + (s.error ? ': ' + s.error : ''), heading: true,
+                 aside: { label: '↻', title: 'Download this source again', onclick: () => _checkSourcesAgain(i) } });
     if (s.error) return;
     if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
     else s.items.forEach(n => _sourceLines(n, n.name, items));
   });
-  items.push({ label: 'Check again', title: 'Download the sources again', onclick: _checkSourcesAgain });
   return items;
 }
 
@@ -284,7 +272,41 @@ eznix.on('empty', el => {
   link.onclick = e => { e.preventDefault(); importSystem(); };
   line.append('A whole system can be imported through ', link, '.');
   el.appendChild(line);
+  // The systems the sources offer, as links under it, once they are known.
+  if (!SYSTEM_SOURCES) return;
+  const list = document.createElement('div');
+  el.appendChild(list);
+  const fill = () => {
+    (_systemSources || []).forEach(src => {
+      if (src.error) return;
+      const out = [];
+      if (!src.items) out.push({ label: src.name, system: src });
+      else _systemChoices(src.items, '', out);
+      if (!out.length) return;
+      const row = document.createElement('div');
+      row.append('Import from ' + src.name + ': ');
+      out.forEach((c, i) => {
+        if (i) row.append(', ');
+        const a = document.createElement('a');
+        a.href = '#'; a.textContent = c.label;
+        a.onclick = e => { e.preventDefault(); importSystemSource(c.system); };
+        row.appendChild(a);
+      });
+      list.appendChild(row);
+    });
+  };
+  if (_systemSources) fill(); else loadSystemSources().then(fill);
 });
+
+// The systems below a source's items as { label, system }, a folder's name and a slash before
+// each name, like the lines of the System menu under that source's heading.
+function _systemChoices(items, prefix, out) {
+  items.forEach(n => {
+    const label = prefix ? prefix + '/' + n.name : n.name;
+    if (n.url) out.push({ label, system: n });
+    if (n.items) _systemChoices(n.items, label, out);
+  });
+}
 
 eznix.on('ready', () => { if (SYSTEM_SOURCES) loadSystemSources(); });
 

@@ -53,6 +53,7 @@ import hashlib
 import io
 import json
 import os
+import re
 import shutil
 import tempfile
 import time
@@ -360,6 +361,30 @@ def setup(api):
         leaves(root)
         return root
 
+    GITHUB_TREE = re.compile(r'^https://github\.com/([^/]+)/([^/]+)/tree/([^/]+)(?:/(.*?))?/?$')
+
+    def github_folder(loc):
+        """A folder of a GitHub repository (github.com/OWNER/REPO/tree/BRANCH/PATH, as the browser
+        shows it) as an index of what is in it: its zips, and its folders. GitHub's own listing
+        of the folder is what is read; the branch is one name without a slash."""
+        m = GITHUB_TREE.match(loc)
+        if not m:
+            return None
+        owner, repo, ref, path = m.groups()
+        api_url = (f'https://api.github.com/repos/{owner}/{repo}/contents/'
+                   f'{urllib.parse.quote(path or "")}?ref={urllib.parse.quote(ref)}')
+        return api_url, f'https://github.com/{owner}/{repo}/tree/{ref}'
+
+    def github_items(listing, tree):
+        items = []
+        for e in listing if isinstance(listing, list) else []:
+            name = str(e.get('name', ''))
+            if e.get('type') == 'dir':
+                items.append({'name': name, 'url': f'{tree}/{urllib.parse.quote(str(e.get("path", name)))}'})
+            elif e.get('type') == 'file' and name.lower().endswith('.zip') and e.get('download_url'):
+                items.append({'name': name[:-4], 'url': e['download_url']})
+        return items
+
     def node(item, base, depth, refresh):
         """One entry of the setting or of an index, as the page shows it: a system {name,
         url, path}, a folder {name, items}, or {name, error}."""
@@ -368,6 +393,15 @@ def setup(api):
             if 'items' in item:
                 return {'name': name or 'systems', 'items': [node(i, base, depth, refresh) for i in item['items']]}
             loc = location(base, item['url'])
+            folder = github_folder(loc)
+            if folder:
+                if depth >= MAX_DEPTH:
+                    raise ValueError('folders lead to folders too deep')
+                items = github_items(json.loads(fetch(folder[0], refresh).decode('utf-8')), folder[1])
+                shown = [node(i, loc, depth + 1, refresh) for i in items]
+                # A folder with no zip anywhere below it is not worth a line.
+                shown = [n for n in shown if 'url' in n or n.get('items') or n.get('error')]
+                return {'name': name or loc.rstrip('/').rsplit('/', 1)[-1], 'items': shown}
             data = fetch(loc, refresh)
             if data[:2] == b'PK':
                 return zip_node(name, loc, data, item.get('path'), item.get('description'))
@@ -385,8 +419,9 @@ def setup(api):
             why = e.reason if isinstance(e, urllib.error.URLError) else (e.strerror or e) if isinstance(e, OSError) else e
             return {'name': name or str(item.get('url', '')), 'error': str(why)}
 
-    def list_sources(refresh=False):
-        return {'sources': [node(s, None, 0, refresh) for s in sources]}
+    def list_sources(refresh=False, only=None):
+        # `only`: the number of the one source to download anew; the others come from what was kept.
+        return {'sources': [node(s, None, 0, refresh and only in (None, i)) for i, s in enumerate(sources)]}
 
     def import_source(req):
         try:
@@ -483,5 +518,6 @@ def setup(api):
     api.post('delete', delete)
     api.post('import', import_)
     api.post('restore', restore)
-    api.get('sources', lambda req: list_sources(req.query.get('refresh') == '1'))
+    api.get('sources', lambda req: list_sources(req.query.get('refresh') == '1',
+                                                int(req.query['only']) if req.query.get('only', '').isdigit() else None))
     api.post('import-source', import_source)

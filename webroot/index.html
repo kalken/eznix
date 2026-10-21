@@ -1013,7 +1013,16 @@ function _buildMenuLevel(items, depth) {
     }
     const btn = document.createElement('button');
     btn.className = 'context-menu-item' + (item.danger ? ' danger' : '') + (item.items ? ' has-submenu' : '');
-    btn.textContent = item.label;
+    // item.heading: a line that names the lines under it, dim like a disabled one but not
+    // disabled, so that its `aside` (a mark at its end) can still be pressed. The line itself
+    // does nothing.
+    if (item.heading) {
+      btn.classList.add('menu-heading');
+      const text = document.createElement('span');
+      text.className = 'context-menu-heading-text';
+      text.textContent = item.label;
+      btn.appendChild(text);
+    } else btn.textContent = item.label;
     if (item.disabled) btn.disabled = true;
     // Skipped for a submenu-trigger item -- hovering it already opens its full contents
     // instantly (below), so a text tooltip repeating the same info would just be a redundant
@@ -1042,7 +1051,7 @@ function _buildMenuLevel(items, depth) {
       // hover doesn't fire at all on touch.
       btn.addEventListener('mouseenter', openSubmenu);
     } else {
-      btn.onclick = () => { _closeContextMenu(); item.onclick(); };
+      btn.onclick = () => { if (item.heading) return; _closeContextMenu(); item.onclick(); };
       btn.addEventListener('mouseenter', closeDeeper);
       // A second thing to do with the entry, as a small mark at the end of its line:
       // item.aside = { label, title, onclick }, the ✕ that deletes a backup for one. It was a
