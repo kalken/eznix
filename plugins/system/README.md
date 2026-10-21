@@ -9,7 +9,7 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
   machine's own `hardware-configuration.nix`, which stays
 - **Backup** the flake now, and **restore** any backup from the list
 - **Import from** a list of places: zips, folders and indexes of systems, on the web or on
-  this machine, shown as headings in the menu that open when clicked
+  this machine, shown as headings in the menu
 - A backup is made by itself before every import and restore
 
 ## 📋 Options
@@ -41,8 +41,8 @@ services.eznix.plugins.system = {
 
 Each source is a heading in the System menu, below Restore, titled by the `name` of its
 entry exactly as you write it (**Import from ezinstall**, **Start from**, …; with no name,
-one made from the address), and the systems in it are the lines under it, shown when the
-heading is clicked and named by their folders. The ↻ at its end downloads the source again.
+one made from the address), and the systems in it are the lines under it, named by their
+folders. The ↻ at its end downloads the source again.
 Choosing a system imports it as an import of a zip does: the backup first, this machine's
 hardware file kept.
 

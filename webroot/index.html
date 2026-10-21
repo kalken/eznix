@@ -239,7 +239,8 @@ networking.hostName = "myhost";</pre>
 //                       by dragging its `edge` ('top' or 'left'); see there
 //   showContextMenu(event, items)  a menu at the pointer; an item is { label, onclick, danger,
 //                       disabled, title, items (a submenu), aside ({ label, title, onclick }:
-//                       a small mark at the end of the line with an action of its own) }
+//                       a small mark at the end of the line with an action of its own; `stay`: the
+//                       menu is not closed by it, and the action can open it again) }
 //   apiFetch('/plugin/NAME/...')   what the plugin's own server code answers, if it has any
 //   eznix.on(event, fn) / eznix.emit(event, ...args)
 //     'init'   the page is starting up, nothing loaded yet: wire up controls
@@ -998,15 +999,6 @@ function _markSubmenuSides(menu, depth) {
 function _buildMenuLevel(items, depth) {
   const menu = document.createElement('div');
   menu.className = 'context-menu';
-  // An item with `fold` ([items]) is a heading whose lines stay hidden until it is clicked, and
-  // hidden again by another click: the lines stand in this level, no submenu (the menus hang
-  // from the right edge, where a submenu opens on the left).
-  const flat = [];
-  items.forEach((it, n) => {
-    if (!it.fold) { flat.push(it); return; }
-    flat.push({ ...it, _foldHead: n });
-    it.fold.forEach(c => flat.push({ ...c, _inFold: n }));
-  });
   // Shared by every item at this level, not just submenu triggers -- hovering a plain leaf item
   // needs to close a sibling's already-open submenu too, otherwise moving from an expanded
   // submenu trigger to a plain sibling button left the submenu stuck open (nothing else ever
@@ -1015,7 +1007,7 @@ function _buildMenuLevel(items, depth) {
     _ctxMenuStack.slice(depth + 1).forEach(m => m.remove());
     _ctxMenuStack = _ctxMenuStack.slice(0, depth + 1);
   };
-  flat.forEach(item => {
+  items.forEach(item => {
     if (item.separator) {
       const sep = document.createElement('div');
       sep.className = 'context-menu-sep';
@@ -1024,8 +1016,6 @@ function _buildMenuLevel(items, depth) {
     }
     const btn = document.createElement('button');
     btn.className = 'context-menu-item' + (item.danger ? ' danger' : '') + (item.items ? ' has-submenu' : '');
-    if (item._inFold !== undefined) { btn.classList.add('fold-hidden'); btn.dataset.fold = item._inFold; }
-    if (item._foldHead !== undefined) btn.classList.add('foldable');
     // item.heading: a line that names the lines under it, dim like a disabled one but not
     // disabled, so that its `aside` (a mark at its end) can still be pressed. The line itself
     // does nothing.
@@ -1064,15 +1054,7 @@ function _buildMenuLevel(items, depth) {
       // hover doesn't fire at all on touch.
       btn.addEventListener('mouseenter', openSubmenu);
     } else {
-      btn.onclick = () => {
-        if (item._foldHead !== undefined) {
-          const open = btn.classList.toggle('open');
-          menu.querySelectorAll('[data-fold="' + item._foldHead + '"]').forEach(b => b.classList.toggle('fold-hidden', !open));
-          return;
-        }
-        if (item.heading) return;
-        _closeContextMenu(); item.onclick();
-      };
+      btn.onclick = () => { if (item.heading) return; _closeContextMenu(); item.onclick(); };
       btn.addEventListener('mouseenter', closeDeeper);
       // A second thing to do with the entry, as a small mark at the end of its line:
       // item.aside = { label, title, onclick }, the ✕ that deletes a backup for one. It was a
@@ -1084,7 +1066,7 @@ function _buildMenuLevel(items, depth) {
         aside.className = 'context-menu-aside';
         aside.textContent = item.aside.label;
         if (item.aside.title) _wireHoverTooltip(aside, item.aside.title);
-        aside.addEventListener('click', e => { e.stopPropagation(); _closeContextMenu(); item.aside.onclick(); });
+        aside.addEventListener('click', e => { e.stopPropagation(); if (!item.aside.stay) _closeContextMenu(); item.aside.onclick(); });
         btn.appendChild(aside);
       }
     }
@@ -1107,7 +1089,7 @@ function _buildMenuLevel(items, depth) {
 function showContextMenu(event, items, opts = {}) {
   event.preventDefault();
   event.stopPropagation();
-  const closingSameTrigger = opts.triggerEl && _openMenuTriggerEl === opts.triggerEl;
+  const closingSameTrigger = !opts.reopen && opts.triggerEl && _openMenuTriggerEl === opts.triggerEl;
   _closeContextMenu();
   if (closingSameTrigger) return;
   const menu = _buildMenuLevel(items, 0);

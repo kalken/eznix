@@ -200,23 +200,24 @@ async function _checkSourcesAgain(only) {
   setStatus(failed ? `${failed} source(s) could not be read` : 'The sources are up to date', 4000, failed ? 'err' : 'ok');
 }
 
-function _sourceMenuItems() {
+function _sourceMenuItems(again) {
   if (!SYSTEM_SOURCES) return [];
   if (!_systemSources) {
     loadSystemSources();
     return [{ label: 'Loading…', heading: true }];
   }
-  // A source is a heading named as the setting names it, its systems folded under it until it
-  // is clicked; the mark at its end downloads it again.
-  return _systemSources.map((s, i) => {
-    const lines = [];
-    if (!s.error) {
-      if (!s.items) lines.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
-      else s.items.forEach(n => _sourceLines(n, n.name, lines));
-    }
-    return { label: s.name + (s.error ? ': ' + s.error : ''), heading: true, fold: lines,
-             aside: { label: '↻', title: 'Download this source again', onclick: () => _checkSourcesAgain(i) } };
+  // A source is a heading named as the setting names it, with the mark at its end that
+  // downloads it again, and its systems as lines under it.
+  const items = [];
+  _systemSources.forEach((s, i) => {
+    items.push({ label: s.name + (s.error ? ': ' + s.error : ''), heading: true,
+                 aside: { label: '↻', title: 'Download this source again', stay: true,
+                          onclick: async () => { await _checkSourcesAgain(i); await again(); } } });
+    if (s.error) return;
+    if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
+    else s.items.forEach(n => _sourceLines(n, n.name, items));
   });
+  return items;
 }
 
 // One button, System, opening a dropdown with everything this plugin does: Export, Import, Backup,
@@ -246,6 +247,14 @@ async function showSystemMenu(event) {
     clientX: rect.left, clientY: rect.bottom + 2, anchorRight: rect.right,   // the same gap the terminal bar's menus have: see _positionMenuAboveAnchor()
     preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
   };
+  return renderSystemMenu(anchor, btn, false);
+}
+
+// The menu itself, built from what is on the server now. `reopen`: it is being drawn again in
+// place after something in it was done (a backup deleted, a source downloaded again), which
+// the menu stays open for.
+async function renderSystemMenu(anchor, btn, reopen) {
+  const again = async () => { if (_openMenuTriggerEl === btn) await renderSystemMenu(anchor, btn, true); };
   // Import, Export, Backup, the systems of the sources, then the backups to restore: the order the user asked for, as a
   // file's right-click menu has the first two (Export stood first until 2026-10-13), which
   // also puts the one part whose length varies last.
@@ -271,13 +280,14 @@ async function showSystemMenu(event) {
       danger: true,
       title: 'Restore this backup',
       onclick: () => restoreSystemBackup(b.name),
-      aside: { label: '✕', title: 'Delete this backup', onclick: () => deleteSystemBackup(b) },
+      aside: { label: '✕', title: 'Delete this backup', stay: true,
+               onclick: async () => { await deleteSystemBackup(b); await again(); } },
     }));
   }
-  // The sources come last, folded: they are looked at once in a while.
-  const more = _sourceMenuItems();
+  // The sources come last, under Restore.
+  const more = _sourceMenuItems(again);
   if (more.length) items.push({ separator: true }, ...more);
-  showContextMenu(anchor, items, { triggerEl: btn });
+  showContextMenu(anchor, items, { triggerEl: btn, reopen });
 }
 
 // With no files at all, the editor says so; a whole system is the other way to start.
