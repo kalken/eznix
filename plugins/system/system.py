@@ -86,7 +86,8 @@ def setup(api):
     stays = api.ignore(api.config.get('keep', ['hardware-configuration.nix']))
     sources = [e if isinstance(e, dict) else {'url': e} for e in api.config.get('sources', [])]
     source_dir = os.path.join(api.state_dir, 'system-sources')
-    reached = set()     # every zip's location a listing of `sources` has led to
+    reached = set()     # every zip's (or folder's) location a listing of `sources` has led to
+    addable = set()     # the locations a source with `add_only` has led to
     api.page = {'backups': keep > 0, 'sources': bool(sources),
                 'autocomplete': api.config.get('autocomplete') is True}
 
@@ -169,7 +170,7 @@ def setup(api):
         snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
         'unchanged', 'kept'}. `keeping`, for an import: what the `keep` setting names stays
         as it is on this machine ('kept'). `removing` false: nothing is removed, the zip is only
-        added over what is there (a new system from a template).
+        added over what is there (a source with `add_only`).
 
         An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
         that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
@@ -327,6 +328,27 @@ def setup(api):
         found, around = systems_in(zf)
         reached.add(loc)
         name = name or around or os.path.splitext(os.path.basename(loc.rstrip('/')))[0] or loc
+        return tree_node(name, loc, found, around, path, description)
+
+    def systems_in_dir(base):
+        """The folders under a folder on this machine that hold a flake.nix ('' for the folder
+        itself): dot-folders and links are left out, and nothing deeper than MAX_DEPTH."""
+        found = []
+        for dirpath, dirnames, filenames in os.walk(base):
+            rel = os.path.relpath(dirpath, base).replace(os.sep, '/')
+            rel = '' if rel == '.' else rel
+            dirnames[:] = sorted(d for d in dirnames if not d.startswith('.')
+                                 and not os.path.islink(os.path.join(dirpath, d)) and rel.count('/') < MAX_DEPTH)
+            if 'flake.nix' in filenames:
+                found.append(rel)
+        return sorted(found)
+
+    def dir_node(name, loc, description=None):
+        reached.add(loc)
+        return tree_node(name or os.path.basename(loc.rstrip('/')) or loc, loc, systems_in_dir(loc), '', None, description)
+
+    def tree_node(name, loc, found, around, path, description):
+        """The systems `found` (folders of a zip or of a folder) at `loc`, as a system or a tree."""
         leaf = lambda label, folder: {'name': label, 'url': loc, 'path': folder,
                                       **({'description': description} if description else {})}
         if path is not None:
@@ -404,6 +426,8 @@ def setup(api):
                 # A folder with no zip anywhere below it is not worth a line.
                 shown = [n for n in shown if 'url' in n or n.get('items') or n.get('error')]
                 return {'name': name or loc.rstrip('/').rsplit('/', 1)[-1], 'items': shown}
+            if not is_web(loc) and os.path.isdir(loc):
+                return dir_node(name, loc, item.get('description'))
             data = fetch(loc, refresh)
             if data[:2] == b'PK':
                 return zip_node(name, loc, data, item.get('path'), item.get('description'))
@@ -423,7 +447,16 @@ def setup(api):
 
     def list_sources(refresh=False, only=None):
         # `only`: the number of the one source to download anew; the others come from what was kept.
-        return {'sources': [node(s, None, 0, refresh and only in (None, i)) for i, s in enumerate(sources)]}
+        def mark(n, add):
+            # What a source with `add_only` leads to is only added over the files (prepare()).
+            if 'url' in n and add:
+                addable.add(n['url'])
+                n['add_only'] = True
+            for sub in n.get('items', []):
+                mark(sub, add)
+            return n
+        return {'sources': [mark(node(s, None, 0, refresh and only in (None, i)), s.get('add_only') is True)
+                            for i, s in enumerate(sources)]}
 
     def import_source(req):
         try:
@@ -435,6 +468,17 @@ def setup(api):
             list_sources()
         if loc not in reached:
             raise api.Error(400, 'that is not one of the systems in `sources`')
+        # The page says which line was pressed; add-only is taken only for a location a source
+        # with `add_only` led to (the same zip can also be under a source without it).
+        adding = asked.get('add_only') is True and loc in addable
+        if os.path.isdir(loc):
+            # A folder on this machine: the one system in it, zipped as a zip of its own.
+            if path not in systems_in_dir(loc):
+                raise api.Error(400, f'there is no system in {path or "the top"} of {loc}')
+            with zipfile.ZipFile(zip_folder(os.path.join(loc, path)), 'r') as sub:
+                plan = prepare(sub, keeping=True, removing=not adding)
+                backup()
+                return apply(sub, plan)
         try:
             data = fetch(loc)
             zf = zipfile.ZipFile(io.BytesIO(data))
@@ -444,47 +488,22 @@ def setup(api):
             if path not in systems_in(zf)[0]:
                 raise api.Error(400, f'there is no system in {path or "the top"} of {loc}')
             sub = zf if not path else folder_zip(zf, path)
-            plan = prepare(sub, keeping=True)
+            plan = prepare(sub, keeping=True, removing=not adding)
             backup()
             return apply(sub, plan)
 
-    # The starting flakes eznix ships (`templates/` beside `plugins/`, in a checkout and in the
-    # package alike): each folder is one, offered as a new system. Starting from one only adds
-    # its files over what is there and removes none: the NixOS one imports the installer's
-    # configuration.nix, which an import that makes the tree match would take away.
-    templates_dir = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'templates'))
-
-    # Off unless eznix is an installer's editor (`mode = "install"`), where a machine starts with
-    # nothing; `templates` sets it either way. Elsewhere it would be one more way to overwrite
-    # a flake that is already someone's.
-    templates_on = api.config.get('templates', api.mode == 'install') is True
-
-    def template_names():
-        if not templates_on:
-            return []
-        try:
-            return sorted(n for n in os.listdir(templates_dir)
-                          if os.path.isfile(os.path.join(templates_dir, n, 'flake.nix')))
-        except OSError:
-            return []
-
-    def new_system(req):
-        name = req.query.get('name', '')
-        if name not in template_names():
-            raise api.Error(400, 'no such template')
-        base = os.path.join(templates_dir, name)
+    def zip_folder(base):
+        """A folder as an in-memory zip, its files at the top; dot-files and links left out."""
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w') as out:
             for dirpath, dirnames, filenames in os.walk(base):
-                dirnames[:] = [d for d in dirnames if not d.startswith('.')]
+                dirnames[:] = [d for d in dirnames if not d.startswith('.') and not os.path.islink(os.path.join(dirpath, d))]
                 for fn in sorted(filenames):
                     full = os.path.join(dirpath, fn)
                     if not fn.startswith('.') and not os.path.islink(full):
                         out.write(full, os.path.relpath(full, base).replace(os.sep, '/'))
-        with zipfile.ZipFile(io.BytesIO(buf.getvalue())) as zf:
-            plan = prepare(zf, keeping=True, removing=False)
-            backup()
-            return apply(zf, plan)
+        buf.seek(0)
+        return buf
 
     def folder_zip(zf, path):
         """One folder of a zip as a zip of its own, its files at the top, for prepare(). The
@@ -561,5 +580,3 @@ def setup(api):
     api.get('sources', lambda req: list_sources(req.query.get('refresh') == '1',
                                                 int(req.query['only']) if req.query.get('only', '').isdigit() else None))
     api.post('import-source', import_source)
-    api.get('templates', lambda req: {'templates': template_names()})
-    api.post('new-system', new_system)

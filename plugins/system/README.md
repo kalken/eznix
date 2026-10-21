@@ -8,10 +8,8 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 - **Import** a zip over the flake: the files end up exactly as in the zip, except this
   machine's own `hardware-configuration.nix`, which stays
 - **Backup** the flake now, and **restore** any backup from the list
-- **New system** (install mode, or `templates = true`) from one of the starting flakes eznix
-  ships (`nixos`, `darwin`, `home`), added over the current files without removing any
-- **Import from** a list of places: zips and indexes of systems, on the web or on this
-  machine, shown as a menu
+- **Import from** a list of places: zips, folders and indexes of systems, on the web or on
+  this machine, shown as headings in the menu that open when clicked
 - A backup is made by itself before every import and restore
 
 ## 📋 Options
@@ -24,7 +22,8 @@ services.eznix.plugins.system = {
   autocomplete = true;
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
-    { name = "Templates"; url = "https://example.org/systems/index.json"; }
+    { name = "Import from Templates"; url = "https://example.org/systems/index.json"; }
+    { name = "Start from"; url = "${pkgs.eznix}/share/eznix/templates"; add_only = true; }
   ];
 };
 ```
@@ -34,21 +33,31 @@ services.eznix.plugins.system = {
 | `backups` | `5` | how many backups are kept; `0` for none |
 | `exclude` | `[ ".*" ]` | what an export leaves out, read like the lines of a `.gitignore` |
 | `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
-| `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url }` |
+| `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
 | `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
-| `templates` | `false`, `true` in install mode | offer a **New system** from the starting flakes eznix ships |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 🌍 Sources
 
-Each source is a heading in the System menu, **Import from NAME**, and the systems in it are
-the lines under it, named by their folders. Choosing one imports it as an import of a zip does: the backup first,
-this machine's hardware file kept.
+Each source is a heading in the System menu, below Restore, titled by the `name` of its
+entry exactly as you write it (**Import from ezinstall**, **Start from**, …; with no name,
+one made from the address), and the systems in it are the lines under it, shown when the
+heading is clicked and named by their folders. The ↻ at its end downloads the source again.
+Choosing a system imports it as an import of a zip does: the backup first, this machine's
+hardware file kept.
+
+With `add_only = true` on the entry, choosing a system only adds its files over the flake
+and removes none, so it can start a flake that already has files of its own that the
+system doesn't hold (the NixOS template, which imports the installer's `configuration.nix`).
+The question then says "Start from …" in place of "Import …".
 
 - **A zip**: every folder in it that has a `flake.nix` is a system, so one zip can hold
   many, in folders and subfolders. A repository downloaded from GitHub
   (`…/archive/refs/heads/main.zip`) works as it is: the one folder around everything is
   left out of the names.
+- **A folder on this machine**: every folder under it that has a `flake.nix` is a system
+  (dot-folders left out). `${pkgs.eznix}/share/eznix/templates` is the starting flakes eznix
+  ships: `nixos`, `darwin` and `home`.
 - **A folder on GitHub**: the address as the browser shows it,
   `https://github.com/OWNER/REPO/tree/BRANCH/PATH`. The zips in it are systems, named by
   their file names, and its folders are listed the same way, down to four levels; a folder

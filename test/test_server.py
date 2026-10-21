@@ -420,7 +420,7 @@ def system_sources():
                                                 'description': 'a home'}]},
                 {'url': 'one.zip'}, {'name': 'Plain', 'url': 'http://example.org/x.zip'}]}, f)
         ez.FLAKE_DIR, ez.STATE_DIR = f'{d}/flake', f'{d}/state'
-        api = ez.PluginApi('system', {'templates': True, 'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
+        api = ez.PluginApi('system', {'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
                                                   f'{d}/src/index.json', f'{d}/src/none.zip', f'{d}/src/missing.zip', 'relative.zip']})
         system.setup(api)
         get = lambda path, query={}, body=b'': api.routes[path](ez.PluginRequest(query, body, 'alice'))
@@ -461,28 +461,39 @@ def system_sources():
         check('sources: and a whole zip', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
               and open(f'{d}/flake/hardware-configuration.nix').read() == 'this machine'
               and result['kept'] == ['hardware-configuration.nix'], result)
-        listed = get(('GET', 'templates'))['templates']
-        check('templates: the folders of templates/ that hold a flake.nix are offered', listed == ['darwin', 'home', 'nixos'], listed)
+
+        # A folder on this machine: every folder under it with a flake.nix is a system, and a
+        # source with `add_only` adds the files and removes none.
+        os.makedirs(f'{d}/shipped/nixos/eznix')
+        os.makedirs(f'{d}/shipped/home')
+        os.makedirs(f'{d}/shipped/.hidden')
+        os.makedirs(f'{d}/shipped/nothing')
+        for n, t in {'nixos/flake.nix': 'tmpl nixos', 'nixos/eznix/system.json': '{"s": 1}', 'home/flake.nix': 'tmpl home',
+                     '.hidden/flake.nix': 'x', 'nothing/readme': 'x'}.items():
+            with open(f'{d}/shipped/{n}', 'w') as f:
+                f.write(t)
+        api2 = ez.PluginApi('system', {'sources': [{'name': 'Start from', 'url': f'{d}/shipped', 'add_only': True},
+                                                    {'name': 'Same, replacing', 'url': f'{d}/shipped'}]})
+        system.setup(api2)
+        get2 = lambda method, path, body=b'': api2.routes[(method, path)](ez.PluginRequest({}, body, 'alice'))
+        added, replacing = get2('GET', 'sources')['sources']
+        check('sources: a folder on this machine lists its flakes, dot-folders left out; add_only marks them',
+              added['name'] == 'Start from' and [(n['name'], n['path'], n.get('add_only')) for n in added['items']]
+              == [('home', 'home', True), ('nixos', 'nixos', True)]
+              and not any(n.get('add_only') for n in replacing['items']), (added, replacing))
         with open(f'{d}/flake/configuration.nix', 'w') as f:
             f.write('the installer')
-        result = get(('POST', 'new-system'), {'name': 'nixos'})
-        check("templates: a new system adds the template's files and removes none",
+        result = get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nixos', 'add_only': True}).encode())
+        check("sources: add_only adds a folder's files over the flake and removes none",
               open(f'{d}/flake/configuration.nix').read() == 'the installer'
-              and os.path.isfile(f'{d}/flake/eznix/system.json') and os.path.isfile(f'{d}/flake/eznix/b.json')
-              and open(f'{d}/flake/flake.nix').read() != 'one' and result['removed'] == [], result)
-        def templates_of(config, mode):
-            ez.EZNIX_MODE = mode
-            other = ez.PluginApi('system', config)
-            system.setup(other)
-            ez.EZNIX_MODE = None
-            ask = lambda method, path, query={}: other.routes[(method, path)](ez.PluginRequest(query, b'', 'alice'))
-            return ask('GET', 'templates')['templates'], refused(lambda: ask('POST', 'new-system', {'name': 'nixos'}))
-        check('templates: not offered unless it is install mode or `templates` says so',
-              templates_of({}, None) == ([], 400) and templates_of({}, 'install')[0] == ['darwin', 'home', 'nixos']
-              and templates_of({'templates': True}, None)[0] == ['darwin', 'home', 'nixos']
-              and templates_of({'templates': False}, 'install') == ([], 400))
-        check('templates: only a name from the list is taken',
-              all(refused(lambda n=n: get(('POST', 'new-system'), {'name': n})) == 400 for n in ('../plugins', 'missing', '', 'nixos/eznix')))
+              and open(f'{d}/flake/flake.nix').read() == 'tmpl nixos' and os.path.isfile(f'{d}/flake/eznix/system.json')
+              and os.path.isfile(f'{d}/flake/eznix/b.json') and result['removed'] == [], result)
+        result = get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'home'}).encode())
+        check("sources: without add_only the same folder is imported as it is: files not in it go",
+              not os.path.exists(f'{d}/flake/eznix/system.json') and 'configuration.nix' in result['removed'], result)
+        check('sources: a path that is not a system of the folder is refused',
+              refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nothing'}).encode())) == 400
+              and refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': '../src'}).encode())) == 400)
 
 
 def main():

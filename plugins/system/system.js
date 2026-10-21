@@ -165,38 +165,20 @@ function loadSystemSources(refresh, only) {
 }
 
 async function importSystemSource(system) {
-  if (!confirm(`Import ${system.name}?\n\nIt replaces the current system. A backup is made first.`)) return;
+  const sure = system.add_only
+    ? `Start from ${system.name}?\n\nIts files are added to the current system. A backup is made first.`
+    : `Import ${system.name}?\n\nIt replaces the current system. A backup is made first.`;
+  if (!confirm(sure)) return;
   setStatus('Importing ' + system.name + '…', 30000);
   try {
     const res = await apiFetch('/plugin/system/import-source', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: system.url, path: system.path }),
+      body: JSON.stringify({ url: system.url, path: system.path, add_only: system.add_only === true }),
     });
     _afterSystemImport(res, await res.json().catch(() => ({})));
   } catch (err) {
     setStatus('Import failed: ' + err.message, 5000, 'err');
-  }
-}
-
-// The starting flakes eznix ships (templates/), for a new system: asked for when the page is
-// ready and kept. Starting from one adds its files over what is there and removes none.
-let _systemTemplates = null;
-function loadSystemTemplates() {
-  return apiFetch('/plugin/system/templates')
-    .then(res => res.ok ? res.json() : {})
-    .then(data => { _systemTemplates = data.templates || []; })
-    .catch(() => { _systemTemplates = []; });
-}
-
-async function newSystem(name) {
-  if (!confirm(`Start a new system from ${name}?\n\nIts files are added to the current system. A backup is made first.`)) return;
-  setStatus('Creating ' + name + '…', 30000);
-  try {
-    const res = await apiFetch('/plugin/system/new-system?name=' + encodeURIComponent(name), { method: 'POST' });
-    _afterSystemImport(res, await res.json().catch(() => ({})));
-  } catch (err) {
-    setStatus('Failed: ' + err.message, 5000, 'err');
   }
 }
 
@@ -218,32 +200,23 @@ async function _checkSourcesAgain(only) {
   setStatus(failed ? `${failed} source(s) could not be read` : 'The sources are up to date', 4000, failed ? 'err' : 'ok');
 }
 
-function _templateMenuItems() {
-  if (!_systemTemplates || !_systemTemplates.length) return [];
-  return [{ label: 'New system', heading: true,
-            fold: _systemTemplates.map(n => ({ label: n, title: 'Start a new system from this template', onclick: () => newSystem(n) })) }];
-}
-
 function _sourceMenuItems() {
   if (!SYSTEM_SOURCES) return [];
-  const items = [];
   if (!_systemSources) {
     loadSystemSources();
-    items.push({ label: 'Import from: loading…', disabled: true });
-    return items;
+    return [{ label: 'Loading…', heading: true }];
   }
-  _systemSources.forEach((s, i) => {
-    // The heading looks like Restore's and opens its lines when clicked; the mark at its end
-    // downloads that source again.
+  // A source is a heading named as the setting names it, its systems folded under it until it
+  // is clicked; the mark at its end downloads it again.
+  return _systemSources.map((s, i) => {
     const lines = [];
     if (!s.error) {
       if (!s.items) lines.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
       else s.items.forEach(n => _sourceLines(n, n.name, lines));
     }
-    items.push({ label: 'Import from ' + s.name + (s.error ? ': ' + s.error : ''), heading: true, fold: lines,
-                 aside: { label: '↻', title: 'Download this source again', onclick: () => _checkSourcesAgain(i) } });
+    return { label: s.name + (s.error ? ': ' + s.error : ''), heading: true, fold: lines,
+             aside: { label: '↻', title: 'Download this source again', onclick: () => _checkSourcesAgain(i) } };
   });
-  return items;
 }
 
 // One button, System, opening a dropdown with everything this plugin does: Export, Import, Backup,
@@ -301,8 +274,8 @@ async function showSystemMenu(event) {
       aside: { label: '✕', title: 'Delete this backup', onclick: () => deleteSystemBackup(b) },
     }));
   }
-  // New system and the sources come last, folded: they are looked at once in a while.
-  const more = [..._templateMenuItems(), ..._sourceMenuItems()];
+  // The sources come last, folded: they are looked at once in a while.
+  const more = _sourceMenuItems();
   if (more.length) items.push({ separator: true }, ...more);
   showContextMenu(anchor, items, { triggerEl: btn });
 }
@@ -316,22 +289,11 @@ eznix.on('empty', el => {
   link.onclick = e => { e.preventDefault(); importSystem(); };
   line.append('A whole system can be imported through ', link, '.');
   el.appendChild(line);
-  // The templates and the systems the sources offer, as links under it, once they are known.
+  // The systems the sources offer, as links under it, once they are known.
+  if (!SYSTEM_SOURCES) return;
   const list = document.createElement('div');
   el.appendChild(list);
   const fill = () => {
-    if (_systemTemplates && _systemTemplates.length) {
-      const row = document.createElement('div');
-      row.append('New system: ');
-      _systemTemplates.forEach((n, i) => {
-        if (i) row.append(', ');
-        const a = document.createElement('a');
-        a.href = '#'; a.textContent = n;
-        a.onclick = e => { e.preventDefault(); newSystem(n); };
-        row.appendChild(a);
-      });
-      list.appendChild(row);
-    }
     (_systemSources || []).forEach(src => {
       if (src.error) return;
       const out = [];
@@ -339,7 +301,7 @@ eznix.on('empty', el => {
       else _systemChoices(src.items, '', out);
       if (!out.length) return;
       const row = document.createElement('div');
-      row.append('Import from ' + src.name + ': ');
+      row.append(src.name + ': ');
       out.forEach((c, i) => {
         if (i) row.append(', ');
         const a = document.createElement('a');
@@ -350,10 +312,7 @@ eznix.on('empty', el => {
       list.appendChild(row);
     });
   };
-  const wait = [];
-  if (!_systemTemplates) wait.push(loadSystemTemplates());
-  if (SYSTEM_SOURCES && !_systemSources) wait.push(loadSystemSources());
-  if (wait.length) Promise.all(wait).then(fill); else fill();
+  if (_systemSources) fill(); else loadSystemSources().then(fill);
 });
 
 // The systems below a source's items as { label, system }, a folder's name and a slash before
@@ -366,7 +325,7 @@ function _systemChoices(items, prefix, out) {
   });
 }
 
-eznix.on('ready', () => { loadSystemTemplates(); if (SYSTEM_SOURCES) loadSystemSources(); });
+eznix.on('ready', () => { if (SYSTEM_SOURCES) loadSystemSources(); });
 
 eznix.on('init', () => {
   const input = document.createElement('input');

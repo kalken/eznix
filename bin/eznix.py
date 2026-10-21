@@ -1149,7 +1149,6 @@ class PluginApi:
     from a logged-in browser. Everything else here is for reading:
         api.config     this plugin's [plugin.NAME] table
         api.flake, api.config_dir, api.state_dir, api.hostname
-        api.mode       'install' when eznix runs as an installer's editor, else None
         api.page       set it to change what the page gets as eznix.config.NAME (default: config)
         api.debug(line)  a line in the log, with the `debug` setting on only
         api.ignore(entries)  a function saying whether a relative path is left out by a list
@@ -1160,7 +1159,6 @@ class PluginApi:
     def __init__(self, name, config):
         self.name, self.config, self.page = name, config, config
         self.flake, self.config_dir, self.state_dir, self.hostname = FLAKE_DIR, CONFIG_DIR, STATE_DIR, HOSTNAME
-        self.mode = EZNIX_MODE
         self.routes = {}
 
     def debug(self, line):
