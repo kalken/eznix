@@ -6,6 +6,16 @@
 // system.py in this folder; this file is the buttons and the confirmations.
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
 const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
+// `autocomplete`: generate the suggestions after an import, since the system it brought has
+// other options and packages. The import reloads the page, so the request is kept in the
+// browser's session across the reload and made once the page is up again.
+const SYSTEM_AUTOCOMPLETE = !!(eznix.config.system || {}).autocomplete;
+const _AUTOCOMPLETE_AFTER = 'eznix-system-autocomplete';
+eznix.on('ready', () => {
+  let asked = false;
+  try { asked = sessionStorage.getItem(_AUTOCOMPLETE_AFTER) === '1'; sessionStorage.removeItem(_AUTOCOMPLETE_AFTER); } catch (e) { /* no storage: it is not asked */ }
+  if (asked && SYSTEM_AUTOCOMPLETE) setTimeout(() => eznix.emit('autocomplete'), 0);
+});
 
 // Unlike exportAll() (which zips the in-memory fileConfigs — unsaved edits included, but only
 // eznix's own *.json tabs), this is the *on-disk* NIXOS_TARGET tree, flake and all — the server
@@ -124,7 +134,9 @@ function _afterSystemImport(res, data) {
   // just say so — the edits themselves are unaffected by this import either way.
   if (isAnyDirty()) {
     setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
+    if (SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete');
   } else {
+    if (SYSTEM_AUTOCOMPLETE) { try { sessionStorage.setItem(_AUTOCOMPLETE_AFTER, '1'); } catch (e) { /* see above */ } }
     location.reload();
   }
 }

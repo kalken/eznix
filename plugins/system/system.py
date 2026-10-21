@@ -87,7 +87,8 @@ def setup(api):
     sources = [e if isinstance(e, dict) else {'url': e} for e in api.config.get('sources', [])]
     source_dir = os.path.join(api.state_dir, 'system-sources')
     reached = set()     # every zip's location a listing of `sources` has led to
-    api.page = {'backups': keep > 0, 'sources': bool(sources)}
+    api.page = {'backups': keep > 0, 'sources': bool(sources),
+                'autocomplete': api.config.get('autocomplete') is True}
 
     def tree_files():
         """(absolute path, path in the zip) for every file an export holds: all but what

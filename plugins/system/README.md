@@ -19,6 +19,7 @@ services.eznix.plugins.system = {
   backups = 10;
   exclude = [ ".*" "result" "*.key" ];
   keep    = [ "hardware-configuration.nix" ];
+  autocomplete = true;
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
     { name = "Templates"; url = "https://example.org/systems/index.json"; }
@@ -32,6 +33,7 @@ services.eznix.plugins.system = {
 | `exclude` | `[ ".*" ]` | what an export leaves out, read like the lines of a `.gitignore` |
 | `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url }` |
+| `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 🌍 Sources

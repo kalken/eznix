@@ -837,16 +837,17 @@ if (_TERM_CONFIG.autocomplete) {
     tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
     html: _RELOAD_ICON + 'Autocomplete',
     group: 'tools',
-    onclick: () => {
-      _autocompleteClickedAt = Date.now();
-      _autocompleteSeen = false;
-      // Turning at once, without this counting as a ping having seen the generator.
-      const btn = document.getElementById('autocomplete-btn');
-      btn.classList.add('is-running');
-      btn.disabled = true;
-      _runInTerminal({ command: _TERM_CONFIG.autocomplete });
-    },
+    onclick: () => _startAutocomplete(),
   });
+  eznix.on('autocomplete', () => _startAutocomplete());
+}
+function _startAutocomplete() {
+  _autocompleteClickedAt = Date.now();
+  _autocompleteSeen = false;
+  // Turning at once, without this counting as a ping having seen the generator.
+  const btn = document.getElementById('autocomplete-btn');
+  if (btn) { btn.classList.add('is-running'); btn.disabled = true; }
+  _runInTerminal({ command: _TERM_CONFIG.autocomplete });
 }
 
 eznix.on('init', () => {
