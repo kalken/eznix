@@ -942,24 +942,6 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 
 /* ── Null value display ── */
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
-/* What a list shows where its next item would be (renderArrayField()): the placeholder's
-   colour, on the line and at the left edge where a value's text is. */
-.list-add { padding: 4px 8px; }
-/* The last line of an object in a list (renderObj()): a row like any other, with the button
-   4px from its top and bottom. */
-.add-row { box-sizing: border-box; min-height: var(--row-height); padding-top: 4px; }
-/* The "+" in either (_addButton()), in the colours of the page's other buttons (.btn): their
-   fill, line and text, and their fill on hover. 16px tall, so a row of 24px with it in is as
-   tall as any other; its left edge stands where a value's text or an option's name begins.
-   It was the placeholder's grey with nothing round it at first, and the user asked for the
-   buttons' colours (2026-10-12). Not in anything disabled (.is-disabled .icon-btn). */
-.add-btn {
-  display: block; box-sizing: border-box; height: 16px; padding: 0 5px;
-  font-size: 12px; line-height: 14px;
-  background: var(--bg3); border: 1px solid var(--border2); color: var(--text);
-  border-radius: var(--radius-sm); transition: background .15s, border-color .15s;
-}
-.add-btn:hover { background: var(--bg4); }
 
 /* ── Panels on the side (eznix.sidePanel()) ── */
 /* The side floats over .editor-area (position: absolute, .main as positioning context). It

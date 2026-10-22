@@ -3172,23 +3172,7 @@ function _setValuePlaceholders(root) {
 // below add is looked at afterwards, since a disabled entry can come out as either kind.
 // Nothing that moves or finds rows goes by their place among siblings (drags go by
 // data-drag-parent and data-drag-key), so the extra element is invisible to all of that.
-// The "+" a list has where its next item would be and an object in a list where its next
-// option would be: a small button that says what it adds when the pointer rests on it. Both
-// were words across the whole line at first, "Add item…" and "Add option…", until the user
-// asked for the button (2026-10-12: "could you add a + button for both options and items
-// instead?").
-function _addButton(what, onclick) {
-  const b = document.createElement('button');
-  b.type = 'button';
-  b.className = 'icon-btn add-btn';
-  b.textContent = '+';
-  b.setAttribute('aria-label', what);
-  b.onclick = onclick;
-  _wireHoverTooltip(b, what);
-  return b;
-}
-
-function renderObj(container, obj, path, addLine = false) {
+function renderObj(container, obj, path) {
   let group = null;
   for (const [k, v] of Object.entries(obj)) {
     const childPath = [...path, k];
@@ -3214,23 +3198,6 @@ function renderObj(container, obj, path, addLine = false) {
       group.appendChild(el);
     }
   }
-  // An object in a list ends with a line where its next option would be, and a click opens
-  // the add field for it (`addLine`, from renderArray(); what it says: _addLineFor()). It goes
-  // with the options it follows, in their run; after a sub-section it is a run of its own.
-  // Every object had it for an hour on 2026-10-12, the file and each section too: the user
-  // saw it and kept it for lists only, a section having a heading to right-click, with the
-  // same entry on its menu (_addMenuItems()).
-  const label = addLine ? _addLineFor(path, obj) : null;
-  if (!label) return;
-  const add = document.createElement('div');
-  add.className = 'add-row';
-  add.appendChild(_addButton('Add option', e => showAddOptionMenu(e, path)));
-  if (!group || group !== container.lastElementChild) {
-    group = document.createElement('div');
-    group.className = 'field-group';
-    container.appendChild(group);
-  }
-  group.appendChild(add);
 }
 
 // Everything that is not the page's own text and goes into innerHTML passes through this:
@@ -3466,10 +3433,10 @@ function _detachForFloat(el) {
   return () => { if (next && next.parentNode === parent) parent.insertBefore(el, next); else parent.appendChild(el); };
 }
 
-// How something is added. A list ends with "Add item…" (renderArrayField()) and an object in
-// a list with "Add option…" (renderObj()), in the page. Anything with a heading, a section
-// at any depth, has the entry on its right-click menu instead, by the same rule for whether
-// it is there (_addLineFor()); so has an object in a list, beside its line.
+// How something is added: on a right-click menu, never a button in the page (since 2026-10-23;
+// a list and an object in a list had a "+" before). "Add option…" is on anything with a
+// heading, a section at any depth, and on an object in a list, by one rule for whether it is
+// there (_addLineFor()); "Add item" is on a list and on its items (_addListItem()).
 // The blank space of the editor has "Add option…" on its menu, for the file.
 // Until 2026-10-12 there was a menu entry per kind of thing pointed at ("Add sub option…" on
 // a heading, "Add field" on an object in a list and on the rows inside it, "Add entry…" on an
@@ -3660,6 +3627,32 @@ function renderSection(container, key, obj, path) {
   container.appendChild(section);
 }
 
+// Adds an item to the end of a list and puts the cursor in it.
+function _addListItem(arr, path) {
+  const existing = arr[0];
+  if (existing !== undefined && typeof existing !== 'object') {
+    // Scalar array — just push an empty string
+    arr.push('');
+  } else {
+    // Object array (or empty) — always use schema-derived blank with required fields
+    const blank = blankObjectFromOptions(path);
+    if (blank !== null) {
+      arr.push(blank);
+    } else {
+      const opt = findOption(path);
+      const isObjArray = (existing !== undefined && existing !== null && typeof existing === 'object' && !isExprPkg(existing))
+                      || (opt && isObjectArrayNixType(opt.type));
+      arr.push(isObjArray ? {} : '');
+    }
+  }
+  renderAll();
+  // The cursor goes into what was just added, its first text field: one adds an item to fill
+  // it in, and from an empty list's "Add item…" there was nothing focused at all afterwards.
+  const added = [...document.querySelectorAll('.field-row[data-path="' + CSS.escape(path.join('.')) + '"] > .field-value > :is(.array-obj-item, .array-item)')].pop();
+  const box = added && added.querySelector('input[type=text], input[type=number], textarea');
+  if (box) box.focus();
+}
+
 function renderArrayField(container, key, arr, path) {
   const row = document.createElement('div');
   row.className = 'field-row array-field-row';
@@ -3693,59 +3686,21 @@ function renderArrayField(container, key, arr, path) {
   else if (enumOpts) renderEnumArray(valEl, arr, path, enumOpts);
   else renderArray(valEl, arr, path);
 
-  function addItem() {
-    const existing = arr[0];
-    if (existing !== undefined && typeof existing !== 'object') {
-      // Scalar array — just push an empty string
-      arr.push('');
-    } else {
-      // Object array (or empty) — always use schema-derived blank with required fields
-      const blank = blankObjectFromOptions(path);
-      if (blank !== null) {
-        arr.push(blank);
-      } else {
-        const opt = findOption(path);
-        const isObjArray = (existing !== undefined && existing !== null && typeof existing === 'object' && !isExprPkg(existing))
-                        || (opt && isObjectArrayNixType(opt.type));
-        arr.push(isObjArray ? {} : '');
-      }
-    }
-    renderAll();
-    // The cursor goes into what was just added, its first text field: one adds an item to fill
-    // it in, and from an empty list's "Add item…" there was nothing focused at all afterwards.
-    const added = [...document.querySelectorAll('.field-row[data-path="' + CSS.escape(path.join('.')) + '"] > .field-value > :is(.array-obj-item, .array-item)')].pop();
-    const box = added && added.querySelector('input[type=text], input[type=number], textarea');
-    if (box) box.focus();
-  }
-
-  // A list says "Add item…" where its next item would be, in the tone of a
-  // placeholder, and a click on it adds that item: the words of the "Add value…" and "Add
-  // package…" the other kinds of list have there. ("List is empty", "[]" and "No items" were
-  // tried on 2026-10-11; they say the list is empty, which the look says already, and not
-  // that a click does something.) It showed
-  // nothing at all, a blank cell, and the first item could only be added from the row's menu
-  // (the user, 2026-10-11: "if i press ... an empty list, shouldnt it create the first object
-  // for me?"). addItem() makes the same item the menu's Add item does: an object with its
-  // required options for a list of objects, an empty value otherwise.
-  // A list with items has it too, after the last one, as those other kinds of list always
-  // have theirs. Only an empty list had it until 2026-10-12, the rest being left to Enter in
-  // a plain value and "Add item" on an item's menu (renderArray()): a list of objects then
-  // showed no way to add to it at all, and the user asked why ("i need a way to add").
-  // The list's own menu had an "Add item" too until 2026-10-11; the user found it unneeded there.
-  // The words became a "+" the day after they went under every list (_addButton()).
-  if (!isPkgArrayPath(path) && !enumOpts) {
-    const hint = document.createElement('div');
-    hint.className = 'list-add';
-    hint.appendChild(_addButton('Add item', addItem));
-    valEl.appendChild(hint);
-  }
+  // A list has no button for its next item: "Add item" is on its right-click menu, and on that
+  // of its items, and Enter in a plain item adds the next one. It was a "+" under the last item
+  // (_addButton()) and the words "Add item…" before that, until the user asked for the menu
+  // instead (2026-10-23).
+  const canAddItem = !isPkgArrayPath(path) && !enumOpts;
 
   row.oncontextmenu = e => {
     if (!_onRowItself(e)) return;
     const disabled = isDisabled(getAtPath(config, path));
-    showContextMenu(e, _menu({ convert: disabled ? [] : [
-      { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
-    ] }, _commonMenuItems(path)));
+    showContextMenu(e, _menu({
+      add: canAddItem && !disabled ? [{ label: 'Add item', onclick: () => _addListItem(arr, path) }] : [],
+      convert: disabled ? [] : [
+        { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
+      ],
+    }, _commonMenuItems(path)));
   };
 
   row.appendChild(keyEl);
@@ -4223,11 +4178,11 @@ function renderArray(container, arr, path) {
       wrap.className = 'array-obj-item';
       const fields = document.createElement('div');
       fields.className = 'array-obj-fields';
-      renderObj(fields, v, itemPath, true);
+      renderObj(fields, v, itemPath);
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, _menu({ add: _addMenuItems(e, itemPath) }, _commonMenuItems(itemPath)));
+        showContextMenu(e, _menu({ add: [..._addMenuItems(e, itemPath), { label: 'Add item', onclick: () => _addListItem(arr, path) }] }, _commonMenuItems(itemPath)));
       };
       // Backspace in a text field that is already empty takes the whole item away when there
       // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list
@@ -4290,6 +4245,7 @@ function renderArray(container, arr, path) {
     if (isExpr) editor.classList.add('expr-value');
     item.oncontextmenu = e => {
       showContextMenu(e, _menu({
+        add: [{ label: 'Add item', onclick: () => _addListItem(arr, path) }],
         item: [{ label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, itemPath); renderAll(); } }],
         convert: [isExpr
           ? { label: 'Convert to native', onclick: () => { setAtPath(config, itemPath, editor.value); renderAll(); } }
