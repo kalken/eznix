@@ -120,7 +120,7 @@ function initSystemImportButton() {
         headers: { 'Content-Type': 'application/zip' },
         body: file,
       });
-      if (!await _askImport(`Import ${file.name}?\n\nIt replaces the current system. A backup is made first.`, post)) return;
+      if (!await _askImport(`Import ${file.name}?\n\nThis replaces the current system. A backup is made first.`, post)) return;
       const res = await post(false);
       _afterSystemImport(res, await res.json().catch(() => ({})));
     } catch (err) {
@@ -139,11 +139,11 @@ async function _askImport(question, post) {
   if (!res.ok) { setStatus('Import failed: ' + (report.error || res.status), 5000, 'err'); return false; }
   const lines = [];
   if (report.flake_nix === false) {
-    lines.push('\u26a0 It has no flake.nix at its top.');
+    lines.push('\u26a0 There is no flake.nix at the top level.');
   }
   const missing = (report.generate || []).filter(g => g.missing);
-  missing.forEach(g => lines.push(`\u26a0 There will be no ${g.file}. This is run in the terminal afterwards:\n    ${g.command}`));
-  if (report.untrusted_generate && !(report.generate || []).length) lines.push('It names files to make, which is not taken from a file you uploaded.');
+  missing.forEach(g => lines.push(`\u26a0 ${g.file} is missing. It will be created with:\n    ${g.command}`));
+  if (report.untrusted_generate && !(report.generate || []).length) lines.push('This zip lists files to create, but commands from an uploaded file are not trusted, so they are ignored.');
   return confirm(question + (lines.length ? '\n\n' + lines.join('\n') : ''));
 }
 
@@ -194,8 +194,8 @@ function loadSystemSources(refresh, only) {
 
 async function importSystemSource(system) {
   const sure = system.add_only
-    ? `Start from ${system.name}?\n\nIts files are added to the current system. A backup is made first.`
-    : `Import ${system.name}?\n\nIt replaces the current system. A backup is made first.`;
+    ? `Start from ${system.name}?\n\nIts files are added to the current system and nothing is removed. A backup is made first.`
+    : `Import ${system.name}?\n\nThis replaces the current system. A backup is made first.`;
   try {
     const post = dry => apiFetch('/plugin/system/import-source', {
       method: 'POST',
