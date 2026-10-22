@@ -42,6 +42,9 @@ sudo sed -i "s/YOUR-USER-NAME/$USER/" eznix/system.json
 sudo nixos-rebuild switch --flake "/etc/nixos#default"
 ```
 
+To move your `configuration.nix` into the editor afterwards, see
+[Migrating from configuration.nix](#-migrating-from-configurationnix).
+
 **Mac**
 
 ```sh
