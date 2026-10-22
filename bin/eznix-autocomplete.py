@@ -462,9 +462,9 @@ def print_summary(files):
     for f in files:
         p = Path(f)
         if p.exists():
-            size  = p.stat().st_size
-            count = len(json.loads(p.read_text()))
-            kb    = size / 1024
+            size     = p.stat().st_size
+            count    = len(json.loads(p.read_text()))
+            kb       = size / 1024
             size_str = f"{kb:.0f}K" if kb < 1024 else f"{kb/1024:.1f}M"
             print(f"{f}: {count} entries ({size_str})")
 

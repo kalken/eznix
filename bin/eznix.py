@@ -157,13 +157,13 @@ LOGINS           = []            # (plugin, check, user): ways to log in that pl
 AUTH_HELPER      = None          # checks a system password when this process can't
 
 # user -> {'port', 'key_file', 'dir', 'shell'}: the eznix-terminal that serves each login.
-TERMINALS        = {}
-TERMINAL_RESTART = None          # argv restarting a user's terminal, {user}/{uid} filled in
-TERMINAL_END_ON_LOGOUT = True    # the shell belongs to a login: it ends when its user logs out
-TERMINAL_SCRIPT  = None          # the eznix-terminal program on disk
-TERMINAL_PROGRAM = ''            # sha256 of that file, half of what a terminal's stamp is made of (_terminal_for())
-TERMINAL_AUTO_HIDE = True        # hide the open terminal panel on a click outside it
-DEBUG = False                    # the `debug` setting: see _debug()
+TERMINALS              = {}
+TERMINAL_RESTART       = None   # argv restarting a user's terminal, {user}/{uid} filled in
+TERMINAL_END_ON_LOGOUT = True   # the shell belongs to a login: it ends when its user logs out
+TERMINAL_SCRIPT        = None   # the eznix-terminal program on disk
+TERMINAL_PROGRAM       = ''     # sha256 of that file, half of what a terminal's stamp is made of (_terminal_for())
+TERMINAL_AUTO_HIDE     = True   # hide the open terminal panel on a click outside it
+DEBUG                  = False  # the `debug` setting: see _debug()
 
 def _debug(what):
     """One line in the log, with `debug` on only. For whatever is worth knowing while
@@ -210,18 +210,18 @@ LOGIN_MAX_ATTEMPTS   = 5
 # login, which anybody can reach, took whatever it was told to (a negative length read until
 # the client closed). The login form is a few hundred bytes, the files of a flake a few
 # megabytes, and a plugin's upload is a whole flake as a zip.
-MAX_LOGIN_BODY  = 16 * 1024
-MAX_API_BODY    = 64 * 1024 * 1024
-MAX_UPLOAD_BODY = 512 * 1024 * 1024
-LOGIN_WINDOW_SECONDS = 300       # failures older than this no longer count
-_LOGIN_FAILURES  = {}            # ip -> [failure times within the window]
-_LOGIN_LOCK      = threading.Lock()
+MAX_LOGIN_BODY       = 16 * 1024
+MAX_API_BODY         = 64 * 1024 * 1024
+MAX_UPLOAD_BODY      = 512 * 1024 * 1024
+LOGIN_WINDOW_SECONDS = 300  # failures older than this no longer count
+_LOGIN_FAILURES      = {}   # ip -> [failure times within the window]
+_LOGIN_LOCK          = threading.Lock()
 
 # Fresh every start: the page reloads itself when it sees a new one.
-PAGE_HASH        = ''            # checksum of everything the page is made of, set in main()
-EZNIX_VERSION    = 'dev'
-_STATIC_GZIP_CACHE = {}
-_AUTOCOMPLETE_GZIP_CACHE = {}   # path -> (mtime, compressed): see _serve_autocomplete()
+PAGE_HASH                = ''  # checksum of everything the page is made of, set in main()
+EZNIX_VERSION            = 'dev'
+_STATIC_GZIP_CACHE       = {}
+_AUTOCOMPLETE_GZIP_CACHE = {}  # path -> (mtime, compressed): see _serve_autocomplete()
 
 def _etag(data):
     """A file's checksum as an ETag: see _unchanged()."""
@@ -473,15 +473,15 @@ def _session_from_cookie(headers):
 # _renew_session()). An option of its own, and off unless asked for, because a login that
 # quietly never ends is not what a number of days says. Renewing was once all there was.
 SESSION_MAX_DAYS   = 400
-SESSION_LIFETIME   = 24 * 3600      # seconds a login lasts at most; from days when that is set
-SESSION_IDLE       = 15 * 60        # seconds without a request that end it; None with days
-SESSION_COOKIE_AGE = None           # seconds, from days; None: until the browser quits
-SESSION_RENEW      = False          # renew: count them from the last page load
-_SESSIONS        = {}               # sha256(token) -> {'user': str, 'expires': unix time}
-_SESSION_SEEN    = {}               # sha256(token) -> when it last made a request; not saved
-_SESSIONS_FILE   = None
-_SESSIONS_LOCK   = threading.Lock()
-USE_TLS          = False            # set once the listening socket is actually wrapped
+SESSION_LIFETIME   = 24 * 3600  # seconds a login lasts at most; from days when that is set
+SESSION_IDLE       = 15 * 60    # seconds without a request that end it; None with days
+SESSION_COOKIE_AGE = None       # seconds, from days; None: until the browser quits
+SESSION_RENEW      = False      # renew: count them from the last page load
+_SESSIONS          = {}         # sha256(token) -> {'user': str, 'expires': unix time}
+_SESSION_SEEN      = {}         # sha256(token) -> when it last made a request; not saved
+_SESSIONS_FILE     = None
+_SESSIONS_LOCK     = threading.Lock()
+USE_TLS            = False      # set once the listening socket is actually wrapped
 
 def _token_id(token):
     return hashlib.sha256(token.encode()).hexdigest()
@@ -2780,11 +2780,11 @@ def main():
     DEBUG = bool(args.debug or cfg.get('debug', False))
 
     # Where things are.
-    FLAKE_DIR  = path(args.flake or cfg.get('flake') or FLAKE_DIR)
-    CONFIG_DIR = path(args.config_dir or cfg.get('config_dir') or os.path.join(FLAKE_DIR, 'eznix'))
+    FLAKE_DIR    = path(args.flake or cfg.get('flake') or FLAKE_DIR)
+    CONFIG_DIR   = path(args.config_dir or cfg.get('config_dir') or os.path.join(FLAKE_DIR, 'eznix'))
     DEFAULT_FILE = cfg.get('default_file')
-    EXCLUDE = [r for r in (_exclude_rule(str(x)) for x in cfg.get('exclude', [])) if r]
-    STATE_DIR  = path(args.state_dir or cfg.get('state_dir') or STATE_DIR)
+    EXCLUDE      = [r for r in (_exclude_rule(str(x)) for x in cfg.get('exclude', [])) if r]
+    STATE_DIR    = path(args.state_dir or cfg.get('state_dir') or STATE_DIR)
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
     # CONFIG_DIR is not made here: started against a flake, eznix changes nothing in it until
     # something is saved, and the first save makes the folder. It was made at start until
@@ -2824,8 +2824,8 @@ def main():
         name = loopback if name in ('lo', 'lo0') else name
         if name not in INTERFACES:
             INTERFACES.append(name)
-    WEB_PORT  = int(args.port or cfg.get('port') or WEB_PORT)
-    TRUSTED_HOSTS = {str(h) for h in cfg.get('hosts', [])}
+    WEB_PORT        = int(args.port or cfg.get('port') or WEB_PORT)
+    TRUSTED_HOSTS   = {str(h) for h in cfg.get('hosts', [])}
     TRUSTED_PROXIES = {str(h) for h in cfg.get('trusted_proxies', [])}
     CERT_FILE, KEY_FILE, CA_FILE = cfg.get('cert'), cfg.get('key'), cfg.get('ca')
     if args.https and not CERT_FILE:

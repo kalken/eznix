@@ -88,10 +88,10 @@ MAX_FILE     = 1 << 30
 
 # What a source may be: how much is downloaded, how long a download is used again, how long
 # one may take, and how deep indexes may lead to more indexes.
-MAX_DOWNLOAD = 256 << 20
-SOURCE_TTL   = 600
+MAX_DOWNLOAD  = 256 << 20
+SOURCE_TTL    = 600
 FETCH_TIMEOUT = 30
-MAX_DEPTH    = 4
+MAX_DEPTH     = 4
 
 
 def setup(api):
