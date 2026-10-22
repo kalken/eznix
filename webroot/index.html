@@ -1267,16 +1267,31 @@ function isNullableString(nixType) {
   return true;
 }
 
-// Does a type say that a plain value (a text, a number, a path, a boolean) is one of its
-// alternatives? Looked for outside every pair of parentheses, so that what a list holds, or an
-// attribute set, does not count: "list of string" in "null or (list of string)" is not one.
-function _hasPlainAlternative(t) {
-  let outer = t;
-  for (let before = ''; before !== outer;) {
-    before = outer;
-    outer = outer.replace(/\([^()]*\)/g, ' ');
+// The alternatives of a type, as it is written: split at " or " outside every pair of parentheses
+// (a union inside a list is in parentheses, "list of (string or path)").
+function _typeAlternatives(t) {
+  const out = [];
+  let depth = 0, from = 0;
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === '(') depth++;
+    else if (t[i] === ')') depth--;
+    else if (depth === 0 && t.startsWith(' or ', i)) { out.push(t.slice(from, i)); from = i + 4; }
   }
-  return /\b(string|integer|boolean|path|float|number)\b/.test(outer);
+  out.push(t.slice(from));
+  return out.map(a => a.trim());
+}
+
+// Does a type say that a plain value (a text, a number, a path, a boolean) is one of its
+// alternatives? Environment.variables' entries are "list of (signed integer or string or
+// absolute path) or signed integer or string or absolute path", or with "null or (list of ...)"
+// in front: a text works there, and a list is one more way of saying it. A list or an attribute
+// set among the alternatives is not plain, whatever it holds.
+function _hasPlainAlternative(t) {
+  return _typeAlternatives(t).some(a => {
+    const alt = _stripWrappingParens(a);
+    return !/^(list|attribute set|null|submodule|open submodule|lazy|non-empty)\b/.test(alt)
+      && /\b(string|integer|boolean|path|float|number)\b/.test(alt);
+  });
 }
 
 function typeFromNix(t) {
@@ -1290,14 +1305,16 @@ function typeFromNix(t) {
   if (t === 'package' || t.startsWith('package ') || t === 'null or package') return 'expr';
   // Check freeform/expr before anything else
   if (isFreeformType(t)) return 'expr';
-  // Plain list types
-  if (t.startsWith('list') || t.startsWith('null or list')) return 'array';
-  // "(attribute set of X) or (list of Y) convertible to it" — prefer the list form. Not when the
-  // union also names a plain value (environment.variables' entries are "null or (list of
-  // (signed integer or string or absolute path)) or signed integer or string or absolute path"):
-  // that is something a text can be, which a list is only one more way of saying, and it was
-  // added as a list.
-  if (t.includes('or (list of') && !_hasPlainAlternative(t)) return 'array';
+  // A list: the type starts with one ("list of X", "null or (list of X)"), or has one as an
+  // alternative after another ("(attribute set of X) or (list of Y)"). Not when
+  //   - it is an attribute set or a submodule, which only holds lists somewhere inside it:
+  //     environment.variables is "attribute set of (null or (list of ...) or ...)" and was
+  //     taken for a list, so that adding it made a list for its entries to go into;
+  //   - a plain value (a text, a number, a path) is one of the alternatives, as for an entry of
+  //     that set: a text works there, and a list is one more way of saying it.
+  const attrSet = /^(attribute set|submodule|open submodule)\b/.test(_stripWrappingParens(t.replace(/^null or /, '')));
+  if (!attrSet && (t.startsWith('list') || t.startsWith('null or list') || t.includes('or (list of'))
+      && !_hasPlainAlternative(t)) return 'array';
   // "list of X or Y convertible to it" patterns that don't start with "list"
   if (t.includes('convertible to it') && t.includes('list')) return 'array';
   // Attribute set / submodule → object, but only when it's the PRIMARY type (the string starts
