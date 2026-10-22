@@ -165,12 +165,14 @@ def setup(api):
             folder = os.path.dirname(folder)
         return os.access(folder, os.W_OK | os.X_OK)
 
-    def prepare(zf, keeping=False, removing=True):
+    def prepare(zf, keeping=False, removing=True, system=True):
         """What making the tree match the zip takes, decided before anything is touched (the
         snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
         'unchanged', 'kept'}. `keeping`, for an import: what the `keep` setting names stays
         as it is on this machine ('kept'). `removing` false: nothing is removed, the zip is only
-        added over what is there (a source with `add_only`).
+        added over what is there (a source with `add_only`). `system` false: the zip need not hold a
+        flake.nix, which is for a backup, since a backup of a folder with nothing in it is an empty
+        zip; any other zip is checked.
 
         An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
         that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
@@ -200,7 +202,7 @@ def setup(api):
                                  f'{MAX_ENTRIES} files, {MAX_UNPACKED >> 30} GiB unpacked, or a file over '
                                  f'{MAX_FILE >> 30} GiB); nothing was changed')
         tops = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
-        if 'flake.nix' not in tops:
+        if system and 'flake.nix' not in tops:
             deeper = sorted(n for n in tops if n.endswith('/flake.nix'))
             hint = f': its flake.nix is in {os.path.dirname(deeper[0])}/, not at the top' if deeper else ': there is no flake.nix at its top'
             raise api.Error(400, 'that zip is not a system' + hint + '; nothing was changed')
@@ -495,7 +497,9 @@ def setup(api):
     def zip_folder(base):
         """A folder as an in-memory zip, its files at the top; dot-files and links left out."""
         buf = io.BytesIO()
-        with zipfile.ZipFile(buf, 'w') as out:
+        # strict_timestamps=False: a folder in the Nix store has every file dated 1970, which a zip
+        # cannot hold ("ZIP does not support timestamps before 1980"); it is stored as 1980.
+        with zipfile.ZipFile(buf, 'w', strict_timestamps=False) as out:
             for dirpath, dirnames, filenames in os.walk(base):
                 dirnames[:] = [d for d in dirnames if not d.startswith('.') and not os.path.islink(os.path.join(dirpath, d))]
                 for fn in sorted(filenames):
@@ -561,7 +565,7 @@ def setup(api):
         # The backup being restored may itself be pruned by the snapshot taken here, so it is
         # open before that happens.
         with zf:
-            plan = prepare(zf)
+            plan = prepare(zf, system=False)
             backup()
             return apply(zf, plan)
 

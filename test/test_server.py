@@ -472,6 +472,7 @@ def system_sources():
                      '.hidden/flake.nix': 'x', 'nothing/readme': 'x'}.items():
             with open(f'{d}/shipped/{n}', 'w') as f:
                 f.write(t)
+        os.utime(f'{d}/shipped/nixos/flake.nix', (0, 0))     # as in the Nix store: dated 1970
         api2 = ez.PluginApi('system', {'sources': [{'name': 'Start from', 'url': f'{d}/shipped', 'add_only': True},
                                                     {'name': 'Same, replacing', 'url': f'{d}/shipped'}]})
         system.setup(api2)
@@ -491,6 +492,13 @@ def system_sources():
         result = get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'home'}).encode())
         check("sources: without add_only the same folder is imported as it is: files not in it go",
               not os.path.exists(f'{d}/flake/eznix/system.json') and 'configuration.nix' in result['removed'], result)
+        # A backup of a folder with nothing in it is an empty zip, with no flake.nix to be a
+        # system by: restoring it has to work, and makes the folder empty again.
+        os.makedirs(f'{d}/state/system-backups', exist_ok=True)
+        zipped(f'{d}/state/system-backups/system-20200101-000000.zip', {})
+        result = get(('POST', 'restore'), {'name': 'system-20200101-000000.zip'})
+        left = [os.path.join(p, n) for p, _, ns in os.walk(f'{d}/flake') for n in ns]
+        check('system: an empty backup can be restored, the folder is empty again', left == [] and result['removed'], (left, result))
         check('sources: a path that is not a system of the folder is refused',
               refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nothing'}).encode())) == 400
               and refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': '../src'}).encode())) == 400)
