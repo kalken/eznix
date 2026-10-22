@@ -60,7 +60,7 @@ rec {
   # changed and in need of a restart on every update -- while the page, which compares the
   # file itself, rightly says nothing.
   eznix-terminal = pkgs.stdenv.mkDerivation {
-    name = "eznix-terminal";
+    name       = "eznix-terminal";
     src        = ../bin/eznix-terminal.py;
     dontUnpack = true;
     nativeBuildInputs = [ pkgs.makeWrapper ];

@@ -147,7 +147,7 @@ in
         exec ${packages.eznix}/bin/eznix --config ${common.toml}
       '' ];
       EnvironmentVariables.PATH = path;
-      RunAtLoad         = true;
+      RunAtLoad = true;
       KeepAlive.SuccessfulExit = false;
       # The logs are in the user's own Library, not /tmp, which every account on the Mac can read.
       StandardOutPath   = "${home}/Library/Logs/eznix.log";

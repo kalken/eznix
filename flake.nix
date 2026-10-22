@@ -10,9 +10,9 @@
   outputs = { self, nixpkgs }:
     let
       # No x86_64-darwin: nixpkgs dropped it in 26.11, and listing it fails `nix flake check`.
-      systems      = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      systems       = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      mkApp        = drv: bin: { type = "app"; program = "${drv}/bin/${bin}"; };
+      mkApp         = drv: bin: { type = "app"; program = "${drv}/bin/${bin}"; };
 
       perSystem = forAllSystems (system:
         let
@@ -20,14 +20,14 @@
           p    = import ./nix/packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
         in {
           packages = {
-            default              = p.eznix;
+            default = p.eznix;
             inherit (p) eznix eznix-terminal eznix-autocomplete;
           };
 
           apps = {
-            default              = mkApp p.eznix           "eznix";
-            eznix            = mkApp p.eznix           "eznix";
-            eznix-terminal   = mkApp p.eznix-terminal  "eznix-terminal";
+            default            = mkApp p.eznix              "eznix";
+            eznix              = mkApp p.eznix              "eznix";
+            eznix-terminal     = mkApp p.eznix-terminal     "eznix-terminal";
             eznix-autocomplete = mkApp p.eznix-autocomplete "eznix-autocomplete";
           };
 
@@ -125,10 +125,10 @@
         };
       };
 
-      nixosModules.default = import ./nix/nixos.nix self;
+      nixosModules.default  = import ./nix/nixos.nix self;
       darwinModules.default = import ./nix/darwin.nix self;
       # Standalone home-manager, for a Linux distribution that isn't NixOS.
-      homeModules.default = import ./nix/home.nix self;
+      homeModules.default        = import ./nix/home.nix self;
       homeManagerModules.default = import ./nix/home.nix self;
     };
 }
