@@ -232,6 +232,15 @@ def generator_plugins():
           shipped['kernels']['module'].SYSTEMS == ('nixos',) and shipped['homebrew']['module'].SYSTEMS == ('darwin',)
           and set(shipped['home-manager']['module'].SYSTEMS) == {'nixos', 'darwin'}
           and shipped['home-manager']['module'].OPTIONS is True)
+    options = shipped['system']['module'].generate(None)['options'] if 'system' in shipped else []
+    byname = {o['path']: o for o in options}
+    check("generator: the system plugin tells the suggestions its settings, and what an entry of generate needs",
+          shipped.get('system', {}).get('module') and shipped['system']['module'].OPTIONS is True
+          and byname['services.eznix.plugins.system.generate.*.file']['required'] is True
+          and byname['services.eznix.plugins.system.generate.*.command']['required'] is True
+          and byname['services.eznix.plugins.system.generate']['type'] == 'list of (submodule)'
+          and all({'path', 'type', 'description', 'default', 'example', 'required'} == set(o) for o in options),
+          sorted(byname))
     with tempfile.TemporaryDirectory() as tmp:
         def plugin(name, code, manifest=None):
             os.makedirs(f'{tmp}/plugins/{name}')

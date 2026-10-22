@@ -4,5 +4,6 @@
   "server": "system.py",
   "scripts": [
     "system.js"
-  ]
+  ],
+  "autocomplete": "autocomplete.py"
 }

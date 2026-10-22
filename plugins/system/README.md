@@ -111,6 +111,14 @@ without `--no-filesystems` the disks mounted now are included. A zip you upload 
 what runs in a terminal: its list is not taken, and the setting of the running configuration is
 used instead.
 
+## 🔎 Suggestions
+
+Nix itself knows plugin settings as one option, "attribute set of attribute set of anything", so
+the plugin adds its own to the suggestions when Autocomplete is pressed: `backups`, `exclude`,
+`sources`, `generate` (with `file` and `command`, marked as required for an entry), `autocomplete`
+and `enabled`, each with its description. It is help in the editor only: Nix accepts any value
+there. Press Autocomplete once after updating eznix to get them.
+
 ## 📝 Notes
 
 - An import or a restore writes to disk at once: there is no Save step and no undo, only the
