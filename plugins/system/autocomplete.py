@@ -47,6 +47,6 @@ def generate(ctx):
                 "the flake's folder: a name without a path lands next to flake.nix.", required=True,
                 example="sudo sh -c 'nixos-generate-config --show-hardware-config > hardware-configuration.nix'"),
         _option("autocomplete", "boolean", "Generate the suggestions after an import, as the Autocomplete button "
-                "does, since the system it brought has other options and packages.", default="false"),
+                "does, since the system it brought has other options and packages.", default="true"),
         _option("enabled", "boolean", "false leaves the plugin out.", default="true"),
     ]}

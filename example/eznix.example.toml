@@ -133,7 +133,7 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # typed into the terminal afterwards, one after the other. An
 #                                     # entry needs both; no defaults. A zip from a source can say
 #                                     # them itself; one you upload can't
-# autocomplete = false                # generate the suggestions after an import (the Autocomplete
+# autocomplete = true                 # generate the suggestions after an import (the Autocomplete
 #                                     # button's job), since the system has other options
 
 # [plugin.documents]

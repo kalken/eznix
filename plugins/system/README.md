@@ -18,7 +18,7 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 services.eznix.plugins.system = {
   backups = 10;
   exclude = [ ".git" "hardware-configuration.nix" "*.key" ];
-  autocomplete = true;
+  autocomplete = false;
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
     { name = "Import from Templates"; url = "https://example.org/systems/index.json"; }
@@ -33,7 +33,7 @@ services.eznix.plugins.system = {
 | `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
 | `generate` | none | a list of `{ file, command }`: files to make when an import leaves them missing, each with the command that makes it (see below). An entry needs both, or it is ignored: there are no defaults, since it has to fit every platform and a template sets it |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
-| `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
+| `autocomplete` | `true` | generate the suggestions after an import, as the Autocomplete button does |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 🌍 Sources

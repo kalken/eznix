@@ -104,7 +104,7 @@ def setup(api):
     reached = set()     # every zip's (or folder's) location a listing of `sources` has led to
     addable = set()     # the locations a source with `add_only` has led to
     api.page = {'backups': keep > 0, 'sources': bool(sources),
-                'autocomplete': api.config.get('autocomplete') is True}
+                'autocomplete': api.config.get('autocomplete') is not False}
 
     def tree_files():
         """(absolute path, path in the zip) for every file an export holds: all but what
