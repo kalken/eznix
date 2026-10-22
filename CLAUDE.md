@@ -568,24 +568,26 @@ word, 2026-10-22: it should warn). A source's
 `add_only` makes an import remove nothing. In `test_server.py` (`system_sources()`, the
 server tests below it). Not tried in the page or on NixOS.
 
-**An import is asked about first, and can make the hardware file** (2026-10-22, the user's
+**An import is asked about first, and can make files that are missing** (2026-10-22, the user's
 idea): the page sends the import as a dry run (`?dry=1`, `"dry": true` for a source;
 `run_import()`, `check()` in the system plugin), which writes nothing and says what would
-happen, and the question shows it: a zip without a flake.nix at its top, and, when the
-plugin's `hardware` ({file, command}) is set, that the machine will be without that file. If
-so the command is typed into the terminal after the import (the page's `run` event, or
-`autocomplete` with `before`, which chains it with `&&` so the suggestions are generated only if it
-worked; the request survives the reload in sessionStorage). **No defaults**, at the user's
-word: both `file` and `command` have to be set or nothing is checked, since it has to fit every
-platform; the NixOS template sets them to `nixos-generate-config --show-hardware-config
---no-filesystems` (no disks: the template cannot know the target's; the terminal starts in
-the flake's folder, `dir = cfg.flake` in `options.nix`, so the relative file name lands right).
-The zip can carry the setting (`services.eznix.plugins.system.hardware` in its configuration
-folder's JSON), and it is taken only from a zip of a `sources` entry: a zip uploaded may not say
-what runs in a terminal, so the running configuration's setting is used (the page says the zip
-named one). The idea was ezinstall's `ezhwconfig` (it stays there, for the with-disks case at
-`--root /mnt`, set in the ISO's own configuration). A file that is there is never made again.
-In `test_server.py` (`system_sources()`). Not tried in the page, in a terminal or on NixOS.
+happen, and the question shows it: a zip without a flake.nix at its top, and the files of the
+plugin's `generate` that will be missing. `generate` is a list of {file, command}, which the
+commands of the missing ones make: typed into the terminal after the import (the page's `run`
+event, or `autocomplete` with `before`), each in a subshell chained with `&&`, so the suggestions
+are generated only if all worked; the request survives the reload in sessionStorage. It was
+`hardware`, one file, for the machine's hardware-configuration.nix, until the user said any
+file could be one. **No defaults**, at the user's word: an entry needs both `file` and `command`
+or it is ignored, since it has to fit every platform; the NixOS template sets the hardware file
+to `nixos-generate-config --show-hardware-config --no-filesystems` (no disks: the template
+cannot know the target's; the terminal starts in the flake's folder, `dir = cfg.flake` in
+`options.nix`, so a relative file name lands right). The zip can carry the list
+(`services.eznix.plugins.system.generate` in its configuration folder's JSON), and it is taken
+only from a zip of a `sources` entry: a zip uploaded may not say what runs in a terminal, so the
+running configuration's setting is used (the page says the zip named some). The idea was
+ezinstall's `ezhwconfig` (it stays there, for the with-disks case at `--root /mnt`, set in the
+ISO's own configuration). A file that is there, or one the zip brings, is never made. In
+`test_server.py` (`system_sources()`). Not tried in the page, in a terminal or on NixOS.
 
 **Systems can be imported from places named in the configuration** (`sources` in the
 system plugin, 2026-10-19, the user's idea: "import systems from an url, listing a

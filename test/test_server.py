@@ -554,16 +554,18 @@ def system_sources():
         api5.routes[('POST', 'import')](ez.PluginRequest({}, buf.getvalue(), 'alice'))
         check('import: a file where the zip has a folder, and a folder where it has a file, do not get in the way',
               open(f'{d}/flake5/was-file/now.txt').read() == 'dir' and open(f'{d}/flake5/was-dir').read() == 'now a file')
-        # The hardware file: made by a command after an import that leaves none. The zip can
-        # name the command, but only one from a source of the configuration is believed.
+        # Files made by a command after an import that leaves them missing. The zip can name the
+        # commands, but only a source's are believed.
         def zbytes(files):
             b = io.BytesIO()
             with zipfile.ZipFile(b, 'w') as zf:
                 for n, t in files.items():
                     zf.writestr(n, t)
             return b.getvalue()
-        named = json.dumps({'services': {'eznix': {'plugins': {'system': {'hardware': {'file': 'hardware-configuration.nix', 'command': 'echo from the zip'}}}}}})
-        off = json.dumps({'services': {'eznix': {'plugins': {'system': {'hardware': {'_disabled': True, '_value': {'command': 'echo off'}}}}}}})
+        hw = {'file': 'hardware-configuration.nix', 'command': 'echo hw'}
+        key = {'file': 'secrets/key.txt', 'command': 'echo key'}
+        named = json.dumps({'services': {'eznix': {'plugins': {'system': {'generate': [hw, key]}}}}})
+        off = json.dumps({'services': {'eznix': {'plugins': {'system': {'generate': {'_disabled': True, '_value': [hw]}}}}}})
         def machine(config, name):
             os.makedirs(f'{d}/{name}', exist_ok=True)
             ez.FLAKE_DIR = f'{d}/{name}'
@@ -573,29 +575,30 @@ def system_sources():
             return lambda method, path, query={}, body=b'': one.routes[(method, path)](ez.PluginRequest(query, body, 'alice'))
         plain = {'flake.nix': 'x', 'a.txt': 'a'}
         with_cmd = {**plain, 'eznix/system.json': named}
-        mine = machine({'hardware': {'command': 'echo mine', 'file': 'hardware-configuration.nix'}}, 'hw1')
+        mine = machine({'generate': [hw, key]}, 'hw1')
         report = mine('POST', 'import', {'dry': '1'}, zbytes(plain))
-        check('hardware: a dry run says the machine will have no hardware file, and the command that makes it',
-              report['hardware'] == {'file': 'hardware-configuration.nix', 'missing': True, 'command': 'echo mine',
-                                     'untrusted_command': False} and not os.listdir(f'{d}/hw1'), report)
+        check('generate: a dry run lists the files that will be missing, each with its command',
+              report['generate'] == [{**hw, 'missing': True}, {**key, 'missing': True}] and not os.listdir(f'{d}/hw1'), report)
         result = mine('POST', 'import', {}, zbytes(plain))
-        check('hardware: an import that leaves none says what to run', result['hardware']['command'] == 'echo mine', result)
+        check('generate: an import that leaves them says what to run', result['generate'] == [hw, key], result)
         with open(f'{d}/hw1/hardware-configuration.nix', 'w') as f:
             f.write('here')
         result = mine('POST', 'import', {}, zbytes(plain))
-        check('hardware: one that is there already (left alone, it is excluded) needs nothing',
-              'hardware' not in result and mine('POST', 'import', {'dry': '1'}, zbytes(plain))['hardware']['missing'] is False, result)
+        check('generate: one that is there already (it is excluded, so left alone) is not made again',
+              result['generate'] == [key] and mine('POST', 'import', {'dry': '1'}, zbytes(plain))['generate'][0]['missing'] is False, result)
         os.remove(f'{d}/hw1/hardware-configuration.nix')
-        for config in ({}, {'hardware': {'command': 'echo mine'}}, {'hardware': {'file': 'hardware-configuration.nix'}}):
-            check('hardware: with the file or the command not set there is no check at all',
-                  machine(config, 'hw0')('POST', 'import', {'dry': '1'}, zbytes(plain))['hardware']
-                  == {'file': None, 'missing': False, 'command': None, 'untrusted_command': False}
-                  and 'hardware' not in machine(config, 'hw0')('POST', 'import', {}, zbytes(plain)), config)
+        result = mine('POST', 'import', {}, zbytes({**plain, 'secrets/key.txt': 'k', 'hardware-configuration.nix': 'zip'}))
+        check('generate: a file the zip brings is not made either (the excluded one is skipped, and is made)',
+              result['generate'] == [hw], result)
+        for config in ({}, {'generate': []}, {'generate': [{'command': 'echo'}]}, {'generate': [{'file': 'x'}]}, {'generate': 'echo'}):
+            check('generate: with nothing, or an entry without its file or its command, there is no check at all',
+                  machine(config, 'hw0')('POST', 'import', {'dry': '1'}, zbytes(plain))['generate'] == []
+                  and 'generate' not in machine(config, 'hw0')('POST', 'import', {}, zbytes(plain)), config)
         nothing = machine({}, 'hw2')
         report = nothing('POST', 'import', {'dry': '1'}, zbytes(with_cmd))
-        check("hardware: a command in an uploaded zip is not taken, and the page is told it was there",
-              not report['hardware']['missing'] and report['hardware']['command'] is None and report['hardware']['untrusted_command'], report)
-        check('hardware: an upload has no command to run afterwards', 'hardware' not in nothing('POST', 'import', {}, zbytes(with_cmd)))
+        check("generate: a list in an uploaded zip is not taken, and the page is told it was there",
+              report['generate'] == [] and report['untrusted_generate'], report)
+        check('generate: an upload has nothing to run afterwards', 'generate' not in nothing('POST', 'import', {}, zbytes(with_cmd)))
         os.makedirs(f'{d}/trusted/eznix')
         for n, t in {'flake.nix': 'x', 'eznix/system.json': named}.items():
             with open(f'{d}/trusted/{n}', 'w') as f:
@@ -607,12 +610,12 @@ def system_sources():
         src = machine({'sources': [{'name': 'T', 'url': f'{d}/trusted'}, {'name': 'Off', 'url': f'{d}/off'}]}, 'hw3')
         src('GET', 'sources')
         report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': '', 'dry': True}).encode())
-        check("hardware: a source's zip says how, and it is believed",
-              report['hardware']['command'] == 'echo from the zip' and not report['hardware']['untrusted_command'], report)
+        check("generate: a source's zip says how, and it is believed",
+              [g['command'] for g in report['generate']] == ['echo hw', 'echo key'] and not report['untrusted_generate'], report)
         result = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': ''}).encode())
-        check('hardware: and the command to run comes back after the import', result['hardware']['command'] == 'echo from the zip', result)
+        check('generate: and the commands to run come back after the import', result['generate'] == [hw, key], result)
         report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/off', 'path': '', 'dry': True}).encode())
-        check('hardware: a disabled setting in the zip is no setting', report['hardware']['command'] is None, report)
+        check('generate: a disabled setting in the zip is no setting', report['generate'] == [], report)
         check('sources: a path that is not a system of the folder is refused',
               refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nothing'}).encode())) == 400
               and refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': '../src'}).encode())) == 400)

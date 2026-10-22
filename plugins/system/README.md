@@ -31,7 +31,7 @@ services.eznix.plugins.system = {
 |---|---|---|
 | `backups` | `5` | how many backups are kept; `0` for none |
 | `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
-| `hardware` | none | `{ file, command }`: the machine's hardware file and how to make it when an import leaves it without one (see below). Both have to be set, or nothing is checked: there are no defaults, since it has to fit every platform and a template sets it |
+| `generate` | none | a list of `{ file, command }`: files to make when an import leaves them missing, each with the command that makes it (see below). An entry needs both, or it is ignored: there are no defaults, since it has to fit every platform and a template sets it |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
 | `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
 | `enabled` | `true` | `false` leaves the plugin out |
@@ -83,25 +83,33 @@ web can only lead to `https`). A download is kept for ten minutes, and used agai
 place cannot be reached; the ↻ at the end of a source's heading downloads that source anew.
 At most 256 MiB is downloaded.
 
-## 🔧 The hardware file
+## 🔧 Files to make
 
 Before an import is done (an upload, a source), the page asks the server what it would do, with
 nothing written, and shows it under the question: a zip without a `flake.nix` at its top (it
-is still imported if you say so), and, when `hardware` has a `file` and a `command`, a machine
-that will have no such file afterwards. A file that is there already is left alone, as
-`exclude` has it, and needs nothing.
+is still imported if you say so), and the files of `generate` that will be missing afterwards.
+A file that is there already, or one the zip brings, is not made.
 
-When it will be missing, the question shows the command,
-and after the import it is typed into the terminal (`sudo` asks there). If it worked, the
-suggestions are generated after it (`autocomplete`). The command is the zip's own, from
-`services.eznix.plugins.system.hardware` in the JSON files of its configuration folder, so a
-template says how its machine gets its file; the NixOS template has the file
-`hardware-configuration.nix` and
-`sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'`
-(the terminal starts in the flake's folder, which is where the file goes; without
-`--no-filesystems` the disks mounted now are included). It is taken from the zip only when the
-zip comes from a source of your configuration: one you upload may not say what runs in a
-terminal, and the setting of the running configuration is used instead.
+Each entry is a file and the command that makes it:
+
+```json
+"generate": [
+  { "file": "hardware-configuration.nix",
+    "command": "sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'" }
+]
+```
+
+The question shows the command of each file that will be missing, and after the import they are
+typed into the terminal, one after the other, each only if the one before worked (`sudo` asks
+there). The terminal starts in the flake's folder, so a relative file name lands next to
+`flake.nix`. If they worked, the suggestions are generated after them (`autocomplete`).
+
+The list is the zip's own when it comes from a source of your configuration: it is in the JSON
+files of its configuration folder, at `services.eznix.plugins.system.generate`, so a template
+says how its machine gets its files. That is what the NixOS template does for the hardware file;
+without `--no-filesystems` the disks mounted now are included. A zip you upload may not say
+what runs in a terminal: its list is not taken, and the setting of the running configuration is
+used instead.
 
 ## 📝 Notes
 

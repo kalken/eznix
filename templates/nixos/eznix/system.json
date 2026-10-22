@@ -42,10 +42,12 @@
       ],
       "plugins": {
         "system": {
-          "hardware": {
-            "file": "hardware-configuration.nix",
-            "command": "sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'"
-          }
+          "generate": [
+            {
+              "file": "hardware-configuration.nix",
+              "command": "sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'"
+            }
+          ]
         }
       }
     }

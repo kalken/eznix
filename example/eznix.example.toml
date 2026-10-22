@@ -127,13 +127,12 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # with a flake.nix is one); or { name = "Import from X",
 #                                     # url = "…", add_only = true }: `name` is the whole heading in
 #                                     # the menu; add_only adds the files and removes none
-# [plugin.system.hardware]
+# [[plugin.system.generate]]
 # file    = "hardware-configuration.nix"
-#                                     # the machine's own file, and how to make it when an import
-#                                     # leaves none (typed into the terminal afterwards): both or
-#                                     # nothing, no defaults. A zip from a source can say it
-#                                     # itself; one you upload can't
-# command = "sudo ezhwconfig"
+# command = "sudo ezhwconfig"         # files to make when an import leaves them missing, and how:
+#                                     # typed into the terminal afterwards, one after the other. An
+#                                     # entry needs both; no defaults. A zip from a source can say
+#                                     # them itself; one you upload can't
 # autocomplete = false                # generate the suggestions after an import (the Autocomplete
 #                                     # button's job), since the system has other options
 

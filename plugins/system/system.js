@@ -7,8 +7,8 @@
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
 const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
 // `autocomplete`: generate the suggestions after an import, since the system it brought has
-// other options and packages. `hardware`: what an import says to run when it leaves the machine
-// without a hardware file (see _afterSystemImport()). The import reloads the page, so what is
+// other options and packages. `generate`: what an import says to run when it leaves files
+// missing that something says how to make (see _afterSystemImport()). The import reloads the page, so what is
 // to be run is kept in the browser's session across the reload and run once the page is up again.
 const SYSTEM_AUTOCOMPLETE = !!(eznix.config.system || {}).autocomplete;
 const _AFTER_IMPORT = 'eznix-system-after-import';
@@ -141,9 +141,9 @@ async function _askImport(question, post) {
   if (report.flake_nix === false) {
     lines.push('\u26a0 It has no flake.nix at its top.');
   }
-  const hw = report.hardware || {};
-  if (hw.missing && hw.command) lines.push(`\u26a0 There will be no ${hw.file}. This is run in the terminal afterwards:\n    ${hw.command}`);
-  else if (hw.untrusted_command && !hw.command) lines.push('It names a way to make a hardware file, which is not taken from a file you uploaded.');
+  const missing = (report.generate || []).filter(g => g.missing);
+  missing.forEach(g => lines.push(`\u26a0 There will be no ${g.file}. This is run in the terminal afterwards:\n    ${g.command}`));
+  if (report.untrusted_generate && !(report.generate || []).length) lines.push('It names files to make, which is not taken from a file you uploaded.');
   return confirm(question + (lines.length ? '\n\n' + lines.join('\n') : ''));
 }
 
@@ -157,7 +157,9 @@ function _afterSystemImport(res, data) {
   // be stale, so a reload is the only way to pick that up. Same "don't clobber unsaved
   // edits" rule as restart detection: reload immediately only if nothing's dirty, otherwise
   // just say so — the edits themselves are unaffected by this import either way.
-  const command = data.hardware && data.hardware.command;
+  // The commands that make the files that are missing, one after the other: each has to work
+  // for the next to run (and then the suggestions).
+  const command = (data.generate || []).map(g => `( ${g.command} )`).join(' && ') || null;
   if (isAnyDirty()) {
     setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
     _runAfterImport(command);

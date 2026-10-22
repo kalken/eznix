@@ -35,16 +35,19 @@ Settings ([plugin.system] in eznix.toml):
             be of another `exclude`, and removes by the one there is now.
             Until 2026-10-12 it was two settings, a switch `dotfiles` and a list of exact
             file names; the user wanted the one list.
-  hardware  {command, file}: how to make the machine's hardware file when an import leaves it
-            without one (2026-10-22, the user's idea). No defaults, since it has to fit every
-            platform and a template sets it: with either not set, nothing is checked. A dry run (POST import and import-source with dry) tells the page what an
-            import would do, a flake.nix missing from the zip and a hardware file missing
-            afterwards included, and the page asks before it goes on; after the import it
-            runs `command` in the terminal (sudo asks there). The command can also be in the
-            zip, in its configuration folder at services.eznix.plugins.system.hardware (a
-            template says how its machine gets its file), but is taken from there only when the
-            zip came from a source of the configuration: one uploaded from disk may not say what
-            runs in a terminal, and the running configuration's setting is used.
+  generate  [{file, command}]: files to make when an import leaves them missing, each with the
+            command that makes it (2026-10-22, the user's idea; the machine's hardware file
+            was the first, and it was `hardware` and one file until the user said any file
+            could be one). No defaults, since it has to fit every platform and a template
+            sets it: nothing set, nothing checked. A dry run (POST import and import-source
+            with dry) tells the page what an import would do, a flake.nix missing from the zip
+            and files missing afterwards included, and the page asks before it goes on; after
+            the import it runs the commands in the terminal, one after the other (sudo asks
+            there). The list can also be in the zip, in its configuration folder at
+            services.eznix.plugins.system.generate (a template says how its machine gets its
+            files), but is taken from there only when the zip came from a source of the
+            configuration: one uploaded from disk may not say what runs in a terminal, and the
+            running configuration's setting is used.
   sources   where systems can be imported from (2026-10-19, the user's idea), each a location
             or {name, url}. A location is an https address or a path on this machine (an
             installer's own templates), and what is there is a zip or an index, told apart by
@@ -297,13 +300,24 @@ def setup(api):
         return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
                 'removed_folders': removed_folders, 'unchanged': plan['unchanged']}
 
-    def hardware_in(zf):
-        """What the zip says about making the machine's hardware file: `hardware` under
-        services.eznix.plugins.system in the JSON files of its configuration folder, {command,
-        file} or {}. A disabled setting does not count."""
+    def entries_of(value):
+        """The usable entries of a `generate` list: {file, command}, both set. Anything else in
+        it is left out."""
+        out = []
+        for e in value if isinstance(value, list) else []:
+            if isinstance(e, dict) and '_value' in e and '_disabled' in e:
+                e = None if e['_disabled'] else e['_value']
+            if isinstance(e, dict) and all(isinstance(e.get(k), str) and e[k].strip() for k in ('file', 'command')):
+                out.append({'file': e['file'].strip(), 'command': e['command'].strip()})
+        return out
+
+    def generate_in(zf):
+        """What the zip says about files to make when an import leaves them missing: `generate`
+        under services.eznix.plugins.system in the JSON files of its configuration folder, a
+        list of {file, command}. A disabled setting does not count."""
         rel = os.path.relpath(api.config_dir or os.path.join(flake, 'eznix'), flake).replace(os.sep, '/')
         if rel.startswith('..'):
-            return {}
+            return []
         def step(node, key):
             if isinstance(node, dict) and '_value' in node and '_disabled' in node:
                 node = None if node['_disabled'] else node['_value']
@@ -316,53 +330,50 @@ def setup(api):
                 node = json.loads(zf.read(info))
             except ValueError:
                 continue
-            for key in ('services', 'eznix', 'plugins', 'system', 'hardware'):
+            for key in ('services', 'eznix', 'plugins', 'system', 'generate'):
                 node = step(node, key)
-            if isinstance(node, dict) and any(isinstance(node.get(k), str) and node[k].strip() for k in ('command', 'file')):
-                return {k: v for k, v in node.items() if k in ('command', 'file') and isinstance(v, str)}
-        return {}
+            if isinstance(node, dict) and '_value' in node and '_disabled' in node:
+                node = None if node['_disabled'] else node['_value']
+            found = entries_of(node)
+            if found:
+                return found
+        return []
 
-    def hardware_for(zf, trusted):
-        """(file, command, untrusted): the hardware file to look for and how to make it. There
-        are no defaults (the user, 2026-10-22: it has to be set by the template, and has to fit
-        every platform): with the file or the command not set, both are None and nothing is
-        checked. The zip's own word counts only when it came from a source the configuration
-        names (`trusted`): a zip uploaded from somewhere is not to say what runs in a terminal,
-        and the running configuration's `hardware` is used instead (`untrusted`: the zip named
-        something that was not taken)."""
-        mine = api.config.get('hardware') if isinstance(api.config.get('hardware'), dict) else {}
-        theirs = hardware_in(zf)
-        use = theirs if trusted and theirs else mine
-        text = lambda key: use[key].strip() if isinstance(use.get(key), str) and use[key].strip() else None
-        file, command = text('file'), text('command')
-        if not (file and command):
-            file = command = None
-        return file, command, bool(theirs) and not trusted
+    def generate_for(zf, trusted):
+        """(entries, untrusted): the files to make when missing, each with the command that makes
+        it. No defaults (the user, 2026-10-22: a template sets it, and it has to fit every
+        platform): nothing set is nothing checked. The zip's own word counts only when it came
+        from a source the configuration names (`trusted`): a zip uploaded from somewhere is not
+        to say what runs in a terminal, and the running configuration's `generate` is used
+        instead (`untrusted`: the zip named some that were not taken)."""
+        theirs = generate_in(zf)
+        return (theirs if trusted and theirs else entries_of(api.config.get('generate'))), bool(theirs) and not trusted
 
     def check(zf, plan, trusted):
         """What an import would do, for the page to ask with: nothing is written. A zip without
-        a flake.nix at its top, and a machine that will have no hardware file afterwards."""
+        a flake.nix at its top, and files that will be missing afterwards."""
         names = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
-        file, command, untrusted = hardware_for(zf, trusted)
-        present = True
-        if file:
-            present = file in plan['names'] or (os.path.lexists(os.path.join(flake, file))
-                                                and file not in [n for _, n in plan['remove']])
+        entries, untrusted = generate_for(zf, trusted)
+        removed = [n for _, n in plan['remove']]
+        def present(file):
+            return file in plan['names'] or (os.path.lexists(os.path.join(flake, file)) and file not in removed)
         return {'dry': True, 'flake_nix': 'flake.nix' in names,
-                'hardware': {'file': file, 'missing': not present, 'command': command, 'untrusted_command': untrusted},
+                'generate': [{**e, 'missing': not present(e['file'])} for e in entries],
+                'untrusted_generate': untrusted,
                 'write': len(plan['write']), 'remove': len(plan['remove']), 'skipped': plan['skipped']}
 
     def run_import(zf, trusted, removing=True, dry=False):
         """An import, or with `dry` what it would do. After one, what has to be run to make the
-        hardware file, if it is missing and something says how."""
+        files that are missing, when something says how."""
         plan = prepare(zf, removing=removing)
         if dry:
             return check(zf, plan, trusted)
-        file, command, _ = hardware_for(zf, trusted)
+        entries, _ = generate_for(zf, trusted)
         backup()
         result = apply(zf, plan)
-        if file and not os.path.lexists(os.path.join(flake, file)):
-            result['hardware'] = {'file': file, 'command': command}
+        missing = [e for e in entries if not os.path.lexists(os.path.join(flake, e['file']))]
+        if missing:
+            result['generate'] = missing
         return result
 
     def is_web(loc):
