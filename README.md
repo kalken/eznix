@@ -33,6 +33,10 @@ first. On NixOS it always exists:
 sudo cp -a /etc/nixos /etc/nixos.backup
 ```
 
+If the folder already has a `flake.nix`, the template stops with "refusing to overwrite" and
+changes nothing. Add eznix to your own flake by hand instead:
+[Install it in a flake you have](#-for-those-who-know-nix).
+
 **NixOS** (your `configuration.nix` is kept as it is)
 
 ```sh
