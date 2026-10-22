@@ -1267,6 +1267,18 @@ function isNullableString(nixType) {
   return true;
 }
 
+// Does a type say that a plain value (a text, a number, a path, a boolean) is one of its
+// alternatives? Looked for outside every pair of parentheses, so that what a list holds, or an
+// attribute set, does not count: "list of string" in "null or (list of string)" is not one.
+function _hasPlainAlternative(t) {
+  let outer = t;
+  for (let before = ''; before !== outer;) {
+    before = outer;
+    outer = outer.replace(/\([^()]*\)/g, ' ');
+  }
+  return /\b(string|integer|boolean|path|float|number)\b/.test(outer);
+}
+
 function typeFromNix(t) {
   if (!t) return 'string';
   // "non-empty (list of X)" / "non-empty (attribute set of X)" — strip wrapper
@@ -1280,8 +1292,12 @@ function typeFromNix(t) {
   if (isFreeformType(t)) return 'expr';
   // Plain list types
   if (t.startsWith('list') || t.startsWith('null or list')) return 'array';
-  // "(attribute set of X) or (list of Y) convertible to it" — prefer the list form
-  if (t.includes('or (list of') || t.includes('or (list of')) return 'array';
+  // "(attribute set of X) or (list of Y) convertible to it" — prefer the list form. Not when the
+  // union also names a plain value (environment.variables' entries are "null or (list of
+  // (signed integer or string or absolute path)) or signed integer or string or absolute path"):
+  // that is something a text can be, which a list is only one more way of saying, and it was
+  // added as a list.
+  if (t.includes('or (list of') && !_hasPlainAlternative(t)) return 'array';
   // "list of X or Y convertible to it" patterns that don't start with "list"
   if (t.includes('convertible to it') && t.includes('list')) return 'array';
   // Attribute set / submodule → object, but only when it's the PRIMARY type (the string starts
