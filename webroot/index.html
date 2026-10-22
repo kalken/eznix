@@ -3687,10 +3687,18 @@ function renderArrayField(container, key, arr, path) {
   else renderArray(valEl, arr, path);
 
   // A list has no button for its next item: "Add item" is on its right-click menu, and on that
-  // of its items, and Enter in a plain item adds the next one. It was a "+" under the last item
-  // (_addButton()) and the words "Add item…" before that, until the user asked for the menu
-  // instead (2026-10-23).
+  // of its items, and Enter in a plain item adds the next one. An empty list says "Add item…"
+  // in the tone of a placeholder, as the other kinds of list do ("Add value…"), and a click on
+  // it adds the first. It was the words under every list, then a "+" (2026-10-12), until the
+  // user asked for the menu instead (2026-10-23) and then for the words on an empty list.
   const canAddItem = !isPkgArrayPath(path) && !enumOpts;
+  if (canAddItem && !arr.length) {
+    const hint = document.createElement('div');
+    hint.className = 'list-add';
+    hint.textContent = 'Add item…';
+    hint.onclick = () => _addListItem(arr, path);
+    valEl.appendChild(hint);
+  }
 
   row.oncontextmenu = e => {
     if (!_onRowItself(e)) return;

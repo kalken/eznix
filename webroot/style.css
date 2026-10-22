@@ -943,6 +943,11 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* ── Null value display ── */
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
 
+/* What an empty list shows where its first item would be (renderArrayField()): the placeholder's
+   colour, on the line and at the left edge where a value's text is. */
+.list-add { padding: 4px 8px; color: var(--text3); cursor: pointer; }
+.is-disabled .list-add { pointer-events: none; }
+
 /* ── Panels on the side (eznix.sidePanel()) ── */
 /* The side floats over .editor-area (position: absolute, .main as positioning context). It
    is there when empty too, so pointer-events: none is what stops its box from blocking the
