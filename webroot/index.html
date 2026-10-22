@@ -2234,7 +2234,10 @@ function initAddPanel() {
     }
     if (!hits.length && !wildcard && !entrySet) {
       hideAcList();
-      if (inp.value.trim()) doForceAdd();
+      // A path that ends in a dot is not finished: nothing to add yet, and the dialog stays. (The
+      // dot after a list of submodules has nothing to suggest, a "*" having no name to type, and
+      // it was added as it stood: an entry with an empty name, and the dialog closed.)
+      if (inp.value.trim() && !_endsInDot(inp.value)) doForceAdd();
       return;
     }
 
@@ -2443,9 +2446,14 @@ function traverseForSet(root, parts) {
   return cur;
 }
 
+// A path being typed that ends in a dot: its next part is still to come.
+function _endsInDot(raw) {
+  return raw.trim().endsWith('.');
+}
+
 function doForceAdd() {
   const raw = document.getElementById('add-input').value.trim();
-  if (!raw) return;
+  if (!raw || _endsInDot(raw)) return;
   if (isValidOptionPath(raw)) { doAdd(); return; }
   document.getElementById('force-type-bar').classList.remove('hidden');
 }
@@ -2497,7 +2505,7 @@ function scrollThenFlash(el, block) {
 function doAdd() {
   const inp = document.getElementById('add-input');
   const raw = inp.value.trim();
-  if (!raw) return;
+  if (!raw || _endsInDot(raw)) return;
 
   // A path the suggestions do not know is not refused: Enter or Add on it asks what kind of
   // value it is (the force bar), and adds it as that. The bar came up by itself only once
