@@ -137,6 +137,22 @@ def write_choices(entries):
             pass
 
 
+LAST_ERROR = ""   # what the last failed nix_eval() wrote to stderr; see explain_error()
+
+def explain_error(stderr, flake_dir=""):
+    """The cause of a failed evaluation in one line, or None when none is recognised. Nix's own
+    text is a long trace, and what most often goes wrong is a file the flake imports that is not
+    there (hardware-configuration.nix before it has been generated): that is said by its name
+    in the flake, not by its place in the Nix store or on the disk."""
+    m = re.search(r"path '([^']+)' does not exist", stderr)
+    if m:
+        name = re.sub(r"^/nix/store/[a-z0-9]{32}-[^/]+/", "", m.group(1))
+        name = name[len(flake_dir) + 1:] if flake_dir and name.startswith(flake_dir + "/") else name
+        return f"{name} is missing: a file the flake imports is not there"
+    errors = [l.strip() for l in stderr.splitlines() if l.startswith("error:")]
+    return errors[-1][len("error:"):].strip() if errors else None
+
+
 def nix_eval(args_list, extra_env=None):
     """Run `nix eval --json <args_list>` and return parsed JSON, or None on failure/timeout."""
     env = {**os.environ, **(extra_env or {})}
@@ -154,6 +170,8 @@ def nix_eval(args_list, extra_env=None):
         warn(f"nix eval timed out after {NIX_EVAL_TIMEOUT}s (args: {' '.join(args_list)})")
         return None
     if r.returncode != 0:
+        global LAST_ERROR
+        LAST_ERROR = r.stderr
         if VERBOSE:
             for line in r.stderr.strip().splitlines():
                 if not line.startswith(("evaluation warning:", "warning:")):
@@ -415,7 +433,12 @@ in map (opt: {{
     required = safeGet (o: !(o ? default) && !(o.internal or false) && (o.visible or true) && !(o.readOnly or false)) opt;
 }}) rawList
 """
-    return nix_eval(["--impure", "--expr", expr])
+    result = nix_eval(["--impure", "--expr", expr])
+    if result is None:
+        why = explain_error(LAST_ERROR, str(target))
+        if why:
+            print(f"{RED}  {host}: {why}{NC}", file=sys.stderr)
+    return result
 
 
 def pick_options(target, candidates):
@@ -612,8 +635,7 @@ def main():
     if command in ("options", "all"):
         found, options = pick_options(target, candidates)
         if found is None:
-            failed("options.json", "the options could not be evaluated (a missing "
-                   "hardware-configuration.nix import would fail here, for one)")
+            failed("options.json", "the options could not be evaluated")
         else:
             host = found
 
