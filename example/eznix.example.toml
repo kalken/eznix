@@ -115,13 +115,11 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # Export, import and restore of the whole flake.
 # [plugin.system]
 # backups  = 5                        # automatic backups kept; 0: none
-# exclude  = [".*", "secrets", "*.key"]
-#                                     # what an export leaves out, read like the lines of a
-#                                     # .gitignore, as `exclude` above is. Default [".*"]:
-#                                     # dot-files and dot-folders; a list of your own
-#                                     # replaces it
-# keep     = ["hardware-configuration.nix"]
-#                                     # what an import leaves as it is on this machine
+# exclude  = [".git", "hardware-configuration.nix", "secrets", "*.key"]
+#                                     # the files and folders eznix never touches, in an export, a
+#                                     # backup, an import and a restore: read like the lines of a
+#                                     # .gitignore, as `exclude` above is. Default [".git",
+#                                     # "hardware-configuration.nix"]; a list of your own replaces it
 # sources  = ["https://github.com/me/systems/archive/refs/heads/main.zip", "/etc/templates/index.json"]
 #                                     # where systems can be imported from: a zip (every folder
 #                                     # with a flake.nix in it is one) or an index (JSON), at an
@@ -129,6 +127,13 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #                                     # with a flake.nix is one); or { name = "Import from X",
 #                                     # url = "…", add_only = true }: `name` is the whole heading in
 #                                     # the menu; add_only adds the files and removes none
+# [plugin.system.hardware]
+# file    = "hardware-configuration.nix"
+#                                     # the machine's own file, and how to make it when an import
+#                                     # leaves none (typed into the terminal afterwards): both or
+#                                     # nothing, no defaults. A zip from a source can say it
+#                                     # itself; one you upload can't
+# command = "sudo ezhwconfig"
 # autocomplete = false                # generate the suggestions after an import (the Autocomplete
 #                                     # button's job), since the system has other options
 

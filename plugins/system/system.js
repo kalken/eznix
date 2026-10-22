@@ -7,14 +7,22 @@
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
 const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
 // `autocomplete`: generate the suggestions after an import, since the system it brought has
-// other options and packages. The import reloads the page, so the request is kept in the
-// browser's session across the reload and made once the page is up again.
+// other options and packages. `hardware`: what an import says to run when it leaves the machine
+// without a hardware file (see _afterSystemImport()). The import reloads the page, so what is
+// to be run is kept in the browser's session across the reload and run once the page is up again.
 const SYSTEM_AUTOCOMPLETE = !!(eznix.config.system || {}).autocomplete;
-const _AUTOCOMPLETE_AFTER = 'eznix-system-autocomplete';
+const _AFTER_IMPORT = 'eznix-system-after-import';
+function _runAfterImport(command) {
+  // The command first, and only if it worked, the suggestions: they are of a system that
+  // evaluates, which it does not without the file.
+  if (command && SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete', { before: command });
+  else if (command) eznix.emit('run', command);
+  else if (SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete');
+}
 eznix.on('ready', () => {
-  let asked = false;
-  try { asked = sessionStorage.getItem(_AUTOCOMPLETE_AFTER) === '1'; sessionStorage.removeItem(_AUTOCOMPLETE_AFTER); } catch (e) { /* no storage: it is not asked */ }
-  if (asked && SYSTEM_AUTOCOMPLETE) setTimeout(() => eznix.emit('autocomplete'), 0);
+  let after = null;
+  try { after = JSON.parse(sessionStorage.getItem(_AFTER_IMPORT)); sessionStorage.removeItem(_AFTER_IMPORT); } catch (e) { /* no storage: nothing is asked */ }
+  if (after) setTimeout(() => _runAfterImport(after.command), 0);
 });
 
 // Unlike exportAll() (which zips the in-memory fileConfigs — unsaved edits included, but only
@@ -106,19 +114,37 @@ function initSystemImportButton() {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    if (!confirm(`Import ${file.name}?\n\nIt replaces the current system. A backup is made first.`)) return;
     try {
-      const res = await apiFetch('/plugin/system/import', {
+      const post = dry => apiFetch('/plugin/system/import' + (dry ? '?dry=1' : ''), {
         method: 'POST',
         headers: { 'Content-Type': 'application/zip' },
         body: file,
       });
-      const data = await res.json().catch(() => ({}));
-      _afterSystemImport(res, data);
+      if (!await _askImport(`Import ${file.name}?\n\nIt replaces the current system. A backup is made first.`, post)) return;
+      const res = await post(false);
+      _afterSystemImport(res, await res.json().catch(() => ({})));
     } catch (err) {
       setStatus('Import failed: ' + err.message, 5000, 'err');
     }
   });
+}
+
+// What an import would do, before it is done (a dry run: nothing is written), as lines under
+// the question: a zip without a flake.nix at its top, and a machine that will be without its
+// hardware file, with the command that makes one. `post(dry)` makes the request. True when it
+// is to go on.
+async function _askImport(question, post) {
+  const res = await post(true);
+  const report = await res.json().catch(() => ({}));
+  if (!res.ok) { setStatus('Import failed: ' + (report.error || res.status), 5000, 'err'); return false; }
+  const lines = [];
+  if (report.flake_nix === false) {
+    lines.push('\u26a0 It has no flake.nix at its top.');
+  }
+  const hw = report.hardware || {};
+  if (hw.missing && hw.command) lines.push(`\u26a0 There will be no ${hw.file}. This is run in the terminal afterwards:\n    ${hw.command}`);
+  else if (hw.untrusted_command && !hw.command) lines.push('It names a way to make a hardware file, which is not taken from a file you uploaded.');
+  return confirm(question + (lines.length ? '\n\n' + lines.join('\n') : ''));
 }
 
 function _afterSystemImport(res, data) {
@@ -126,17 +152,17 @@ function _afterSystemImport(res, data) {
   const parts = [`Imported ${data.written.length} file(s) into ${NIXOS_TARGET}`];
   if (data.removed && data.removed.length) parts.push(`removed ${data.removed.length}`);
   if (data.skipped && data.skipped.length) parts.push(`skipped ${data.skipped.length}`);
-  if (data.kept && data.kept.length) parts.push(`kept this machine's ${data.kept.join(', ')}`);
   // This writes straight into NIXOS_TARGET on disk, which CONFIG_DIR lives under — the
   // in-memory files/fileConfigs state has no way to know its tab list or content might now
   // be stale, so a reload is the only way to pick that up. Same "don't clobber unsaved
   // edits" rule as restart detection: reload immediately only if nothing's dirty, otherwise
   // just say so — the edits themselves are unaffected by this import either way.
+  const command = data.hardware && data.hardware.command;
   if (isAnyDirty()) {
     setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
-    if (SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete');
+    _runAfterImport(command);
   } else {
-    if (SYSTEM_AUTOCOMPLETE) { try { sessionStorage.setItem(_AUTOCOMPLETE_AFTER, '1'); } catch (e) { /* see above */ } }
+    if (command || SYSTEM_AUTOCOMPLETE) { try { sessionStorage.setItem(_AFTER_IMPORT, JSON.stringify({ command: command || null })); } catch (e) { /* see above */ } }
     location.reload();
   }
 }
@@ -168,14 +194,15 @@ async function importSystemSource(system) {
   const sure = system.add_only
     ? `Start from ${system.name}?\n\nIts files are added to the current system. A backup is made first.`
     : `Import ${system.name}?\n\nIt replaces the current system. A backup is made first.`;
-  if (!confirm(sure)) return;
-  setStatus('Importing ' + system.name + '…', 30000);
   try {
-    const res = await apiFetch('/plugin/system/import-source', {
+    const post = dry => apiFetch('/plugin/system/import-source', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ url: system.url, path: system.path, add_only: system.add_only === true }),
+      body: JSON.stringify({ url: system.url, path: system.path, add_only: system.add_only === true, dry }),
     });
+    if (!await _askImport(sure, post)) return;
+    setStatus('Importing ' + system.name + '…', 30000);
+    const res = await post(false);
     _afterSystemImport(res, await res.json().catch(() => ({})));
   } catch (err) {
     setStatus('Import failed: ' + err.message, 5000, 'err');

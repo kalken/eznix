@@ -502,11 +502,8 @@ at any depth, `/name` anchored, `* ? [a-z] **`, `!entry`, last match decides. Ea
 turns an entry into a regular expression by the same steps (`_exclude_rule()` in
 `eznix.py`, `nix/exclude.nix`), and `test/exclude.json` is one table of cases both are run
 against (`test_server.py`, `checks.exclude`): add a case there when touching either. The system
-plugin's own `exclude` (what an export leaves out of the whole flake) is read the same way,
-through `api.ignore()`, and is the one setting for it, `[".*"]` by default; it was a switch
-`dotfiles` and a list of exact file names, which the user had made one ("it should be one
-option and default to excluding dot files"). An import still skips every dot path in a
-zip, whatever the setting. What
+plugin's own `exclude` is read the same way, through `api.ignore()`; see "One `exclude` for the
+system plugin" below. What
 changed for an old list: an entry without a slash now matches at any depth, not only at the
 top. A module can't pass its option to the function
 (what the function reads decides `config`, so reading `config` there recurses). A raw
@@ -549,15 +546,46 @@ down. Before 2026-10-13 any zip was taken, and since the tree is made to match t
 that was not a system removed every file of the flake that it did not hold (the backup
 taken first was the only way back). The user asked for the check. In `test_server.py`.
 
-**A system import leaves the machine's own hardware file alone** (`keep` in the system
-plugin, `prepare(zf, keeping=True)`): what the setting names, `hardware-configuration.nix`
-unless set, is neither replaced by the zip's nor removed for not being in it; a machine
-without one takes the zip's. The user's wish on 2026-10-13, about to import a template made
-on a VM onto another box; generating a new one was the first idea and is not something an
-unprivileged eznix can do. A restore keeps nothing back. In `test_server.py`. An import
-through the page was tried by the user the same day: export, one Markdown file removed,
-the export imported again, which brought the file back, with the backup taken first the
-smaller for it ("it seems to work"); on which system was not said.
+**One `exclude` for the system plugin** (2026-10-22, the user's rule: "all import and export
+should use the same exclude files, which are files or folders they dont touch"): an export
+and a backup hold everything but what it names; an import makes the tree look exactly like the
+zip, files and folders (`prepare()` also makes the zip's empty folders and removes the folders
+it doesn't hold, deepest first), dot-files included, and leaves what it names as it is (a
+path of the zip that it names is skipped, one on disk is not removed). A restore writes
+everything its backup holds (`skip_excluded=False`) and removes by the `exclude` of now, so a
+backup made under another list can still be restored. Default `[".git",
+"hardware-configuration.nix"]`: before, `[".*"]` for export and backup, a hardcoded skip of
+every dot-path on import whatever the setting, and a separate `keep` setting (default the
+hardware file, which describes the machine, so a template made on a VM brought onto another
+box does not replace it: 2026-10-13); `keep` is gone, its default is in `exclude` now, which
+also leaves the file out of exports and backups. With `.*` gone from the default, dot-files
+(a template's `.gitignore`) travel; they are also in backups, which the group `eznix` can
+read on NixOS, and the README says so. What is not an exclusion stays: links are never
+followed, a path out of the flake is refused, the size limits and the all-or-nothing
+permission check. A zip without a flake.nix is no longer refused: a dry run (`dry=1`, `check()`)
+tells the page, which says so under its question and goes on if the user does (the user's
+word, 2026-10-22: it should warn). A source's
+`add_only` makes an import remove nothing. In `test_server.py` (`system_sources()`, the
+server tests below it). Not tried in the page or on NixOS.
+
+**An import is asked about first, and can make the hardware file** (2026-10-22, the user's
+idea): the page sends the import as a dry run (`?dry=1`, `"dry": true` for a source;
+`run_import()`, `check()` in the system plugin), which writes nothing and says what would
+happen, and the question shows it: a zip without a flake.nix at its top, and, when the
+plugin's `hardware` ({file, command}) is set, that the machine will be without that file. If
+so the command is typed into the terminal after the import (the page's `run` event, or
+`autocomplete` with `before`, which chains it with `&&` so the suggestions are generated only if it
+worked; the request survives the reload in sessionStorage). **No defaults**, at the user's
+word: both `file` and `command` have to be set or nothing is checked, since it has to fit every
+platform; the NixOS template sets them to `nixos-generate-config --show-hardware-config
+--no-filesystems` (no disks: the template cannot know the target's; the terminal starts in
+the flake's folder, `dir = cfg.flake` in `options.nix`, so the relative file name lands right).
+The zip can carry the setting (`services.eznix.plugins.system.hardware` in its configuration
+folder's JSON), and it is taken only from a zip of a `sources` entry: a zip uploaded may not say
+what runs in a terminal, so the running configuration's setting is used (the page says the zip
+named one). The idea was ezinstall's `ezhwconfig` (it stays there, for the with-disks case at
+`--root /mnt`, set in the ISO's own configuration). A file that is there is never made again.
+In `test_server.py` (`system_sources()`). Not tried in the page, in a terminal or on NixOS.
 
 **Systems can be imported from places named in the configuration** (`sources` in the
 system plugin, 2026-10-19, the user's idea: "import systems from an url, listing a

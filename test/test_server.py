@@ -460,7 +460,7 @@ def system_sources():
         result = status({'url': f'{d}/src/one.zip', 'path': ''})()
         check('sources: and a whole zip', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
               and open(f'{d}/flake/hardware-configuration.nix').read() == 'this machine'
-              and result['kept'] == ['hardware-configuration.nix'], result)
+              and result['skipped'] == ['hardware-configuration.nix'], result)
 
         # A folder on this machine: every folder under it with a flake.nix is a system, and a
         # source with `add_only` adds the files and removes none.
@@ -498,7 +498,121 @@ def system_sources():
         zipped(f'{d}/state/system-backups/system-20200101-000000.zip', {})
         result = get(('POST', 'restore'), {'name': 'system-20200101-000000.zip'})
         left = [os.path.join(p, n) for p, _, ns in os.walk(f'{d}/flake') for n in ns]
-        check('system: an empty backup can be restored, the folder is empty again', left == [] and result['removed'], (left, result))
+        check('system: an empty backup can be restored, the folder is empty again but for what exclude leaves alone',
+              left == [f'{d}/flake/hardware-configuration.nix'] and result['removed'], (left, result))
+        # One exclude for all of it: an import makes the tree look exactly like the zip, folders
+        # too (an empty one), dot-files included, and leaves what exclude names as it is; an
+        # export holds all but that; a restore writes everything its backup holds.
+        os.makedirs(f'{d}/flake3/old')
+        os.makedirs(f'{d}/flake3/emptyold')
+        os.makedirs(f'{d}/flake3/.git')
+        for n, t in {'flake.nix': 'old', 'gone.txt': 'x', 'old/inner.txt': 'x', '.git/HEAD': 'ref',
+                     'hardware-configuration.nix': 'mine'}.items():
+            with open(f'{d}/flake3/{n}', 'w') as f:
+                f.write(t)
+        ez.FLAKE_DIR = f'{d}/flake3'
+        api3 = ez.PluginApi('system', {})
+        system.setup(api3)
+        ez.FLAKE_DIR = f'{d}/flake'
+        ask3 = lambda method, path, query={}, body=b'': api3.routes[(method, path)](ez.PluginRequest(query, body, 'alice'))
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as zf:
+            for n, t in {'flake.nix': 'new', '.gitignore': 'result', '.git/evil': 'x', 'hardware-configuration.nix': 'zip',
+                         'sub/a.txt': 'a', 'newdir/': ''}.items():
+                zf.writestr(n, t)
+        result = ask3('POST', 'import', body=buf.getvalue())
+        left = sorted(os.path.relpath(os.path.join(p, n), f'{d}/flake3') + ('/' if dirs else '')
+                      for p, ds, ns in os.walk(f'{d}/flake3') for n, dirs in [(x, False) for x in ns] + [(x, True) for x in ds])
+        check('import: the tree is the zip, folders and dot-files too, with what exclude names left as it was',
+              left == ['.git/', '.git/HEAD', '.gitignore', 'flake.nix', 'hardware-configuration.nix', 'newdir/', 'sub/', 'sub/a.txt']
+              and open(f'{d}/flake3/flake.nix').read() == 'new' and open(f'{d}/flake3/hardware-configuration.nix').read() == 'mine'
+              and sorted(result['skipped']) == ['.git/evil', 'hardware-configuration.nix']
+              and sorted(result['removed_folders']) == ['emptyold', 'old'], (left, result))
+        exported = zipfile.ZipFile(io.BytesIO(ask3('GET', 'export').data))
+        check('export: files and folders (an empty one too), all but what exclude names',
+              sorted(exported.namelist()) == ['.gitignore', 'flake.nix', 'newdir/', 'sub/', 'sub/a.txt'], exported.namelist())
+        os.makedirs(f'{d}/state/system-backups', exist_ok=True)
+        zipped(f'{d}/state/system-backups/system-20200102-000000.zip', {'flake.nix': 'back', '.git/x': 'x', 'hardware-configuration.nix': 'older'})
+        result = ask3('POST', 'restore', {'name': 'system-20200102-000000.zip'})
+        check('restore: writes all its backup holds, excluded paths too, and removes the rest but what exclude names',
+              open(f'{d}/flake3/flake.nix').read() == 'back' and os.path.exists(f'{d}/flake3/.git/x')
+              and open(f'{d}/flake3/hardware-configuration.nix').read() == 'older' and os.path.exists(f'{d}/flake3/.git/HEAD')
+              and not os.path.exists(f'{d}/flake3/.gitignore') and not os.path.exists(f'{d}/flake3/sub'), result)
+        # A file where the zip has a folder and a folder where it has a file: out of the way first.
+        os.makedirs(f'{d}/flake5/was-dir')
+        for n, c in {'flake.nix': 'x', 'was-file': 'file', 'was-dir/inner.txt': 'x'}.items():
+            with open(f'{d}/flake5/{n}', 'w') as f:
+                f.write(c)
+        ez.FLAKE_DIR = f'{d}/flake5'
+        api5 = ez.PluginApi('system', {})
+        system.setup(api5)
+        ez.FLAKE_DIR = f'{d}/flake'
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w') as zf:
+            for n, c in {'flake.nix': 'x', 'was-file/now.txt': 'dir', 'was-dir': 'now a file'}.items():
+                zf.writestr(n, c)
+        api5.routes[('POST', 'import')](ez.PluginRequest({}, buf.getvalue(), 'alice'))
+        check('import: a file where the zip has a folder, and a folder where it has a file, do not get in the way',
+              open(f'{d}/flake5/was-file/now.txt').read() == 'dir' and open(f'{d}/flake5/was-dir').read() == 'now a file')
+        # The hardware file: made by a command after an import that leaves none. The zip can
+        # name the command, but only one from a source of the configuration is believed.
+        def zbytes(files):
+            b = io.BytesIO()
+            with zipfile.ZipFile(b, 'w') as zf:
+                for n, t in files.items():
+                    zf.writestr(n, t)
+            return b.getvalue()
+        named = json.dumps({'services': {'eznix': {'plugins': {'system': {'hardware': {'file': 'hardware-configuration.nix', 'command': 'echo from the zip'}}}}}})
+        off = json.dumps({'services': {'eznix': {'plugins': {'system': {'hardware': {'_disabled': True, '_value': {'command': 'echo off'}}}}}}})
+        def machine(config, name):
+            os.makedirs(f'{d}/{name}', exist_ok=True)
+            ez.FLAKE_DIR = f'{d}/{name}'
+            one = ez.PluginApi('system', config)
+            system.setup(one)
+            ez.FLAKE_DIR = f'{d}/flake'
+            return lambda method, path, query={}, body=b'': one.routes[(method, path)](ez.PluginRequest(query, body, 'alice'))
+        plain = {'flake.nix': 'x', 'a.txt': 'a'}
+        with_cmd = {**plain, 'eznix/system.json': named}
+        mine = machine({'hardware': {'command': 'echo mine', 'file': 'hardware-configuration.nix'}}, 'hw1')
+        report = mine('POST', 'import', {'dry': '1'}, zbytes(plain))
+        check('hardware: a dry run says the machine will have no hardware file, and the command that makes it',
+              report['hardware'] == {'file': 'hardware-configuration.nix', 'missing': True, 'command': 'echo mine',
+                                     'untrusted_command': False} and not os.listdir(f'{d}/hw1'), report)
+        result = mine('POST', 'import', {}, zbytes(plain))
+        check('hardware: an import that leaves none says what to run', result['hardware']['command'] == 'echo mine', result)
+        with open(f'{d}/hw1/hardware-configuration.nix', 'w') as f:
+            f.write('here')
+        result = mine('POST', 'import', {}, zbytes(plain))
+        check('hardware: one that is there already (left alone, it is excluded) needs nothing',
+              'hardware' not in result and mine('POST', 'import', {'dry': '1'}, zbytes(plain))['hardware']['missing'] is False, result)
+        os.remove(f'{d}/hw1/hardware-configuration.nix')
+        for config in ({}, {'hardware': {'command': 'echo mine'}}, {'hardware': {'file': 'hardware-configuration.nix'}}):
+            check('hardware: with the file or the command not set there is no check at all',
+                  machine(config, 'hw0')('POST', 'import', {'dry': '1'}, zbytes(plain))['hardware']
+                  == {'file': None, 'missing': False, 'command': None, 'untrusted_command': False}
+                  and 'hardware' not in machine(config, 'hw0')('POST', 'import', {}, zbytes(plain)), config)
+        nothing = machine({}, 'hw2')
+        report = nothing('POST', 'import', {'dry': '1'}, zbytes(with_cmd))
+        check("hardware: a command in an uploaded zip is not taken, and the page is told it was there",
+              not report['hardware']['missing'] and report['hardware']['command'] is None and report['hardware']['untrusted_command'], report)
+        check('hardware: an upload has no command to run afterwards', 'hardware' not in nothing('POST', 'import', {}, zbytes(with_cmd)))
+        os.makedirs(f'{d}/trusted/eznix')
+        for n, t in {'flake.nix': 'x', 'eznix/system.json': named}.items():
+            with open(f'{d}/trusted/{n}', 'w') as f:
+                f.write(t)
+        os.makedirs(f'{d}/off/eznix')
+        for n, t in {'flake.nix': 'x', 'eznix/system.json': off}.items():
+            with open(f'{d}/off/{n}', 'w') as f:
+                f.write(t)
+        src = machine({'sources': [{'name': 'T', 'url': f'{d}/trusted'}, {'name': 'Off', 'url': f'{d}/off'}]}, 'hw3')
+        src('GET', 'sources')
+        report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': '', 'dry': True}).encode())
+        check("hardware: a source's zip says how, and it is believed",
+              report['hardware']['command'] == 'echo from the zip' and not report['hardware']['untrusted_command'], report)
+        result = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': ''}).encode())
+        check('hardware: and the command to run comes back after the import', result['hardware']['command'] == 'echo from the zip', result)
+        report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/off', 'path': '', 'dry': True}).encode())
+        check('hardware: a disabled setting in the zip is no setting', report['hardware']['command'] is None, report)
         check('sources: a path that is not a system of the folder is refused',
               refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nothing'}).encode())) == 400
               and refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': '../src'}).encode())) == 400)
@@ -725,7 +839,8 @@ def main():
 
             status, data = b.request('/api/v1/plugin/system/export')
             names = sorted(zipfile.ZipFile(io.BytesIO(data)).namelist())
-            check('system: export holds the flake, without dot-files', names == ['README.md', 'eznix/a.json', 'flake.nix'], names)
+            check('system: export holds the files and folders, but not what exclude names',
+                  names == ['README.md', 'eznix/', 'eznix/a.json', 'flake.nix'], names)
             open(f'{tmp}/flake/extra.nix', 'w').write('new')
             open(f'{tmp}/flake/flake.nix', 'w').write('changed')
             _, result = b.json('/api/v1/plugin/system/import', data, 'POST')
@@ -762,28 +877,32 @@ def main():
                 f.write('this machine')
             status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
             check("system: an import leaves this machine's hardware file as it is, and says so",
-                  status == 200 and result.get('kept') == ['hardware-configuration.nix']
+                  status == 200 and result.get('skipped') == ['hardware-configuration.nix']
                   and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'this machine', result)
             status, result = b.json('/api/v1/plugin/system/import', zipped(now), 'POST')
             check('system: nor is it removed by a zip that has none',
                   status == 200 and result.get('removed') == [] and os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
             os.remove(f'{tmp}/flake/hardware-configuration.nix')
             status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
-            check('system: a machine without one takes the zip\'s',
-                  status == 200 and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'another machine', result)
-            os.remove(f'{tmp}/flake/hardware-configuration.nix')
-            # A zip that is not a system at all would, taken for one, remove the whole flake.
+            check('system: an excluded path of the zip is not written even where the machine has none',
+                  status == 200 and not os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
+            # A zip that is not a system at all would, taken for one, remove the whole flake: the
+            # page is told, with nothing written (a dry run), and asks before it goes on.
             tree = lambda: sorted(os.path.relpath(os.path.join(d, f), f'{tmp}/flake') for d, _, fs in os.walk(f'{tmp}/flake') for f in fs)
             had, snapshots = tree(), len(b.json('/api/v1/plugin/system/backups')[1]['backups'])
-            status, result = b.json('/api/v1/plugin/system/import', zipped({'a.json': '{}', 'notes/b.txt': 'x'}), 'POST')
-            check('system: a zip without a flake.nix at its top is refused, nothing changed and no backup made',
-                  status == 400 and 'not a system' in result.get('error', '') and tree() == had
+            dry = lambda zipbytes: b.json('/api/v1/plugin/system/import?dry=1', zipbytes, 'POST')
+            status, result = dry(zipped({'a.json': '{}', 'notes/b.txt': 'x'}))
+            check('system: a dry run says a zip has no flake.nix at its top, and nothing changed, no backup made',
+                  status == 200 and result['flake_nix'] is False and tree() == had
                   and len(b.json('/api/v1/plugin/system/backups')[1]['backups']) == snapshots, result)
-            status, result = b.json('/api/v1/plugin/system/import', zipped({'repo-main/' + n: t for n, t in now.items()}), 'POST')
-            check('system: one with a folder around the flake too, and is told where its flake.nix is',
-                  status == 400 and 'repo-main/' in result.get('error', '') and tree() == had, result)
-            status, result = b.json('/api/v1/plugin/system/import', zipped({}), 'POST')
-            check('system: and an empty one', status == 400 and tree() == had, result)
+            status, result = dry(zipped({'repo-main/' + n: t for n, t in now.items()}))
+            check('system: one with a folder around the flake has none at its top either',
+                  status == 200 and result['flake_nix'] is False and tree() == had, result)
+            status, result = dry(zipped({}))
+            check('system: and an empty one, with how many files it would remove',
+                  status == 200 and result['flake_nix'] is False and result['remove'] > 0 and tree() == had, result)
+            status, result = dry(zipped(now))
+            check('system: a zip with a flake.nix at its top has no warning', status == 200 and result['flake_nix'] is True, result)
             # A zip made to write outside the flake: by "..", by a path from the root, by a
             # backslash, and through a link inside the flake that leads out of it.
             now['eznix/a.json'] = '{"a": 9}'

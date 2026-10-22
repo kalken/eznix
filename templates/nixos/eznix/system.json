@@ -39,7 +39,15 @@
           "label": "Update Flake",
           "command": "sudo nix flake update --flake /etc/nixos"
         }
-      ]
+      ],
+      "plugins": {
+        "system": {
+          "hardware": {
+            "file": "hardware-configuration.nix",
+            "command": "sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'"
+          }
+        }
+      }
     }
   }
 }

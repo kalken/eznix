@@ -249,8 +249,10 @@ networking.hostName = "myhost";</pre>
 //     'dirty'  (dirty) whenever "are there unsaved changes" has been re-checked
 //     'theme'  a theme's stylesheets have finished loading
 //     'ping'   (data) every answer to the periodic GET /api/v1/ping
-//     'autocomplete'  () asks for the suggestions to be generated, as the Autocomplete button does;
-//                  heard by the terminal's part, so a plugin can ask for it
+//     'autocomplete'  ({ before }) asks for the suggestions to be generated, as the Autocomplete button
+//                  does, after the command `before` if there is one and only if that worked; heard by
+//                  the terminal's part, so a plugin can ask for it
+//     'run'    (command) types a command into the terminal; heard by the terminal's part
 //     'empty'  (el) the editor has no files and shows what to do instead: a line may be added to el
 //     'terminal'  ({ el, session, run, onExit }) asks for a terminal of its own in `el`; heard by
 //              the terminal panel when there is one (eznix.listens('terminal')), see there

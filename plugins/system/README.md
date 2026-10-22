@@ -4,9 +4,9 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 
 ## ✨ What it does
 
-- **Export** the flake as a zip
-- **Import** a zip over the flake: the files end up exactly as in the zip, except this
-  machine's own `hardware-configuration.nix`, which stays
+- **Export** the flake as a zip: all its files and folders, but what `exclude` names
+- **Import** a zip over the flake: the files and folders end up exactly as in the zip, and
+  what `exclude` names is left as it is on this machine
 - **Backup** the flake now, and **restore** any backup from the list
 - **Import from** a list of places: zips, folders and indexes of systems, on the web or on
   this machine, shown as headings in the menu
@@ -17,8 +17,7 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 ```nix
 services.eznix.plugins.system = {
   backups = 10;
-  exclude = [ ".*" "result" "*.key" ];
-  keep    = [ "hardware-configuration.nix" ];
+  exclude = [ ".git" "hardware-configuration.nix" "*.key" ];
   autocomplete = true;
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
@@ -31,8 +30,8 @@ services.eznix.plugins.system = {
 | Option | Default | |
 |---|---|---|
 | `backups` | `5` | how many backups are kept; `0` for none |
-| `exclude` | `[ ".*" ]` | what an export leaves out, read like the lines of a `.gitignore` |
-| `keep` | `[ "hardware-configuration.nix" ]` | what an import leaves as it is on this machine, read the same way; a restore keeps nothing back |
+| `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
+| `hardware` | none | `{ file, command }`: the machine's hardware file and how to make it when an import leaves it without one (see below). Both have to be set, or nothing is checked: there are no defaults, since it has to fit every platform and a template sets it |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
 | `autocomplete` | `false` | generate the suggestions after an import, as the Autocomplete button does |
 | `enabled` | `true` | `false` leaves the plugin out |
@@ -43,8 +42,8 @@ Each source is a heading in the System menu, below Restore, titled by the `name`
 entry exactly as you write it (**Import from ezinstall**, **Start from**, …; with no name,
 one made from the address), and the systems in it are the lines under it, named by their
 folders. The ↻ at its end downloads the source again.
-Choosing a system imports it as an import of a zip does: the backup first, this machine's
-hardware file kept.
+Choosing a system imports it as an import of a zip does: the backup first, and what
+`exclude` names left as it is.
 
 With `add_only = true` on the entry, choosing a system only adds its files over the flake
 and removes none, so it can start a flake that already has files of its own that the
@@ -56,7 +55,7 @@ The question then says "Start from …" in place of "Import …".
   (`…/archive/refs/heads/main.zip`) works as it is: the one folder around everything is
   left out of the names.
 - **A folder on this machine**: every folder under it that has a `flake.nix` is a system
-  (dot-folders left out). `${pkgs.eznix}/share/eznix/templates` is the starting flakes eznix
+  (a dot-folder is not searched). `${pkgs.eznix}/share/eznix/templates` is the starting flakes eznix
   ships: `nixos`, `darwin` and `home`.
 - **A folder on GitHub**: the address as the browser shows it,
   `https://github.com/OWNER/REPO/tree/BRANCH/PATH`. The zips in it are systems, named by
@@ -84,6 +83,26 @@ web can only lead to `https`). A download is kept for ten minutes, and used agai
 place cannot be reached; the ↻ at the end of a source's heading downloads that source anew.
 At most 256 MiB is downloaded.
 
+## 🔧 The hardware file
+
+Before an import is done (an upload, a source), the page asks the server what it would do, with
+nothing written, and shows it under the question: a zip without a `flake.nix` at its top (it
+is still imported if you say so), and, when `hardware` has a `file` and a `command`, a machine
+that will have no such file afterwards. A file that is there already is left alone, as
+`exclude` has it, and needs nothing.
+
+When it will be missing, the question shows the command,
+and after the import it is typed into the terminal (`sudo` asks there). If it worked, the
+suggestions are generated after it (`autocomplete`). The command is the zip's own, from
+`services.eznix.plugins.system.hardware` in the JSON files of its configuration folder, so a
+template says how its machine gets its file; the NixOS template has the file
+`hardware-configuration.nix` and
+`sudo sh -c 'nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix'`
+(the terminal starts in the flake's folder, which is where the file goes; without
+`--no-filesystems` the disks mounted now are included). It is taken from the zip only when the
+zip comes from a source of your configuration: one you upload may not say what runs in a
+terminal, and the setting of the running configuration is used instead.
+
 ## 📝 Notes
 
 - An import or a restore writes to disk at once: there is no Save step and no undo, only the
@@ -92,7 +111,14 @@ At most 256 MiB is downloaded.
 - Only a zip of a system is taken: one with `flake.nix` at its top, as an export has. Any
   other zip is refused and nothing is changed. A repository downloaded as a zip has a folder
   around its files; zip what is inside that folder instead.
-- A list of your own for `exclude` replaces the default, so it has to say `".*"` itself to
-  keep dot-files and dot-folders out.
-- Dot-files in a zip are never imported, whatever `exclude` says.
+- **One `exclude` for all of it.** It names what eznix never touches, in an export, a backup,
+  an import and a restore alike. An export holds everything but that. An import makes the
+  folder look exactly like the zip, files and folders (an empty folder too), dot-files
+  included: whatever the zip holds is written, what it doesn't hold is removed, and what
+  `exclude` names stays as it is. A path of the zip that `exclude` names is skipped.
+- A restore writes everything its backup holds, since the backup is eznix's own and may be of
+  another `exclude`; what it removes is decided by the `exclude` there is now.
+- A list of your own for `exclude` replaces the default, so it has to name `.git` and the
+  hardware file itself if they are to stay out. Dot-files such as `.env` are in exports and
+  backups unless it names them, and backups can be read by every user in `users` on NixOS.
 - A zip of more than 100,000 files, 2 GiB unpacked, or a file over 1 GiB is refused as too big to be a system.

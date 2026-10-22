@@ -19,20 +19,32 @@ adds one on request. Only the newest `backups` are kept, whichever way they were
 
 Settings ([plugin.system] in eznix.toml):
   backups   how many backups to keep (default 5; 0: none)
-  exclude   what to leave out of an export, each entry read like a line of a .gitignore, as
-            eznix's own `exclude` is: a name anywhere in the tree (a folder with everything
+  exclude   the files and folders eznix never touches, in an export, a backup, an import and a
+            restore alike (the user's rule, 2026-10-22: one list, "everything but the excluded
+            files" out, and an import "has to look exactly like the zip-file structure + the
+            excluded files if they existed"). Each entry is read like a line of a .gitignore,
+            as eznix's own `exclude` is: a name anywhere in the tree (a folder with everything
             under it), "/name" from the top of the flake, * ? [a-z] **, "!entry"
-            (api.ignore). Default [".*"]: dot-files and dot-folders. A list of your own
-            replaces that, so it has to say ".*" itself to keep them out.
+            (api.ignore). Default [".git", "hardware-configuration.nix"]: the repository, and
+            the file that describes this machine, which a system brought from another one
+            came with the other machine's (it was a setting of its own, `keep`, until
+            then). A list of your own replaces that. An import writes the zip's files and
+            folders (an empty folder too) and removes every file and folder it doesn't hold,
+            all but what `exclude` names; a path of the zip that `exclude` names is skipped.
+            A restore writes all that its backup holds, since a backup is eznix's own and may
+            be of another `exclude`, and removes by the one there is now.
             Until 2026-10-12 it was two settings, a switch `dotfiles` and a list of exact
-            file names; the user wanted the one list, with the dot-files as its default.
-  keep      what an import leaves as it is on this machine, read the same way: a file that
-            is there is neither replaced by the zip's nor removed for not being in it; one
-            that is not there is taken from the zip. Default ["hardware-configuration.nix"]:
-            that file describes the machine, and a system brought from another one came
-            with the other machine's (the user, 2026-10-13, about to import a template
-            made on a VM). eznix cannot make a new one, which takes root. A restore keeps
-            nothing back: a backup is this machine's own.
+            file names; the user wanted the one list.
+  hardware  {command, file}: how to make the machine's hardware file when an import leaves it
+            without one (2026-10-22, the user's idea). No defaults, since it has to fit every
+            platform and a template sets it: with either not set, nothing is checked. A dry run (POST import and import-source with dry) tells the page what an
+            import would do, a flake.nix missing from the zip and a hardware file missing
+            afterwards included, and the page asks before it goes on; after the import it
+            runs `command` in the terminal (sudo asks there). The command can also be in the
+            zip, in its configuration folder at services.eznix.plugins.system.hardware (a
+            template says how its machine gets its file), but is taken from there only when the
+            zip came from a source of the configuration: one uploaded from disk may not say what
+            runs in a terminal, and the running configuration's setting is used.
   sources   where systems can be imported from (2026-10-19, the user's idea), each a location
             or {name, url}. A location is an https address or a path on this machine (an
             installer's own templates), and what is there is a zip or an index, told apart by
@@ -63,6 +75,7 @@ import urllib.request
 import zipfile
 
 PREFIX = 'system-'
+DEFAULT_EXCLUDE = ['.git', 'hardware-configuration.nix']   # what `exclude` is unless it is set
 
 # What a zip may hold to be taken as a system (prepare()): a flake is text, a few thousand
 # files at the most.
@@ -82,8 +95,7 @@ def setup(api):
     flake = os.path.realpath(api.flake)
     backup_dir = os.path.join(api.state_dir, 'system-backups')
     keep = int(api.config.get('backups', 5))
-    excluded = api.ignore(api.config.get('exclude', ['.*']))
-    stays = api.ignore(api.config.get('keep', ['hardware-configuration.nix']))
+    excluded = api.ignore(api.config.get('exclude', DEFAULT_EXCLUDE))
     sources = [e if isinstance(e, dict) else {'url': e} for e in api.config.get('sources', [])]
     source_dir = os.path.join(api.state_dir, 'system-sources')
     reached = set()     # every zip's (or folder's) location a listing of `sources` has led to
@@ -93,10 +105,9 @@ def setup(api):
 
     def tree_files():
         """(absolute path, path in the zip) for every file an export holds: all but what
-        `exclude` leaves out, which is dot-files and dot-folders unless it says otherwise --
-        .git, .direnv, key material is conventionally dot-prefixed, and this is a
-        deliberately blunt way to keep secrets out of a downloadable zip. Symlinks are always skipped: `nix build`'s "result" links point into
-        /nix/store, and without them this is a plain walk with no cycles."""
+        `exclude` leaves out, which is the paths eznix never touches, in an export, a backup,
+        an import and a restore alike. Symlinks are always skipped: `nix build`'s "result"
+        links point into /nix/store, and without them this is a plain walk with no cycles."""
         for dirpath, dirnames, filenames in os.walk(flake):
             rel = lambda name: os.path.relpath(os.path.join(dirpath, name), flake).replace(os.sep, '/')
             dirnames[:] = [d for d in dirnames
@@ -106,6 +117,25 @@ def setup(api):
                 if excluded(rel(fn)) or os.path.islink(full):
                     continue
                 yield full, rel(fn)
+
+    def tree_dirs():
+        """The same for the folders, so that an empty one is in a zip as well."""
+        for dirpath, dirnames, filenames in os.walk(flake):
+            rel = lambda name: os.path.relpath(os.path.join(dirpath, name), flake).replace(os.sep, '/')
+            dirnames[:] = [d for d in dirnames
+                           if not excluded(rel(d)) and not os.path.islink(os.path.join(dirpath, d))]
+            for d in dirnames:
+                yield os.path.join(dirpath, d), rel(d)
+
+    def write_tree(zf):
+        """The tree into a zip: its folders (an empty one has to be in it) and its files."""
+        for full, arcname in tree_dirs():
+            zf.write(full, arcname)
+        count = 0
+        for full, arcname in tree_files():
+            zf.write(full, arcname)
+            count += 1
+        return count
 
     def backup():
         """Zip the current tree into the backup folder and prune to the newest `keep`. Returns
@@ -124,11 +154,8 @@ def setup(api):
         dest, i = os.path.join(backup_dir, f'{PREFIX}{stamp}.zip'), 1
         while os.path.exists(dest):
             dest, i = os.path.join(backup_dir, f'{PREFIX}{stamp}-{i}.zip'), i + 1
-        count = 0
         with zipfile.ZipFile(dest, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for full, arcname in tree_files():
-                zf.write(full, arcname)
-                count += 1
+            count = write_tree(zf)
         os.chmod(dest, 0o644)
         for old in [b['name'] for b in listing()][keep:]:
             try:
@@ -161,22 +188,28 @@ def setup(api):
         if os.path.lexists(target):
             return os.access(target, os.W_OK)
         folder = os.path.dirname(target)
-        while not os.path.exists(folder):
+        # A file in the way of a folder is removed first (apply()), so the folder above it counts.
+        while not os.path.isdir(folder):
             folder = os.path.dirname(folder)
         return os.access(folder, os.W_OK | os.X_OK)
 
-    def prepare(zf, keeping=False, removing=True, system=True):
-        """What making the tree match the zip takes, decided before anything is touched (the
-        snapshot included): {'write': [(target, entry)], 'remove': [(path, name)], 'skipped',
-        'unchanged', 'kept'}. `keeping`, for an import: what the `keep` setting names stays
-        as it is on this machine ('kept'). `removing` false: nothing is removed, the zip is only
-        added over what is there (a source with `add_only`). `system` false: the zip need not hold a
-        flake.nix, which is for a backup, since a backup of a folder with nothing in it is an empty
-        zip; any other zip is checked.
+    def prepare(zf, removing=True, skip_excluded=True):
+        """What making the tree look exactly like the zip takes, decided before anything is
+        touched (the snapshot included): {'write': [(target, entry)], 'make': [folder],
+        'remove': [(path, name)], 'remove_dirs': [(path, name)], 'skipped', 'unchanged'}.
 
-        An entry with an empty, '.', '..' or dot-prefixed path segment is skipped and reported:
-        that mirrors the export's own dot-file rule (a zip built elsewhere can't write into .git
-        or .ssh) and is also what stops a path-traversal entry.
+        The tree ends up as the zip has it, files and folders, and what `exclude` names is left
+        as it is: a file or folder of the zip that it names is not written ('skipped'), and
+        one on disk that it names is not removed. `skip_excluded` false: the zip's are written
+        all the same, for a restore, where the backup is eznix's own and was made by an
+        `exclude` that may be another one than now.
+        `removing` false: nothing is removed, the zip is only added over what is there (a
+        source with `add_only`). A zip without a flake.nix is not refused: check() tells the
+        page, which asks before it goes on (the user, 2026-10-22: it should warn, "people can
+        import whatever"); an empty backup is an empty zip.
+
+        An entry with an empty, '.' or '..' path segment is skipped and reported, which is
+        also what stops a path-traversal entry.
 
         A file that is already what the zip holds is left alone, and all the rest has to be
         something eznix may change, or nothing is. That is for NixOS, where the service owns
@@ -184,14 +217,7 @@ def setup(api):
         and failing on flake.nix left the tree half one thing and half the other. This way an
         import that only differs inside that folder goes through there, and any other is
         refused whole, with the files named."""
-        # A system is a flake, so its zip has flake.nix at the top: what an export holds, and a
-        # backup. Any other zip (one of a folder of JSON files, somebody's photographs, a
-        # repository downloaded with a folder around it) is refused here, before the snapshot
-        # and before anything is touched. It used to be taken for a system all the same, and
-        # since the tree is made to match the zip, every file of the flake that was not in it
-        # was removed. The user's question, 2026-10-13: "is there some way we can validate
-        # the zip ... to make sure its actually a system?"
-        # And not a zip made to fill the disk or the memory: how many entries, how much they
+        # Not a zip made to fill the disk or the memory: how many entries, how much they
         # hold when unpacked, and how much one does. The sizes are the zip's own claims, and
         # reading stops at them (ZipExtFile reads no more than file_size), so they bind what
         # is written. 2026-10-16.
@@ -201,17 +227,10 @@ def setup(api):
             raise api.Error(413, 'that zip is too big to be a system (more than '
                                  f'{MAX_ENTRIES} files, {MAX_UNPACKED >> 30} GiB unpacked, or a file over '
                                  f'{MAX_FILE >> 30} GiB); nothing was changed')
-        tops = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
-        if system and 'flake.nix' not in tops:
-            deeper = sorted(n for n in tops if n.endswith('/flake.nix'))
-            hint = f': its flake.nix is in {os.path.dirname(deeper[0])}/, not at the top' if deeper else ': there is no flake.nix at its top'
-            raise api.Error(400, 'that zip is not a system' + hint + '; nothing was changed')
-        write, skipped, unchanged, names, kept = [], [], 0, set(), []
+        write, make, skipped, unchanged, names, folders = [], [], [], 0, set(), set()
         for info in zf.infolist():
-            if info.is_dir():
-                continue
-            rel = info.filename.replace('\\', '/')
-            if any(p in ('', '.', '..') or p.startswith('.') for p in rel.split('/')):
+            rel = info.filename.replace('\\', '/').rstrip('/')
+            if any(p in ('', '.', '..') for p in rel.split('/')):
                 skipped.append(info.filename)
                 continue
             target = os.path.realpath(os.path.join(flake, rel))
@@ -219,30 +238,40 @@ def setup(api):
                 # Not expected after the check above; abort before writing anything.
                 raise api.Error(400, 'invalid entry path: ' + info.filename)
             name = os.path.relpath(target, flake).replace(os.sep, '/')
+            if skip_excluded and excluded(name):
+                skipped.append(info.filename)
+                continue
+            # Every folder above what the zip holds is one it holds, and a folder entry is one.
+            parts = name.split('/')
+            folders.update('/'.join(parts[:n]) for n in range(1, len(parts) + 1 if info.is_dir() else len(parts)))
+            if info.is_dir():
+                if not os.path.isdir(target):
+                    make.append(target)
+                continue
             names.add(name)
-            if keeping and stays(name) and os.path.exists(target):
-                kept.append(name)
-            elif same(target, zf, info):
+            if same(target, zf, info):
                 unchanged += 1
             else:
                 write.append((target, info))
-        remove = [(full, arcname) for full, arcname in tree_files()
-                  if removing and arcname not in names and not (keeping and stays(arcname))]
+        remove = [(full, arcname) for full, arcname in tree_files() if removing and arcname not in names]
+        remove_dirs = sorted(((full, arcname) for full, arcname in tree_dirs() if removing and arcname not in folders),
+                             key=lambda f: -f[1].count('/'))
         denied = ([os.path.relpath(t, flake) for t, _ in write if not writable(t)]
-                  + [name for full, name in remove if not os.access(os.path.dirname(full), os.W_OK | os.X_OK)])
+                  + [os.path.relpath(t, flake) for t in make if not writable(t)]
+                  + [name for full, name in remove + remove_dirs
+                     if not os.access(os.path.dirname(full), os.W_OK | os.X_OK)])
         if denied:
             raise api.Error(403, f'eznix may not change {len(denied)} of the files this would change '
                                  f'({", ".join(denied[:3])}{", ..." if len(denied) > 3 else ""}); nothing was changed')
-        return {'write': write, 'remove': remove, 'skipped': skipped, 'unchanged': unchanged, 'kept': kept}
+        return {'write': write, 'make': make, 'remove': remove, 'remove_dirs': remove_dirs,
+                'skipped': skipped, 'unchanged': unchanged, 'names': names}
 
     def apply(zf, plan):
-        """Carry out what prepare() decided."""
-        written = []
-        for target, info in plan['write']:
-            os.makedirs(os.path.dirname(target), exist_ok=True)
-            with zf.open(info) as src, open(target, 'wb') as dst:
-                shutil.copyfileobj(src, dst)
-            written.append(os.path.relpath(target, flake).replace(os.sep, '/'))
+        """Carry out what prepare() decided: what the zip does not hold is removed first, files,
+        then folders (deepest first; one that still holds something, a path `exclude` leaves
+        alone, stays), and then its folders are made and its files written as they are. In that
+        order a file where the zip has a folder, or a folder where it has a file, is out of the
+        way before anything is written."""
         removed = []
         for full, arcname in plan['remove']:
             try:
@@ -250,8 +279,91 @@ def setup(api):
                 removed.append(arcname)
             except OSError:
                 pass
+        removed_folders = []
+        for full, arcname in plan['remove_dirs']:
+            try:
+                os.rmdir(full)
+                removed_folders.append(arcname)
+            except OSError:
+                pass
+        for folder in plan['make']:
+            os.makedirs(folder, exist_ok=True)
+        written = []
+        for target, info in plan['write']:
+            os.makedirs(os.path.dirname(target), exist_ok=True)
+            with zf.open(info) as src, open(target, 'wb') as dst:
+                shutil.copyfileobj(src, dst)
+            written.append(os.path.relpath(target, flake).replace(os.sep, '/'))
         return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
-                'unchanged': plan['unchanged'], 'kept': plan['kept']}
+                'removed_folders': removed_folders, 'unchanged': plan['unchanged']}
+
+    def hardware_in(zf):
+        """What the zip says about making the machine's hardware file: `hardware` under
+        services.eznix.plugins.system in the JSON files of its configuration folder, {command,
+        file} or {}. A disabled setting does not count."""
+        rel = os.path.relpath(api.config_dir or os.path.join(flake, 'eznix'), flake).replace(os.sep, '/')
+        if rel.startswith('..'):
+            return {}
+        def step(node, key):
+            if isinstance(node, dict) and '_value' in node and '_disabled' in node:
+                node = None if node['_disabled'] else node['_value']
+            return node.get(key) if isinstance(node, dict) else None
+        for info in zf.infolist():
+            name = info.filename.replace('\\', '/')
+            if info.is_dir() or not name.startswith(rel + '/') or not name.endswith('.json') or info.file_size > (1 << 20):
+                continue
+            try:
+                node = json.loads(zf.read(info))
+            except ValueError:
+                continue
+            for key in ('services', 'eznix', 'plugins', 'system', 'hardware'):
+                node = step(node, key)
+            if isinstance(node, dict) and any(isinstance(node.get(k), str) and node[k].strip() for k in ('command', 'file')):
+                return {k: v for k, v in node.items() if k in ('command', 'file') and isinstance(v, str)}
+        return {}
+
+    def hardware_for(zf, trusted):
+        """(file, command, untrusted): the hardware file to look for and how to make it. There
+        are no defaults (the user, 2026-10-22: it has to be set by the template, and has to fit
+        every platform): with the file or the command not set, both are None and nothing is
+        checked. The zip's own word counts only when it came from a source the configuration
+        names (`trusted`): a zip uploaded from somewhere is not to say what runs in a terminal,
+        and the running configuration's `hardware` is used instead (`untrusted`: the zip named
+        something that was not taken)."""
+        mine = api.config.get('hardware') if isinstance(api.config.get('hardware'), dict) else {}
+        theirs = hardware_in(zf)
+        use = theirs if trusted and theirs else mine
+        text = lambda key: use[key].strip() if isinstance(use.get(key), str) and use[key].strip() else None
+        file, command = text('file'), text('command')
+        if not (file and command):
+            file = command = None
+        return file, command, bool(theirs) and not trusted
+
+    def check(zf, plan, trusted):
+        """What an import would do, for the page to ask with: nothing is written. A zip without
+        a flake.nix at its top, and a machine that will have no hardware file afterwards."""
+        names = [i.filename.replace('\\', '/') for i in zf.infolist() if not i.is_dir()]
+        file, command, untrusted = hardware_for(zf, trusted)
+        present = True
+        if file:
+            present = file in plan['names'] or (os.path.lexists(os.path.join(flake, file))
+                                                and file not in [n for _, n in plan['remove']])
+        return {'dry': True, 'flake_nix': 'flake.nix' in names,
+                'hardware': {'file': file, 'missing': not present, 'command': command, 'untrusted_command': untrusted},
+                'write': len(plan['write']), 'remove': len(plan['remove']), 'skipped': plan['skipped']}
+
+    def run_import(zf, trusted, removing=True, dry=False):
+        """An import, or with `dry` what it would do. After one, what has to be run to make the
+        hardware file, if it is missing and something says how."""
+        plan = prepare(zf, removing=removing)
+        if dry:
+            return check(zf, plan, trusted)
+        file, command, _ = hardware_for(zf, trusted)
+        backup()
+        result = apply(zf, plan)
+        if file and not os.path.lexists(os.path.join(flake, file)):
+            result['hardware'] = {'file': file, 'command': command}
+        return result
 
     def is_web(loc):
         return loc.startswith('https://')
@@ -478,9 +590,7 @@ def setup(api):
             if path not in systems_in_dir(loc):
                 raise api.Error(400, f'there is no system in {path or "the top"} of {loc}')
             with zipfile.ZipFile(zip_folder(os.path.join(loc, path)), 'r') as sub:
-                plan = prepare(sub, keeping=True, removing=not adding)
-                backup()
-                return apply(sub, plan)
+                return run_import(sub, True, not adding, asked.get('dry') is True)
         try:
             data = fetch(loc)
             zf = zipfile.ZipFile(io.BytesIO(data))
@@ -490,21 +600,22 @@ def setup(api):
             if path not in systems_in(zf)[0]:
                 raise api.Error(400, f'there is no system in {path or "the top"} of {loc}')
             sub = zf if not path else folder_zip(zf, path)
-            plan = prepare(sub, keeping=True, removing=not adding)
-            backup()
-            return apply(sub, plan)
+            return run_import(sub, True, not adding, asked.get('dry') is True)
 
     def zip_folder(base):
-        """A folder as an in-memory zip, its files at the top; dot-files and links left out."""
+        """A folder as an in-memory zip, its files and folders at the top, as it is (what
+        `exclude` leaves out is left out when it is imported). Links are left out."""
         buf = io.BytesIO()
         # strict_timestamps=False: a folder in the Nix store has every file dated 1970, which a zip
         # cannot hold ("ZIP does not support timestamps before 1980"); it is stored as 1980.
         with zipfile.ZipFile(buf, 'w', strict_timestamps=False) as out:
             for dirpath, dirnames, filenames in os.walk(base):
-                dirnames[:] = [d for d in dirnames if not d.startswith('.') and not os.path.islink(os.path.join(dirpath, d))]
+                dirnames[:] = [d for d in dirnames if not os.path.islink(os.path.join(dirpath, d))]
+                for d in dirnames:
+                    out.write(os.path.join(dirpath, d), os.path.relpath(os.path.join(dirpath, d), base).replace(os.sep, '/'))
                 for fn in sorted(filenames):
                     full = os.path.join(dirpath, fn)
-                    if not fn.startswith('.') and not os.path.islink(full):
+                    if not os.path.islink(full):
                         out.write(full, os.path.relpath(full, base).replace(os.sep, '/'))
         buf.seek(0)
         return buf
@@ -513,21 +624,20 @@ def setup(api):
         """One folder of a zip as a zip of its own, its files at the top, for prepare(). The
         limits are prepare()'s, checked here before anything is copied."""
         prefix = path + '/'
-        infos = [i for i in zf.infolist() if not i.is_dir() and i.filename.replace('\\', '/').startswith(prefix)]
+        infos = [i for i in zf.infolist() if i.filename.replace('\\', '/').startswith(prefix) and i.filename.replace('\\', '/') != prefix]
         if (len(infos) > MAX_ENTRIES or sum(i.file_size for i in infos) > MAX_UNPACKED
                 or any(i.file_size > MAX_FILE for i in infos)):
             raise api.Error(413, 'that system is too big; nothing was changed')
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_STORED) as out:
             for i in infos:
-                out.writestr(i.filename.replace('\\', '/')[len(prefix):], zf.read(i))
+                out.writestr(i.filename.replace('\\', '/')[len(prefix):], b'' if i.is_dir() else zf.read(i))
         return zipfile.ZipFile(buf)
 
     def export(req):
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zf:
-            for full, arcname in tree_files():
-                zf.write(full, arcname)
+            write_tree(zf)
         return api.Download(buf.getvalue(), 'application/zip', f'{api.hostname}-system.zip')
 
     def import_(req):
@@ -536,9 +646,7 @@ def setup(api):
         except zipfile.BadZipFile:
             raise api.Error(400, 'not a valid zip file')
         with zf:
-            plan = prepare(zf, keeping=True)
-            backup()
-            return apply(zf, plan)
+            return run_import(zf, False, True, req.query.get('dry') == '1')
 
     def backup_path(req):
         """The backup a request names, which has to be one of the list's own."""
@@ -565,7 +673,7 @@ def setup(api):
         # The backup being restored may itself be pruned by the snapshot taken here, so it is
         # open before that happens.
         with zf:
-            plan = prepare(zf, system=False)
+            plan = prepare(zf, skip_excluded=False)
             backup()
             return apply(zf, plan)
 

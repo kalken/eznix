@@ -839,15 +839,18 @@ if (_TERM_CONFIG.autocomplete) {
     group: 'tools',
     onclick: () => _startAutocomplete(),
   });
-  eznix.on('autocomplete', () => _startAutocomplete());
+  eznix.on('autocomplete', opts => _startAutocomplete(opts));
 }
-function _startAutocomplete() {
+// `run`: a command typed into the terminal, for a plugin (the system plugin, after an import).
+eznix.on('run', command => _runInTerminal({ command }));
+// `before`: a command that has to work first, run in a subshell ahead of the generator.
+function _startAutocomplete(opts) {
   _autocompleteClickedAt = Date.now();
   _autocompleteSeen = false;
   // Turning at once, without this counting as a ping having seen the generator.
   const btn = document.getElementById('autocomplete-btn');
   if (btn) { btn.classList.add('is-running'); btn.disabled = true; }
-  _runInTerminal({ command: _TERM_CONFIG.autocomplete });
+  _runInTerminal({ command: opts && opts.before ? `( ${opts.before} ) && ${_TERM_CONFIG.autocomplete}` : _TERM_CONFIG.autocomplete });
 }
 
 eznix.on('init', () => {
