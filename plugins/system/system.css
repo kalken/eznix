@@ -1,21 +1,19 @@
-/* The table of a source's systems (showSystemTable()). The dialog is the page's (.modal,
-   .modal-input, .btn); only the table is new. */
-.system-table-wrap { max-height: 60vh; overflow: auto; border: 1px solid var(--border); border-radius: var(--radius-sm); }
-.system-table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 12px; }
-.system-table th:first-child { width: 35%; }
-.system-table th {
-  position: sticky; top: 0; background: var(--popup-bg); text-align: left; padding: 6px 10px;
-  font-size: 11px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .04em;
-  border-bottom: 1px solid var(--border);
+/* A source's systems as a card (_sourceCard()), in the editor's top-level card look: the card
+   colour, hairline and soft shadow, the section title's colour and size for the source's name. The dialog is the page's (.modal, .modal-input, .btn). */
+/* The card lies on the editor's page colour, as in the editor: --card-bg on --popup-bg is hardly a card at all. */
+.system-cards { max-height: 60vh; overflow-y: auto; padding: 10px 12px; background: var(--editor-bg); border-radius: var(--radius-sm); }
+.system-card {
+  background: var(--card-bg); border-radius: var(--radius); padding: 8px 0 0; text-align: left;
+  box-shadow: 0 0 0 1px var(--card-border), 0 0 var(--panel-shadow-size) var(--panel-shadow);
 }
-/* One system, one line: a long name or description is cut with an ellipsis, and the whole of it is the row's tooltip. */
-.system-table td { padding: 6px 10px; border-bottom: 1px solid var(--border); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.system-table tr:last-child td { border-bottom: none; }
-.system-table .sys-name { color: var(--accent); }
-.system-table .sys-desc { color: var(--text2); }
-.system-table .system-row { cursor: pointer; }
-.system-table .system-row:hover td { background: var(--bg4); }
+.system-card-title { padding: 0 var(--block-pad) calc(var(--card-gap) + 4px); color: var(--section-title-color); font-size: var(--section-title-size); font-weight: 600; }
+.system-item { padding: var(--card-gap) var(--block-pad) calc(var(--card-gap) + 4px); cursor: pointer; }
+/* One divider, under the title: none between the systems. */
+.system-card-title + .system-item { border-top: 1px solid var(--card-divider); }
+.system-item:hover { background: var(--bg4); }
+.system-item:last-child { border-radius: 0 0 var(--radius) var(--radius); }
+.system-item .sys-name { color: var(--section-key-color); font-size: 12px; font-weight: 600; min-height: var(--row-height); line-height: var(--row-height); }
+.system-item .sys-desc { color: var(--text2); font-size: 12px; line-height: 1.5; }
 
-/* The same systems on the empty editor's page, one to a line (eznix.on('empty')). */
-.system-list { margin-top: 8px; }
-.system-list .sys-desc { color: var(--text3); }
+/* The same card on the empty editor's page (eznix.on('empty')), under the page's centred text. */
+.system-list { margin: 12px auto 0; max-width: 700px; display: flex; flex-direction: column; gap: var(--section-gap); }

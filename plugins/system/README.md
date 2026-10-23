@@ -69,8 +69,8 @@ The question then says "Start from …" in place of "Import …".
   ```
 
   Both are optional (`description` is cut to 500 characters). The name replaces the file's
-  name in the menu, and the description is the line's tooltip and part of the question before
-  an import. A file that cannot be read is ignored. The zip itself is not changed, so nothing
+  name in the list, and the description is shown under it and in the question before an
+  import. A file that cannot be read is ignored. The zip itself is not changed, so nothing
   of it lands in the flake.
 - **An index**: a JSON file that lists systems, for a menu of your own making:
 

@@ -225,50 +225,63 @@ function _sourceRows(node, name, out) {
   return out;
 }
 
-function showSystemTable(source) {
+// A source as one card, in the editor's card look (system.css): its name as the title, and each of its
+// systems under it, named by its folders ("templates/nixos") with its description, a divider
+// between them. A press on a system imports it. `words`: what narrows the systems down, all of
+// them to be in a name or description; null when none is left.
+function _sourceCard(src, words) {
   const rows = [];
-  (source.items || []).forEach(n => _sourceRows(n, n.name, rows));
+  if (!src.items) rows.push({ name: src.name, system: src });
+  else src.items.forEach(n => _sourceRows(n, n.name, rows));
+  const shown = rows.filter(r => r.system && words.every(w => (r.name + ' ' + (r.system.description || '')).toLowerCase().includes(w)));
+  if (!shown.length) return null;
+  const card = document.createElement('div');
+  card.className = 'system-card';
+  const title = document.createElement('div');
+  title.className = 'system-card-title';
+  title.textContent = src.name;
+  card.appendChild(title);
+  for (const r of shown) {
+    const item = document.createElement('div');
+    item.className = 'system-item';
+    const name = document.createElement('div');
+    name.className = 'sys-name';
+    name.textContent = r.name;
+    item.appendChild(name);
+    if (r.system.description) {
+      const about = document.createElement('div');
+      about.className = 'sys-desc';
+      about.textContent = r.system.description;
+      item.appendChild(about);
+    }
+    // The page's own tooltip, as the other buttons have, not the browser's title box: where the
+    // system comes from (its description is on the card already).
+    _wireHoverTooltip(item, r.system.path ? r.system.url + '\n' + r.system.path : r.system.url);
+    item.onclick = () => { const o = card.closest('.modal-overlay'); if (o) o.remove(); importSystemSource(r.system); };
+    card.appendChild(item);
+  }
+  return card;
+}
+
+function showSystemCards(source) {
   const overlay = document.createElement('div');
   overlay.className = 'modal-overlay';
   overlay.innerHTML =
-    '<div class="modal system-table-modal"><h2></h2>' +
+    '<div class="modal system-cards-modal">' +
       '<input type="text" class="modal-input" placeholder="Search" spellcheck="false" autocomplete="off" aria-label="Search the systems">' +
-      '<div class="system-table-wrap"><table class="system-table"><thead><tr><th>System</th><th>Description</th></tr></thead><tbody></tbody></table></div>' +
+      '<div class="system-cards"></div>' +
       '<div class="modal-actions"><button class="btn">Cancel</button></div></div>';
-  const [title, search, wrap, actions] = overlay.firstChild.children;
-  const body = wrap.querySelector('tbody');
-  title.textContent = source.name;
+  const [search, body, actions] = overlay.firstChild.children;
   const close = () => overlay.remove();
   const draw = () => {
-    const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
     body.innerHTML = '';
-    const shown = rows.filter(r => {
-      const text = (r.name + ' ' + (r.system ? r.system.description || '' : r.error)).toLowerCase();
-      return words.every(w => text.includes(w));
-    });
-    for (const r of shown) {
-      const tr = document.createElement('tr');
-      const name = document.createElement('td'), about = document.createElement('td');
-      name.className = 'sys-name';
-      name.textContent = r.name;
-      about.className = 'sys-desc';
-      about.textContent = r.error || r.system.description || '';
-      tr.append(name, about);
-      if (r.system) {
-        tr.className = 'system-row';
-        tr.title = [r.name, r.system.description, r.system.path || r.system.url].filter(Boolean).join('\n');
-        tr.onclick = () => { close(); importSystemSource(r.system); };
-      }
-      body.appendChild(tr);
-    }
-    if (!shown.length) {
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.colSpan = 2;
-      td.className = 'sys-desc';
-      td.textContent = rows.length ? 'Nothing matches.' : 'No systems.';
-      tr.appendChild(td);
-      body.appendChild(tr);
+    const card = _sourceCard(source, search.value.toLowerCase().split(/\s+/).filter(Boolean));
+    if (card) body.appendChild(card);
+    else {
+      const none = document.createElement('div');
+      none.className = 'modal-hint';
+      none.textContent = 'Nothing matches.';
+      body.appendChild(none);
     }
   };
   search.oninput = draw;
@@ -301,7 +314,7 @@ function _sourceMenuItems(again) {
                     onclick: async () => { await _checkSourcesAgain(i); await again(); } };
     if (s.error) items.push({ label: s.name + ': ' + s.error, disabled: true, aside });
     else if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s), aside });
-    else items.push({ label: s.name + '…', title: 'Choose one of its systems', onclick: () => showSystemTable(s), aside });
+    else items.push({ label: s.name + '…', title: 'Choose one of its systems', onclick: () => showSystemCards(s), aside });
   });
   return items;
 }
@@ -390,34 +403,12 @@ eznix.on('empty', el => {
   const list = document.createElement('div');
   list.className = 'system-list';
   el.appendChild(list);
-  // One system to a line, the name as a link and its description after it, under a line that
-  // names the source (they were all in one running line, a source's name and then every system
-  // after it, until the user asked for a line each, 2026-10-23).
+  // A card per source, as in the dialog (links in one running line, then one to a line, until the
+  // user asked for cards, 2026-10-23).
   const fill = () => {
     (_systemSources || []).forEach(src => {
-      if (src.error) return;
-      const out = [];
-      if (!src.items) out.push({ name: src.name, system: src });
-      else (src.items || []).forEach(n => _sourceRows(n, n.name, out));
-      const systems = out.filter(r => r.system);
-      if (!systems.length) return;
-      const head = document.createElement('div');
-      head.textContent = src.name + ':';
-      list.appendChild(head);
-      systems.forEach(c => {
-        const row = document.createElement('div');
-        const a = document.createElement('a');
-        a.href = '#'; a.textContent = c.name;
-        a.onclick = e => { e.preventDefault(); importSystemSource(c.system); };
-        row.appendChild(a);
-        if (c.system.description) {
-          const about = document.createElement('span');
-          about.className = 'sys-desc';
-          about.textContent = ' \u2014 ' + c.system.description;
-          row.appendChild(about);
-        }
-        list.appendChild(row);
-      });
+      const card = src.error ? null : _sourceCard(src, []);
+      if (card) list.appendChild(card);
     });
   };
   if (_systemSources) fill(); else loadSystemSources().then(fill);

@@ -611,6 +611,17 @@ request; a wrong path or a missing zip then shows only at the import. Whether a 
 be left out of the list the user asked ("if it doesnt exist it shouldnt show each system") and it
 was not settled what was meant. An https zip was listed for real too; an index over https was not.
 
+The sources are shown as a card per source (`_sourceCard()`, `system.css`) in the editor's card
+look and the theme's variables only, on the empty page and in a dialog the System menu opens
+(`showSystemCards()`, a line per source with a search field): the source's name as the title, one
+divider under it, each system under it with its description, hover showing its address in the
+page's own tooltip (`_wireHoverTooltip()`; the browser's `title` box looked unlike the rest).
+Several designs were tried and thrown out the same day (2026-10-23): menu lines, a table, a card
+per system, and the editor's own `renderSection()` as a card per source with sub-sections per
+system (it looked right but was heavy: a read-only copy of the editor); key and value rows for
+`description`, `url` and `path` in each system, taken out at the user's word. Looked at in
+headless Chrome on the user's request, with ezinstall's `templates/index.json`.
+
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
 change any one of the rest, it refuses before the snapshot and before the first write. On
