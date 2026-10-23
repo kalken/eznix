@@ -91,6 +91,7 @@ MAX_FILE     = 1 << 30
 MAX_DOWNLOAD  = 256 << 20
 SOURCE_TTL    = 600
 FETCH_TIMEOUT = 30
+MAX_INFO      = 500
 MAX_DEPTH     = 4
 
 
@@ -525,20 +526,45 @@ def setup(api):
         return api_url, f'https://github.com/{owner}/{repo}/tree/{ref}'
 
     def github_items(listing, tree):
+        listing = listing if isinstance(listing, list) else []
+        # NAME.json beside NAME.zip describes it (read_info()).
+        infos = {str(e.get('name', ''))[:-5]: e['download_url'] for e in listing
+                 if e.get('type') == 'file' and str(e.get('name', '')).lower().endswith('.json') and e.get('download_url')}
         items = []
-        for e in listing if isinstance(listing, list) else []:
+        for e in listing:
             name = str(e.get('name', ''))
             if e.get('type') == 'dir':
                 items.append({'name': name, 'url': f'{tree}/{urllib.parse.quote(str(e.get("path", name)))}'})
             elif e.get('type') == 'file' and name.lower().endswith('.zip') and e.get('download_url'):
-                items.append({'name': name[:-4], 'url': e['download_url']})
+                items.append({'name': name[:-4], 'url': e['download_url'],
+                              **({'info': infos[name[:-4]], 'listed': True} if name[:-4] in infos else {})})
         return items
+
+    def read_info(url, refresh):
+        """The file that describes a zip ({"name", "description"}, both optional), or {} when it
+        cannot be read: a description is help, and one that is wrong does not take its system
+        out of the menu."""
+        try:
+            info = json.loads(fetch(url, refresh).decode('utf-8'))
+        except Exception as e:
+            api.debug(f'info {url}: {e}')
+            return {}
+        if not isinstance(info, dict):
+            return {}
+        return {k: str(info[k])[:MAX_INFO] for k in ('name', 'description') if isinstance(info.get(k), str) and info[k].strip()}
 
     def node(item, base, depth, refresh):
         """One entry of the setting or of an index, as the page shows it: a system {name,
         url, path}, a folder {name, items}, or {name, error}."""
         name = str(item.get('name') or '')
         try:
+            if item.get('info'):
+                # The description beside a zip fills in what the entry does not say itself.
+                info = read_info(location(base, item['info']), refresh)
+                item = {**item, 'description': item.get('description') or info.get('description')}
+                # A name taken from a file's name in a listing is the info's to replace; one
+                # written in an index is not.
+                name = (info.get('name') if item.get('listed') else None) or name or info.get('name', '')
             if 'items' in item:
                 return {'name': name or 'systems', 'items': [node(i, base, depth, refresh) for i in item['items']]}
             loc = location(base, item['url'])
@@ -553,6 +579,14 @@ def setup(api):
                 return {'name': name or loc.rstrip('/').rsplit('/', 1)[-1], 'items': shown}
             if not is_web(loc) and os.path.isdir(loc):
                 return dir_node(name, loc, item.get('description'))
+            if isinstance(item.get('path'), str):
+                # An entry that says which folder is the system is taken as it says: nothing is
+                # downloaded until it is chosen, so a menu of many costs one request, the index.
+                # Where it is wrong, the import says so (import_source()).
+                reached.add(loc)
+                return {'name': name or os.path.splitext(os.path.basename(loc.rstrip('/')))[0] or loc,
+                        'url': loc, 'path': item['path'].strip('/'),
+                        **({'description': item['description']} if item.get('description') else {})}
             data = fetch(loc, refresh)
             if data[:2] == b'PK':
                 return zip_node(name, loc, data, item.get('path'), item.get('description'))

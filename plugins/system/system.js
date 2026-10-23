@@ -193,9 +193,10 @@ function loadSystemSources(refresh, only) {
 }
 
 async function importSystemSource(system) {
+  const about = system.description ? `\n\n${system.description}` : '';
   const sure = system.add_only
-    ? `Start from ${system.name}?\n\nIts files are added to the current system and nothing is removed. A backup is made first.`
-    : `Import ${system.name}?\n\nThis replaces the current system. A backup is made first.`;
+    ? `Start from ${system.name}?${about}\n\nIts files are added to the current system and nothing is removed. A backup is made first.`
+    : `Import ${system.name}?${about}\n\nThis replaces the current system. A backup is made first.`;
   try {
     const post = dry => apiFetch('/plugin/system/import-source', {
       method: 'POST',
@@ -211,15 +212,72 @@ async function importSystemSource(system) {
   }
 }
 
-// The systems of the sources as lines of this menu, a heading per source, each system named
-// by its folders ("templates/nixos"), and not as submenus: the menu hangs from a button at the
-// window's right edge, so a submenu opened on the left, a box out over the page, which the
-// user found very strange (2026-10-19), as with Restore before.
-function _sourceLines(node, name, out) {
-  if (node.error) { out.push({ label: name + ': ' + node.error, disabled: true }); return out; }
-  if (node.url) out.push({ label: name, title: node.description || node.path || node.url, onclick: () => importSystemSource(node) });
-  (node.items || []).forEach(n => _sourceLines(n, name ? name + '/' + n.name : n.name, out));
+// The systems of a source as rows of a table in a dialog of their own, each named by its
+// folders ("templates/nixos") with its description beside it, and a field that narrows them
+// down. They were lines of the System menu, a heading per source (2026-10-19; not submenus: the
+// menu hangs from a button at the window's right edge, so a submenu opened on the left, a box
+// out over the page, which the user found very strange), until the user asked for them to be
+// listed nicer, in a table (2026-10-23): the menu has one line per source now.
+function _sourceRows(node, name, out) {
+  if (node.error) { out.push({ name, error: node.error }); return out; }
+  if (node.url) out.push({ name, system: node });
+  (node.items || []).forEach(n => _sourceRows(n, name ? name + '/' + n.name : n.name, out));
   return out;
+}
+
+function showSystemTable(source) {
+  const rows = [];
+  (source.items || []).forEach(n => _sourceRows(n, n.name, rows));
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML =
+    '<div class="modal system-table-modal"><h2></h2>' +
+      '<input type="text" class="modal-input" placeholder="Search" spellcheck="false" autocomplete="off" aria-label="Search the systems">' +
+      '<div class="system-table-wrap"><table class="system-table"><thead><tr><th>System</th><th>Description</th></tr></thead><tbody></tbody></table></div>' +
+      '<div class="modal-actions"><button class="btn">Cancel</button></div></div>';
+  const [title, search, wrap, actions] = overlay.firstChild.children;
+  const body = wrap.querySelector('tbody');
+  title.textContent = source.name;
+  const close = () => overlay.remove();
+  const draw = () => {
+    const words = search.value.toLowerCase().split(/\s+/).filter(Boolean);
+    body.innerHTML = '';
+    const shown = rows.filter(r => {
+      const text = (r.name + ' ' + (r.system ? r.system.description || '' : r.error)).toLowerCase();
+      return words.every(w => text.includes(w));
+    });
+    for (const r of shown) {
+      const tr = document.createElement('tr');
+      const name = document.createElement('td'), about = document.createElement('td');
+      name.className = 'sys-name';
+      name.textContent = r.name;
+      about.className = 'sys-desc';
+      about.textContent = r.error || r.system.description || '';
+      tr.append(name, about);
+      if (r.system) {
+        tr.className = 'system-row';
+        tr.title = [r.name, r.system.description, r.system.path || r.system.url].filter(Boolean).join('\n');
+        tr.onclick = () => { close(); importSystemSource(r.system); };
+      }
+      body.appendChild(tr);
+    }
+    if (!shown.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.colSpan = 2;
+      td.className = 'sys-desc';
+      td.textContent = rows.length ? 'Nothing matches.' : 'No systems.';
+      tr.appendChild(td);
+      body.appendChild(tr);
+    }
+  };
+  search.oninput = draw;
+  actions.firstChild.onclick = close;
+  overlay.onmousedown = e => { if (e.target === overlay) close(); };
+  overlay.onkeydown = e => { if (e.key === 'Escape') close(); };
+  draw();
+  document.body.appendChild(overlay);
+  search.focus();
 }
 
 async function _checkSourcesAgain(only) {
@@ -235,16 +293,15 @@ function _sourceMenuItems(again) {
     loadSystemSources();
     return [{ label: 'Loading…', heading: true }];
   }
-  // A source is a heading named as the setting names it, with the mark at its end that
-  // downloads it again, and its systems as lines under it.
+  // A source is a line named as the setting names it, with the mark at its end that downloads
+  // it again: one that is a single system imports it, any other opens the table of its systems.
   const items = [];
   _systemSources.forEach((s, i) => {
-    items.push({ label: s.name + (s.error ? ': ' + s.error : ''), heading: true,
-                 aside: { label: '↻', title: 'Download this source again', stay: true,
-                          onclick: async () => { await _checkSourcesAgain(i); await again(); } } });
-    if (s.error) return;
-    if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s) });
-    else s.items.forEach(n => _sourceLines(n, n.name, items));
+    const aside = { label: '↻', title: 'Download this source again', stay: true,
+                    onclick: async () => { await _checkSourcesAgain(i); await again(); } };
+    if (s.error) items.push({ label: s.name + ': ' + s.error, disabled: true, aside });
+    else if (!s.items) items.push({ label: s.name, title: s.description || s.path || s.url, onclick: () => importSystemSource(s), aside });
+    else items.push({ label: s.name + '…', title: 'Choose one of its systems', onclick: () => showSystemTable(s), aside });
   });
   return items;
 }
@@ -331,38 +388,40 @@ eznix.on('empty', el => {
   // The systems the sources offer, as links under it, once they are known.
   if (!SYSTEM_SOURCES) return;
   const list = document.createElement('div');
+  list.className = 'system-list';
   el.appendChild(list);
+  // One system to a line, the name as a link and its description after it, under a line that
+  // names the source (they were all in one running line, a source's name and then every system
+  // after it, until the user asked for a line each, 2026-10-23).
   const fill = () => {
     (_systemSources || []).forEach(src => {
       if (src.error) return;
       const out = [];
-      if (!src.items) out.push({ label: src.name, system: src });
-      else _systemChoices(src.items, '', out);
-      if (!out.length) return;
-      const row = document.createElement('div');
-      row.append(src.name + ': ');
-      out.forEach((c, i) => {
-        if (i) row.append(', ');
+      if (!src.items) out.push({ name: src.name, system: src });
+      else (src.items || []).forEach(n => _sourceRows(n, n.name, out));
+      const systems = out.filter(r => r.system);
+      if (!systems.length) return;
+      const head = document.createElement('div');
+      head.textContent = src.name + ':';
+      list.appendChild(head);
+      systems.forEach(c => {
+        const row = document.createElement('div');
         const a = document.createElement('a');
-        a.href = '#'; a.textContent = c.label;
+        a.href = '#'; a.textContent = c.name;
         a.onclick = e => { e.preventDefault(); importSystemSource(c.system); };
         row.appendChild(a);
+        if (c.system.description) {
+          const about = document.createElement('span');
+          about.className = 'sys-desc';
+          about.textContent = ' \u2014 ' + c.system.description;
+          row.appendChild(about);
+        }
+        list.appendChild(row);
       });
-      list.appendChild(row);
     });
   };
   if (_systemSources) fill(); else loadSystemSources().then(fill);
 });
-
-// The systems below a source's items as { label, system }, a folder's name and a slash before
-// each name, like the lines of the System menu under that source's heading.
-function _systemChoices(items, prefix, out) {
-  items.forEach(n => {
-    const label = prefix ? prefix + '/' + n.name : n.name;
-    if (n.url) out.push({ label, system: n });
-    if (n.items) _systemChoices(n.items, label, out);
-  });
-}
 
 eznix.on('ready', () => { if (SYSTEM_SOURCES) loadSystemSources(); });
 

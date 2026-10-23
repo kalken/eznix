@@ -601,6 +601,10 @@ import like any other. The page names a system by location and folder, and only 
 a listing of the setting reached is taken (`reached`): nothing typed in the page is ever
 fetched. In `test_server.py` (`system_sources()`, local files only); downloading and the
 menu in the page were not tried.
+A `NAME.json` beside `NAME.zip` in a GitHub folder (or `info` on an index entry) describes it,
+`{name, description}` (2026-10-23, the user's idea, for ezinstall's `templates/`): the tooltip and
+the import question; a bad file is ignored. In `test_server.py` with `info` on index entries; the
+GitHub listing's part (`github_items()`) was not run, as there is no network in the tests.
 
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not

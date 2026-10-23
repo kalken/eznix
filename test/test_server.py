@@ -447,6 +447,33 @@ def system_sources():
               index['name'] == 'Ours' and desk['items'][0] == {'name': 'Home', 'url': f'{d}/src/sub/repo-main.zip',
                                                                'path': 'repo-main/templates/home', 'description': 'a home'}
               and plain_one['path'] == '' and 'error' in plain, index)
+        # NAME.json beside NAME.zip describes it (`info` on an entry; a GitHub folder listing sets it itself).
+        with open(f'{d}/src/one.json', 'w') as f:
+            json.dump({'name': 'The one', 'description': 'x' * 900, 'other': 1}, f)
+        with open(f'{d}/src/bad.json', 'w') as f:
+            f.write('not json')
+        with open(f'{d}/src/info.json', 'w') as f:
+            json.dump([{'url': 'one.zip', 'info': 'one.json'}, {'name': 'Named', 'url': 'one.zip', 'info': 'one.json'},
+                       {'name': 'Own', 'url': 'one.zip', 'info': 'one.json', 'description': 'mine'},
+                       {'name': 'Bad', 'url': 'one.zip', 'info': 'bad.json'}, {'name': 'Gone', 'url': 'one.zip', 'info': 'gone.json'}], f)
+        api_i = ez.PluginApi('system', {'sources': [f'{d}/src/info.json']})
+        system.setup(api_i)
+        by_info, named, own, bad, gone = api_i.routes[('GET', 'sources')](ez.PluginRequest({}, b'', 'alice'))['sources'][0]['items']
+        check('sources: a description file names and describes a zip, cut to a length; the entry\'s own words win; a bad or missing one is no error',
+              by_info['name'] == 'The one' and by_info['description'] == 'x' * system.MAX_INFO
+              and named['name'] == 'Named' and named['description'] == 'x' * system.MAX_INFO
+              and own['description'] == 'mine' and 'description' not in bad and 'error' not in bad
+              and 'description' not in gone and 'error' not in gone, (by_info, named, own, bad, gone))
+        # An entry with a path is listed as it says, with nothing fetched: its zip need not be there yet.
+        with open(f'{d}/src/lazy.json', 'w') as f:
+            json.dump([{'name': 'Far', 'url': 'https://example.invalid/far.zip', 'path': '', 'description': 'not downloaded'},
+                       {'url': 'later.zip', 'path': '/sub/'}], f)
+        api_l = ez.PluginApi('system', {'sources': [f'{d}/src/lazy.json']})
+        system.setup(api_l)
+        far, later = api_l.routes[('GET', 'sources')](ez.PluginRequest({}, b'', 'alice'))['sources'][0]['items']
+        check('sources: an index entry with a path is listed without fetching it',
+              far == {'name': 'Far', 'url': 'https://example.invalid/far.zip', 'path': '', 'description': 'not downloaded'}
+              and later == {'name': 'later', 'url': f'{d}/src/later.zip', 'path': 'sub'}, (far, later))
         check('sources: no flake.nix, a missing file and a relative path in the setting are errors',
               all('error' in n for n in (none, missing, relative)), [none, missing, relative])
         status = lambda body: (lambda: get(('POST', 'import-source'), body=json.dumps(body).encode()))

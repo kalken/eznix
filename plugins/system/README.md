@@ -62,6 +62,16 @@ The question then says "Start from …" in place of "Import …".
   their file names, and its folders are listed the same way, down to four levels; a folder
   with no zip below it is left out. The branch is one name without a slash. GitHub allows
   60 such listings an hour without a login, and a listing is kept for ten minutes.
+  A `NAME.json` beside `NAME.zip` describes it, and is not a system itself:
+
+  ```json
+  { "name": "Router", "description": "A NixOS router with DHCP, DNS and a firewall." }
+  ```
+
+  Both are optional (`description` is cut to 500 characters). The name replaces the file's
+  name in the menu, and the description is the line's tooltip and part of the question before
+  an import. A file that cannot be read is ignored. The zip itself is not changed, so nothing
+  of it lands in the flake.
 - **An index**: a JSON file that lists systems, for a menu of your own making:
 
   ```json
@@ -75,7 +85,10 @@ The question then says "Start from …" in place of "Import …".
   ```
 
   `url` is a zip or another index, relative to this one; `path` picks one folder of a zip
-  that holds several; `items` is a folder of the menu.
+  that holds several (`""` for a zip that is one system). An entry with a `path` is listed as
+  it says and its zip is not downloaded until it is chosen, so an index of many systems costs
+  one request; one without it is downloaded to see what is in it; `items` is a folder of the menu; `info` is a description file as above
+  (relative to the index), for a `description` you would rather keep beside the zip.
 
 What is imported is built as root at the next rebuild, so a source is only ever named in
 the configuration, never typed into the page, and plain `http` is refused (an index on the
