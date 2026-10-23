@@ -6392,7 +6392,9 @@ async function loadBackup(name, targetFile) {
 // The suggestions, asked for by themselves so that they can be on their way while the files
 // are (see loadSiblingFiles()). Settles to the three results, never rejects.
 function _fetchAutocompleteData() {
-  // 204: that file has not been generated (the server's answer for one that is not there).
+  // 204: that file has not been generated (the server's answer for one that is not there). It
+  // is a state and not an error -- nothing is generated until somebody runs the generator, and
+  // a system import brings the page back before it has -- so the caller says nothing of it.
   const get = name => fetch('autocomplete/' + name + '.json').then(r => { if (!r.ok || r.status === 204) throw r.status; return r.json(); });
   return Promise.allSettled(['packages', 'options', 'choices'].map(get));
 }
@@ -6434,9 +6436,9 @@ async function loadSiblingFiles(content, autocomplete) {
     }
   }
   if (pkgResult.status === 'fulfilled') packages = pkgResult.value;
-  else setStatus('packages.json not found', 4000, 'err');
+  else if (pkgResult.reason !== 204) setStatus('packages.json not found', 4000, 'err');
   if (optResult.status === 'fulfilled') options = optResult.value;
-  else setStatus('options.json not found', 4000, 'err');
+  else if (optResult.reason !== 204) setStatus('options.json not found', 4000, 'err');
   if (choiceResult.status === 'fulfilled') choices = choiceResult.value;
   return true;
 }
