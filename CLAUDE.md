@@ -604,7 +604,12 @@ menu in the page were not tried.
 A `NAME.json` beside `NAME.zip` in a GitHub folder (or `info` on an index entry) describes it,
 `{name, description}` (2026-10-23, the user's idea, for ezinstall's `templates/`): the tooltip and
 the import question; a bad file is ignored. In `test_server.py` with `info` on index entries; the
-GitHub listing's part (`github_items()`) was not run, as there is no network in the tests.
+GitHub listing's part (`github_items()`) was not run by the tests, which have no network; run by hand
+the same day against `ezinstall/templates`, which listed correctly.
+An index entry with a `path` is listed without fetching its zip (`node()`), so a long index is one
+request; a wrong path or a missing zip then shows only at the import. Whether a missing one should
+be left out of the list the user asked ("if it doesnt exist it shouldnt show each system") and it
+was not settled what was meant. An https zip was listed for real too; an index over https was not.
 
 **A system import is all or nothing** (`prepare()` in the system plugin): what it would write
 or remove is worked out first, files already identical are left alone, and if eznix may not
