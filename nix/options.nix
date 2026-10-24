@@ -63,6 +63,7 @@ let
     collapse_level   = cfg.collapseLevel;
     indent           = cfg.indent;
     arrow_level      = cfg.arrowLevel;
+    compact_level    = cfg.compactLevel;
     mode             = cfg.mode;
     backups          = cfg.backups;
     debug            = if cfg.debug then true else null;
@@ -435,6 +436,12 @@ in
       default     = 3;
       example     = 1;
       description = "The level from which an open section in the editor has an arrow in front of its name, a top-level section being level 1: 1 gives every section one, 0 none. A folded section always has one.";
+    };
+    compactLevel = mkOption {
+      type        = types.ints.unsigned;
+      default     = 2;
+      example     = 1;
+      description = "The level from which a section in the editor that holds nothing but one sub-section is shown as one with it, under both names (services.nginx.virtualHosts as one heading), a top-level section being level 1: 1 from the top, 0 never.";
     };
     indent = mkOption {
       type        = types.numbers.nonnegative;

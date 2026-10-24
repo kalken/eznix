@@ -723,7 +723,10 @@ tried and taken back. As it stands:
   day, at the user's wish); each hangs to the left of the name, outside the
   text, so that it moves nothing (the user: "the arrow should never affect the text
   placement"). Both settings at 1 were seen by the user in the test server that day
-  ("that works").
+  ("that works"). On 2026-10-24 the arrows were taken out for an hour and put back as they
+  were, with the user's rule said again: a section's name and an option's name at the same
+  level always start in the same column (both padded by `--depth` steps inside the same
+  container, the depth counted from the DOM; the arrow is outside that).
 - Below level 2 a section has no line, box or shade of its own, only its indent. Turned
   down by the user on 2026-10-15, each tried in the test server: a shade per level, boxes
   and lines along the top taking turns as levels 1 and 2 do, the box as a line down its
@@ -804,6 +807,25 @@ with 0 for never (my suggestion), until, having seen everything open in the test
 the user made that the default and null its value ("maybe unset collapse level should be
 null actually"). The old setting still works, read as 3 or as not set
 (`mkChangedOptionModule` in the modules, and in `eznix.py`).
+
+**A section holding nothing but one sub-section is drawn as one with it** (`renderSection()`),
+under both names (`services.nginx.virtualHosts` as one heading, a dotted name quoted), from
+`compactLevel` down (`compact_level`, 2 unless set, 0 for none; a top-level section is level
+1), as an editor's compact folders: the user asked on 2026-10-24 for the indent to show more
+than the arrow does, and of the ways offered chose this. Turned down the same day, each tried
+in the test server: a line from the arrow's place down the open section, in the colour of the
+name (also rounded, inset and under the first letter); a faint dot hung in front of every
+option's name; sticky headings stacking at the top of the editor. What is inside is the last
+section's (its body, Add option…, folding, tooltip, `data-path`); what is done to the heading is
+done to the whole chain from the first (Delete, Disable, Copy, Cut, Convert, drag), and Rename
+edits the dotted name, any number of parts (`renameChain()`); each section above the last has
+"Add option to NAME…". A search or jump to a path inside the chain finds the heading
+(`data-chain`, `_chainSectionFor()`). One switched off is not compacted (its wrapper is at the
+first path). Until the user asked the same day, menu, Rename and drag acted on the last section
+alone and left empty parents. `renameChain()` checked by running it, lifted out of the page, on
+made-up data (fewer and more parts, quoted, an empty part, a name taken, at the root, inside a
+disabled section). Dragging a compacted heading was tried by the user in the test server the
+same day ("seems like dragging works"); the menus were not reported on.
 
 **A right-click brings up the menu of what is under the pointer** (`_onRowItself()`): an
 option's for the text of its name or its value, and for the empty part of its row the menu

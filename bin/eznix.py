@@ -190,6 +190,7 @@ CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_c
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
 SECTIONS_LEVEL   = 0             # the level from which sections start out folded (a top-level one is 1); 0: none do (collapse_level not set)
 ARROW_LEVEL      = 3             # the level from which an open section shows its arrow (arrow_level); 0: none does
+COMPACT_LEVEL    = 2             # the level from which a section holding only one section is drawn as one with it (compact_level); 0: none is
 INDENT           = 2             # characters of indent per level in the editor (indent)
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
 STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
@@ -1298,6 +1299,7 @@ def _render_index():
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
+        .replace('%%EZNIX_COMPACT_LEVEL%%', str(COMPACT_LEVEL))
         # indent: put in place of the theme's --indent-step, whichever theme the browser has.
         # `html:root` outweighs a theme's `:root`, so it holds whatever loads after it.
         .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch; }}</style>')
@@ -2725,7 +2727,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL
+    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL, COMPACT_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2873,6 +2875,10 @@ def main():
     # 0 for none.
     arrows = cfg.get('arrow_level', 3)
     ARROW_LEVEL = arrows if isinstance(arrows, int) and not isinstance(arrows, bool) and arrows > 0 else 0
+    # compact_level: the level from which a section that holds nothing but one sub-section is
+    # drawn as that one, under both names ("services.nginx"). 2 when not set; 0 for none.
+    compact = cfg.get('compact_level', 2)
+    COMPACT_LEVEL = compact if isinstance(compact, int) and not isinstance(compact, bool) and compact > 0 else 0
     # indent: characters per level of nesting in the editor, 2 when not set.
     indent = cfg.get('indent', 2)
     INDENT = float(indent) if isinstance(indent, (int, float)) and not isinstance(indent, bool) and indent >= 0 else 2

@@ -702,11 +702,33 @@ function renameKeyAtPath(path, newKey) {
   return true;
 }
 
+// The heading of a chain of sections drawn as one (renderSection()): the names joined by dots,
+// a name with a dot in it quoted, as in Nix, so that _pathParts() reads it back.
+function _chainLabel(keys) { return keys.map(k => k.includes('.') ? JSON.stringify(k) : k).join('.'); }
+// Renames the chain of sections from `outer` to `inner` after a dotted name typed for it: the
+// first name renamed in its place among its siblings, and what the last held put under the
+// rest of the new names, however many there are. Nothing is done for a name with an empty
+// part, or one the parts of which are what they were.
+function renameChain(outer, inner, text) {
+  const parts = _pathParts(text).map(p => p.trim());
+  if (!parts.length || parts.some(p => !p)) { setStatus('Every part of the name needs a name', 4000, 'err'); return false; }
+  if (parts.join('\x00') === inner.slice(outer.length - 1).join('\x00')) return true;
+  const held = getAtPath(config, inner);
+  if (!renameKeyAtPath(outer, parts[0])) return false;
+  let val = held;
+  for (let i = parts.length - 1; i > 0; i--) val = { [parts[i]]: val };
+  _setContentAt([...outer.slice(0, -1), parts[0]], val);
+  return true;
+}
+
 // Inline-renames the key at `path` with a live <input>, as _startTabRename/_startFolderRename
 // do. Works for a section header (.section-header) and a field/array-field row (.field-key).
 // The input is put inside the name, on top of it, and not in its place: the name keeps its
 // room and nothing moves (see .key-rename-input in style.css).
-function _startKeyRename(path) {
+// With `outer`, `path` is the last of a chain of sections drawn as one heading from `outer` on
+// (renderSection()): the field holds the whole dotted name, and what is typed becomes the chain,
+// as many parts as it has (renameChain()).
+function _startKeyRename(path, outer) {
   const pathKey = path.join('.');
   const el = document.querySelector('[data-path="' + CSS.escape(pathKey) + '"]');
   if (!el) return;
@@ -716,7 +738,7 @@ function _startKeyRename(path) {
   const input = document.createElement('input');
   input.type = 'text';
   input.className = 'key-rename-input';
-  input.value = oldKey;
+  input.value = outer ? _chainLabel(path.slice(outer.length - 1)) : oldKey;
   _hideFieldTooltip();
   anchor.classList.add('renaming');
   anchor.appendChild(input);
@@ -729,7 +751,7 @@ function _startKeyRename(path) {
     if (done) return;
     done = true;
     const raw = input.value.trim();
-    if (raw) renameKeyAtPath(path, raw);
+    if (raw) { if (outer) renameChain(outer, path, raw); else renameKeyAtPath(path, raw); }
     renderAll();
   }
   function cancel() { if (!done) { done = true; renderAll(); } }
@@ -2517,7 +2539,7 @@ function doForceAddWithType(type) {
       const focusable = row.querySelector('input, textarea');
       if (focusable) { focusable.focus(); if (focusable.select) focusable.select(); }
     } else {
-      const sectionEl = document.querySelector(`.section[data-path="${pathKey}"]`);
+      const sectionEl = document.querySelector(`.section[data-path="${pathKey}"]`) || _chainSectionFor(parts.join('.'));
       if (sectionEl) { _revealEditorEl(sectionEl); scrollThenFlash(sectionEl, 'start'); }
     }
   }, 80);
@@ -2648,7 +2670,7 @@ function doAdd() {
         if (focusable.select) focusable.select();
       }
     } else {
-      const sectionEl = document.querySelector(`.section[data-path="${pathKey}"]`);
+      const sectionEl = document.querySelector(`.section[data-path="${pathKey}"]`) || _chainSectionFor(parts.join('.'));
       if (sectionEl) { _revealEditorEl(sectionEl); scrollThenFlash(sectionEl, 'start'); }
     }
   }, 80);
@@ -2842,10 +2864,15 @@ async function _jumpToSearchResult(match) {
 }
 
 // The row of the editor that shows `pathKey` (a dotted path), unfolded if it was hidden.
+// A section drawn inside a compacted heading (renderSection()) is found as that heading.
 function findEditorEl(pathKey) {
   const el = document.querySelector(`.section[data-path="${pathKey}"]`)
-      || document.querySelector(`.field-row[data-path="${pathKey}"]`);
+      || document.querySelector(`.field-row[data-path="${pathKey}"]`)
+      || _chainSectionFor(pathKey);
   return el && _revealEditorEl(el);
+}
+function _chainSectionFor(pathKey) {
+  return [...document.querySelectorAll('.section[data-chain]')].find(s => JSON.parse(s.dataset.chain).includes(pathKey)) || null;
 }
 
 // ── Status path ───────────────────────────────────────────────────────────────
@@ -3586,19 +3613,38 @@ function renderDisabled(container, key, disabledObj, path) {
 }
 
 function renderSection(container, key, obj, path) {
-  const pathKey = path.join('.');
-
   // If the object is an _expr, render as an expr field row instead of a section
   if (isExprPkg(obj)) {
     renderField(container, key, obj, path);
     return;
   }
 
+  // A section holding nothing but one sub-section is drawn as that one, under a heading of
+  // both names ("services.nginx"), and so on down the chain, as an editor shows compact
+  // folders: a level less for every link, read off the data's shape alone. From COMPACT_LEVEL
+  // down, a top-level section being level 1 (path.length), and never with 0. (2026-10-24.)
+  // What is in it is the last section's (its body, Add option…, folding, the tooltip, its
+  // data-path); what is done to the heading is done to the whole chain, from the first
+  // (Rename edits the dotted name, Delete, Disable, Copy, Cut, Convert, drag), since that is
+  // what the heading stands for. Each section above the last has an "Add option to NAME…".
+  // Not for one switched off, whose wrapper sits at the first path. data-chain lists the
+  // paths drawn by it, so that a search or a jump to one of them finds it (findEditorEl()).
+  const outer = path, outerKey = key, chain = [path];
+  if (COMPACT_LEVEL > 0 && path.length >= COMPACT_LEVEL && !isDisabled(getAtPath(config, path))) {
+    for (let keys = Object.keys(obj); keys.length === 1; keys = Object.keys(obj)) {
+      const v = obj[keys[0]];
+      if (v === null || typeof v !== 'object' || Array.isArray(v) || isExprPkg(v) || isDisabled(v)) break;
+      key = keys[0]; path = [...path, key]; obj = v; chain.push(path);
+    }
+  }
+  const label = _chainLabel(path.slice(outer.length - 1));
+
   const section = document.createElement('div');
   section.className = 'section';
-  section.dataset.path = pathKey;
+  section.dataset.path = path.join('.');
+  if (chain.length > 1) section.dataset.chain = JSON.stringify(chain.map(p => p.join('.')));
 
-  const header = makeSectionHeader(key, path, 'object');
+  const header = makeSectionHeader(label, path, 'object');
   // Attached to the whole section (header + body), not just the header, so right-clicking
   // anywhere inside it — including blank space between child rows — shows this section's menu.
   // Nested sections/fields have their own handler and stopPropagation() in showContextMenu(),
@@ -3606,13 +3652,20 @@ function renderSection(container, key, obj, path) {
   section.oncontextmenu = e => {
     // Show/hide all is offered here as well as on the editor's own blank-space menu,
     // but only reaching this section and what's below it -- the blank-space one does the file.
+    const common = _commonMenuItems(outer);
+    if (chain.length > 1) {
+      const rename = common.item.find(i => i.label === 'Rename');
+      if (rename) rename.onclick = () => _startKeyRename(path, outer);
+    }
     showContextMenu(e, _menu({
-      add: _addMenuItems(e, path),
-      convert: isDisabled(getAtPath(config, path)) ? [] : [
-        { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
+      add: [..._addMenuItems(e, path),
+            ...chain.slice(0, -1).reverse().flatMap(p => _addMenuItems(e, p).map(i =>
+              ({ ...i, label: i.label.replace(/…$/, '') + ' to ' + p[p.length - 1] + '…' })))],
+      convert: isDisabled(getAtPath(config, outer)) ? [] : [
+        { label: 'Convert to Nix', onclick: () => { setAtPath(config, outer, { _expr: jsonToNix(getAtPath(config, outer)) }); renderAll(); } },
       ],
       view: _foldAllMenuItems(section),
-    }, _commonMenuItems(path)));
+    }, common));
   };
 
   section.appendChild(header);
@@ -3623,7 +3676,7 @@ function renderSection(container, key, obj, path) {
   section.appendChild(body);
   // The whole heading line is the drag handle; a drag only starts once the pointer has moved
   // (see makeDraggable()), so a plain click on it is still just a click.
-  makeDraggable(section, key, path.slice(0, -1), header);
+  makeDraggable(section, outerKey, outer.slice(0, -1), header);
   container.appendChild(section);
 }
 
@@ -5432,6 +5485,7 @@ function initImportDrop() {
 const API_BASE = '/api/v1';
 const BACKUP_ENABLED    = %%EZNIX_BACKUP%%;
 const ARROW_LEVEL       = %%EZNIX_ARROW_LEVEL%%; // services.eznix.arrowLevel / arrow_level in eznix.toml: the level from which an open section has an arrow; 0 for none -- see _setNestDepths()
+const COMPACT_LEVEL     = %%EZNIX_COMPACT_LEVEL%%; // services.eznix.compactLevel / compact_level in eznix.toml: the level from which a section holding only one section is drawn as one with it; 0 for none -- see renderSection()
 const SECTIONS_LEVEL    = %%EZNIX_SECTIONS_LEVEL%%; // services.eznix.collapseLevel / collapse_level in eznix.toml: the level sections are folded from; 0 when it is not set, for never -- see _sectionStartsOpen()
 const EZNIX_MODE       = %%EZNIX_MODE%%; // null or "install" — services.eznix.mode / mode in eznix.toml, deploy-time only, no in-GUI toggle
 const INSTALL_MODE      = EZNIX_MODE === 'install';
