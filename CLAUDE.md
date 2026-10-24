@@ -726,7 +726,10 @@ tried and taken back. As it stands:
   ("that works"). On 2026-10-24 the arrows were taken out for an hour and put back as they
   were, with the user's rule said again: a section's name and an option's name at the same
   level always start in the same column (both padded by `--depth` steps inside the same
-  container, the depth counted from the DOM; the arrow is outside that).
+  container, the depth counted from the DOM; the arrow is outside that). Since the same day,
+  below the top level, the arrow starts in the column of the name of the section above, one
+  indent step left of its own (the user's wish); a top-level one stays right before its name,
+  with only the card's padding to its left.
 - Below level 2 a section has no line, box or shade of its own, only its indent. Turned
   down by the user on 2026-10-15, each tried in the test server: a shade per level, boxes
   and lines along the top taking turns as levels 1 and 2 do, the box as a line down its
@@ -810,7 +813,7 @@ null actually"). The old setting still works, read as 3 or as not set
 
 **A section holding nothing but one sub-section is drawn as one with it** (`renderSection()`),
 under both names (`services.nginx.virtualHosts` as one heading, a dotted name quoted), from
-`compactLevel` down (`compact_level`, 2 unless set, 0 for none; a top-level section is level
+`compactLevel` down (`compact_level`, 3 unless set, 0 for none; a top-level section is level
 1), as an editor's compact folders: the user asked on 2026-10-24 for the indent to show more
 than the arrow does, and of the ways offered chose this. Turned down the same day, each tried
 in the test server: a line from the arrow's place down the open section, in the colour of the

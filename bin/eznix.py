@@ -190,7 +190,7 @@ CUSTOM_THEMES    = {}            # name -> {path, base, bg, border}; see _scan_c
 EZNIX_MODE       = None          # None or 'install': a second row of buttons, for an installer
 SECTIONS_LEVEL   = 0             # the level from which sections start out folded (a top-level one is 1); 0: none do (collapse_level not set)
 ARROW_LEVEL      = 3             # the level from which an open section shows its arrow (arrow_level); 0: none does
-COMPACT_LEVEL    = 2             # the level from which a section holding only one section is drawn as one with it (compact_level); 0: none is
+COMPACT_LEVEL    = 3             # the level from which a section holding only one section is drawn as one with it (compact_level); 0: none is
 INDENT           = 2             # characters of indent per level in the editor (indent)
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
 STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
@@ -2876,8 +2876,8 @@ def main():
     arrows = cfg.get('arrow_level', 3)
     ARROW_LEVEL = arrows if isinstance(arrows, int) and not isinstance(arrows, bool) and arrows > 0 else 0
     # compact_level: the level from which a section that holds nothing but one sub-section is
-    # drawn as that one, under both names ("services.nginx"). 2 when not set; 0 for none.
-    compact = cfg.get('compact_level', 2)
+    # drawn as that one, under both names ("services.nginx"). 3 when not set; 0 for none.
+    compact = cfg.get('compact_level', 3)
     COMPACT_LEVEL = compact if isinstance(compact, int) and not isinstance(compact, bool) and compact > 0 else 0
     # indent: characters per level of nesting in the editor, 2 when not set.
     indent = cfg.get('indent', 2)

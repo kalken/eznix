@@ -870,7 +870,7 @@ def main():
 
             check('no section is folded with nothing set', 'const SECTIONS_LEVEL    = 0;' in page, None)
             check('open sections have arrows from level 3 with nothing set', 'const ARROW_LEVEL       = 3;' in page, None)
-            check('sections are compacted from level 2 with nothing set', 'const COMPACT_LEVEL     = 2;' in page, None)
+            check('sections are compacted from level 3 with nothing set', 'const COMPACT_LEVEL     = 3;' in page, None)
             check('the indent is 2 with nothing set', '<style>html:root { --indent-step: 2ch; }</style>' in page, None)
             check('files: with nothing set, one menu of the Nix files, and listing is all it answers',
                   b.json('/api/v1/plugin/files/files')[1] == {'menus': [['flake.nix']], 'folders': ['eznix']}

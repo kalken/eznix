@@ -495,6 +495,11 @@ input[type=text].key-rename-input {
   display: block; position: absolute; right: 100%; top: 0; width: 1.2ch;
   cursor: pointer; user-select: none;
 }
+/* Below the top level the arrow starts where the name of the section above starts, one indent
+   step to the left of its own name, in the room the indent leaves (2026-10-24, the user's
+   wish); nothing moves. A top-level one has no name above it and only the card's padding to
+   its left, so it stays right before its name. */
+.section.nest:not(.nest-top) > .section-header .section-toggle { right: auto; left: calc(-1 * var(--indent-step)); }
 .section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
 .section.foldable.collapsed > .section-header .section-toggle::before { content: '▸'; }
 /* A section nested deeper than that has no edge or fill, only a little space below it. */

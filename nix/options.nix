@@ -439,7 +439,7 @@ in
     };
     compactLevel = mkOption {
       type        = types.ints.unsigned;
-      default     = 2;
+      default     = 3;
       example     = 1;
       description = "The level from which a section in the editor that holds nothing but one sub-section is shown as one with it, under both names (services.nginx.virtualHosts as one heading), a top-level section being level 1: 1 from the top, 0 never.";
     };

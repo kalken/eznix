@@ -63,7 +63,7 @@ theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, 
                                       # level one is 1); not set: nothing is folded
 # arrow_level = 3                     # open sections have an arrow from this level down (a
                                       # folded one always has); 0: none
-# compact_level = 2                   # from this level down, a section holding only one
+# compact_level = 3                   # from this level down, a section holding only one
                                       # section is shown as one with it ("a.b"); 0: none
 # indent = 2                          # characters of indent per level in the editor
 # debug  = true                       # log what is only worth knowing while looking into
