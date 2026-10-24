@@ -813,7 +813,7 @@ null actually"). The old setting still works, read as 3 or as not set
 
 **A section holding nothing but one sub-section is drawn as one with it** (`renderSection()`),
 under both names (`services.nginx.virtualHosts` as one heading, a dotted name quoted), from
-`compactLevel` down (`compact_level`, 3 unless set, 0 for none; a top-level section is level
+`compactLevel` down (`compact_level`, 1 unless set, 0 for none; a top-level section is level
 1), as an editor's compact folders: the user asked on 2026-10-24 for the indent to show more
 than the arrow does, and of the ways offered chose this. Turned down the same day, each tried
 in the test server: a line from the arrow's place down the open section, in the colour of the
