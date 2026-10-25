@@ -35,7 +35,10 @@ page once at start, so an edit shows nothing until it restarts; an open tab then
 itself (see "Page checksum"). Its data lives *outside* the checkout, in `../.eznix-test/`
 (`eznix.toml`, state, and usually a flake to edit; what `eznix.toml` points at can differ
 from one machine to the next, so read it instead of assuming) -- inside it, `nix build path:.` would copy the test
-state, keys included, into the Nix store.
+state, keys included, into the Nix store. **The test server never points at a flake a real
+machine builds from**, the one this computer runs least of all: only a copy or a throwaway
+flake. A save or an import there changes what the machine builds next (the user's rule since
+2026-10-25, after a test import put its files into the configuration of the machine it ran on).
 
 ```sh
 pkill -f "eznix.py --config eznix.toml"; sleep 1
