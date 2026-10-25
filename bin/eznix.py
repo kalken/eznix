@@ -1150,6 +1150,8 @@ class PluginApi:
     from a logged-in browser. Everything else here is for reading:
         api.config     this plugin's [plugin.NAME] table
         api.flake, api.config_dir, api.state_dir, api.hostname
+        api.autocomplete_dir  where the suggestions are (the system plugin removes them when
+                       an import brings another system)
         api.page       set it to change what the page gets as eznix.config.NAME (default: config)
         api.debug(line)  a line in the log, with the `debug` setting on only
         api.ignore(entries)  a function saying whether a relative path is left out by a list
@@ -1161,6 +1163,10 @@ class PluginApi:
         self.name, self.config, self.page = name, config, config
         self.flake, self.config_dir, self.state_dir, self.hostname = FLAKE_DIR, CONFIG_DIR, STATE_DIR, HOSTNAME
         self.routes = {}
+
+    @property
+    def autocomplete_dir(self):
+        return AUTOCOMPLETE_DIR or os.path.join(WEBROOT, 'autocomplete')
 
     def debug(self, line):
         _debug(f'plugin {self.name}: {line}')
@@ -1473,16 +1479,24 @@ def _autocomplete_running():
         return False
 
 
+def _flake_there():
+    """Whether the flake has a flake.nix. Without one nothing reads the JSON files, as on an
+    installer before a system is imported, so the page offers nothing that makes them."""
+    return os.path.isfile(os.path.join(FLAKE_DIR, 'flake.nix'))
+
+
 def _ping_payload(user=None):
     """GET /api/v1/ping's whole response, polled by initRestartWatcher() (index.html): the
     page checksum (see _compute_page_hash()), the autocomplete stamp, whether the suggestions
-    are being generated just now, and what the terminal restart notice compares."""
+    are being generated just now, what the terminal restart notice compares, and whether there
+    is a flake.nix (_flake_there())."""
     return {
         'page': PAGE_HASH,
         'theme': THEME,
         'autocomplete_stamp': _autocomplete_stamp(),
         'autocomplete_running': _autocomplete_running(),
         'terminal_stale': _terminal_stale(_terminal_for(user)),
+        'flake': _flake_there(),
     }
 
 
@@ -2097,6 +2111,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     'files': list_config_files(),
                     'folders': list_config_folders(),
                     'default': DEFAULT_FILE,
+                    'flake': _flake_there(),
                 }
                 # With ?content=1, what is in each file too, as the text on disk: the page loads
                 # every tab at start, and asked for them one by one, each its own connection (and

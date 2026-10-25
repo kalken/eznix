@@ -428,7 +428,7 @@ def system_sources():
                 {'name': 'Desktops', 'items': [{'name': 'Home', 'url': 'sub/repo-main.zip', 'path': 'repo-main/templates/home',
                                                 'description': 'a home'}]},
                 {'url': 'one.zip'}, {'name': 'Plain', 'url': 'http://example.org/x.zip'}]}, f)
-        ez.FLAKE_DIR, ez.STATE_DIR = f'{d}/flake', f'{d}/state'
+        ez.FLAKE_DIR, ez.STATE_DIR, ez.AUTOCOMPLETE_DIR = f'{d}/flake', f'{d}/state', f'{d}/state/autocomplete'
         api = ez.PluginApi('system', {'sources': [f'{d}/src/one.zip', {'name': 'Repo', 'url': f'file://{d}/src/sub/repo-main.zip'},
                                                   f'{d}/src/index.json', f'{d}/src/none.zip', f'{d}/src/missing.zip', 'relative.zip']})
         system.setup(api)
@@ -487,7 +487,12 @@ def system_sources():
               refused(status({'url': f'{d}/src/other.zip', 'path': ''})) == 400
               and refused(status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/.github/x'})) == 400
               and refused(status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/templates'})) == 400)
+        os.makedirs(f'{d}/state/autocomplete')
+        for n in ('options.json', 'packages.json', 'choices.json', '.generating'):
+            open(f'{d}/state/autocomplete/{n}', 'w').close()
         result = status({'url': f'{d}/src/sub/repo-main.zip', 'path': 'repo-main/templates/nixos'})()
+        check("sources: an import removes the suggestions, which were the old system's",
+              os.listdir(f'{d}/state/autocomplete') == ['.generating'], os.listdir(f'{d}/state/autocomplete'))
         tree = sorted(os.path.relpath(os.path.join(p, n), f'{d}/flake') for p, _, ns in os.walk(f'{d}/flake') for n in ns)
         check("sources: a folder of a zip is imported as a system, this machine's hardware file kept",
               tree == ['eznix/c.json', 'flake.nix', 'hardware-configuration.nix']
@@ -815,6 +820,12 @@ def main():
                 conn.close()
 
             check('files are listed', b.json('/api/v1/files')[1]['files'] == ['a.json'])
+            os.rename(f'{tmp}/flake/flake.nix', f'{tmp}/flake.nix.away')
+            gone = (b.json('/api/v1/files')[1]['flake'], b.json('/api/v1/ping')[1]['flake'])
+            os.rename(f'{tmp}/flake.nix.away', f'{tmp}/flake/flake.nix')
+            check('the listing and the ping say whether there is a flake.nix',
+                  gone == (False, False) and b.json('/api/v1/files')[1]['flake'] is True
+                  and b.json('/api/v1/ping')[1]['flake'] is True, gone)
             whole = b.json('/api/v1/files?content=1')[1]
             check('and come with their text when asked, only then',
                   whole['content'] == {'a.json': open(f'{tmp}/flake/eznix/a.json').read()}

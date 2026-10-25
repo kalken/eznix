@@ -6,23 +6,16 @@
 // system.py in this folder; this file is the buttons and the confirmations.
 const SYSTEM_BACKUP_ENABLED = !!(eznix.config.system || {}).backups;
 const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
-// `autocomplete`: generate the suggestions after an import, since the system it brought has
-// other options and packages. `generate`: what an import says to run when it leaves files
-// missing that something says how to make (see _afterSystemImport()). The import reloads the page, so what is
-// to be run is kept in the browser's session across the reload and run once the page is up again.
-const SYSTEM_AUTOCOMPLETE = !!(eznix.config.system || {}).autocomplete;
+// `generate`: what an import says to run when it leaves files missing that something says how
+// to make (see _afterSystemImport()). The import reloads the page, so what is to be run is kept
+// in the browser's session across the reload and run once the page is up again. The
+// suggestions are not generated after an import: the server removes the old system's, and the
+// page's notice of none offers to (since 2026-10-25; the `autocomplete` setting did it before).
 const _AFTER_IMPORT = 'eznix-system-after-import';
-function _runAfterImport(command) {
-  // The command first, and only if it worked, the suggestions: they are of a system that
-  // evaluates, which it does not without the file.
-  if (command && SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete', { before: command });
-  else if (command) eznix.emit('run', command);
-  else if (SYSTEM_AUTOCOMPLETE) eznix.emit('autocomplete');
-}
 eznix.on('ready', () => {
   let after = null;
   try { after = JSON.parse(sessionStorage.getItem(_AFTER_IMPORT)); sessionStorage.removeItem(_AFTER_IMPORT); } catch (e) { /* no storage: nothing is asked */ }
-  if (after) setTimeout(() => _runAfterImport(after.command), 0);
+  if (after && after.command) setTimeout(() => eznix.emit('run', after.command), 0);
 });
 
 // Unlike exportAll() (which zips the in-memory fileConfigs — unsaved edits included, but only
@@ -158,13 +151,13 @@ function _afterSystemImport(res, data) {
   // edits" rule as restart detection: reload immediately only if nothing's dirty, otherwise
   // just say so — the edits themselves are unaffected by this import either way.
   // The commands that make the files that are missing, one after the other: each has to work
-  // for the next to run (and then the suggestions).
+  // for the next to run.
   const command = (data.generate || []).map(g => `( ${g.command} )`).join(' && ') || null;
   if (isAnyDirty()) {
     setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
-    _runAfterImport(command);
+    if (command) eznix.emit('run', command);
   } else {
-    if (command || SYSTEM_AUTOCOMPLETE) { try { sessionStorage.setItem(_AFTER_IMPORT, JSON.stringify({ command: command || null })); } catch (e) { /* see above */ } }
+    if (command) { try { sessionStorage.setItem(_AFTER_IMPORT, JSON.stringify({ command })); } catch (e) { /* see above */ } }
     location.reload();
   }
 }

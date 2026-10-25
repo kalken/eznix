@@ -293,9 +293,9 @@ input[type=text].key-rename-input {
    example HTML .tooltip's default sizing was built for — the 260px min-width above would pad
    most of them with a lot of empty space. Wrapping (white-space/word-break/max-width) stays
    inherited from .tooltip, for the rare long command that needs it. */
-/* z-index above .term-restart-popup's 99999, not just the ordinary tooltip base's 1000 -- a
-   tooltip only ever shows because the user is actively hovering to read it, which should never
-   be obscured by a passive notification, #term-restart-btn's own most of all (see there). */
+/* z-index above .notices' 99999, not just the ordinary tooltip base's 1000 -- a tooltip only
+   ever shows because the user is actively hovering to read it, which should never be obscured
+   by a passive notification, #term-restart-btn's own most of all (see there). */
 .hover-tooltip { min-width: 0; padding: 5px 8px; z-index: 100000; }
 /* Tooltip visibility: .tt-anchor wraps just the rendered title text so the hover target is the
    text itself, not the whole reserved-width key column (which is wider than short titles). It's
@@ -646,6 +646,41 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 }
 
 /* ── Status bar ── */
+/* Notices in the bottom right corner (the terminal's restart one, no suggestions, no flake),
+   stacked. .notices is an item of no height in the page's column, right above the terminal's
+   slot (inserted after it) or else the status bar, so the stack stands on whichever is there with
+   no script measuring anything: the terminal's slot is as tall as its bar whatever the panel's
+   size (see .terminal-slot). Until 2026-10-25 the terminal's notice was fixed to the window and
+   placed by measuring the bar's top. */
+.notices {
+  position: relative; flex-shrink: 0; height: 0;
+  /* Deliberately higher than every other z-index in the app (context menus, modals, the drag
+     ghost, ...) -- a notice is more important than whatever's on screen. The one deliberate
+     exception is .hover-tooltip (see there): the terminal's restart button sits right below the
+     stack, and its tooltip would otherwise show under the notice. */
+  z-index: 99999;
+}
+.notices-stack {
+  position: absolute; right: 12px; bottom: 1px;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+}
+.notice {
+  background: var(--bg2);
+  border: 1px solid var(--accent2);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px var(--shadow);
+  padding: 10px 16px;
+  font-size: 12px;
+  color: var(--text);
+  cursor: pointer;
+  transition: background .15s;
+}
+.notice:hover { background: var(--bg3); }
+/* One that only says something, with nothing to click. */
+.notice.notice-info { cursor: default; }
+.notice.notice-info:hover { background: var(--bg2); }
+.notice.hidden { display: none; }
+
 .statusbar {
   /* Above .terminal-panel, for the same reason .header is above .tab-bar-row: the panel's
      upward shadow also spreads a few pixels below it, onto the top of this bar. */

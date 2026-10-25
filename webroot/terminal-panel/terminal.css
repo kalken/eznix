@@ -146,43 +146,6 @@
   padding: 14px 20px;
 }
 
-/* Right corner of the screen -- same top-right convention the old notification banner used --
-   right above wherever the terminal bar currently starts, rather than anchored to any specific
-   button. `right` is the only fixed coordinate here; `bottom` is set fresh via JS
-   (_updateTermRestartPopup()) from #terminal-header-group's own top edge, whenever the running
-   eznix-terminal.service is stale relative to what's on disk. That edge is a constant screen
-   position regardless of the panel's quarter/half/full/collapsed size (only the panel's own top
-   edge moves with it), so the popup itself never jumps around when the panel resizes. */
-.term-popups {
-  position: fixed;
-  right: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 8px;
-  /* Deliberately higher than every other z-index in the app (context menus, modals, the drag
-     ghost, ...) -- a restart-needed indicator is more important than whatever's on screen, so
-     this should never end up hidden behind something else open at the time. The one deliberate
-     exception is .hover-tooltip (see there): #term-restart-btn sits right below this popup, so
-     hovering it to read what the button actually does would otherwise show the tooltip right
-     where the popup already is, with the popup (being on top) making it unreadable -- exactly
-     the case a tooltip exists to prevent. */
-  z-index: 99999;
-}
-.term-restart-popup {
-  background: var(--bg2);
-  border: 1px solid var(--accent2);
-  border-radius: var(--radius);
-  box-shadow: 0 4px 16px var(--shadow);
-  padding: 10px 16px;
-  font-size: 12px;
-  color: var(--text);
-  cursor: pointer;
-  transition: background .15s;
-}
-.term-restart-popup:hover { background: var(--bg3); }
-.term-restart-popup.hidden { display: none; }
-
 /* The header's Autocomplete button (terminal.js): first of the group, in front of System,
    whichever of the two is added first. */
 #autocomplete-btn { order: -1; }

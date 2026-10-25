@@ -104,8 +104,7 @@ def setup(api):
     source_dir = os.path.join(api.state_dir, 'system-sources')
     reached = set()     # every zip's (or folder's) location a listing of `sources` has led to
     addable = set()     # the locations a source with `add_only` has led to
-    api.page = {'backups': keep > 0, 'sources': bool(sources),
-                'autocomplete': api.config.get('autocomplete') is not False}
+    api.page = {'backups': keep > 0, 'sources': bool(sources)}
 
     def tree_files():
         """(absolute path, path in the zip) for every file an export holds: all but what
@@ -298,8 +297,28 @@ def setup(api):
             with zf.open(info) as src, open(target, 'wb') as dst:
                 shutil.copyfileobj(src, dst)
             written.append(os.path.relpath(target, flake).replace(os.sep, '/'))
+        if written or removed or removed_folders:
+            forget_suggestions()
         return {'ok': True, 'written': written, 'skipped': plan['skipped'], 'removed': removed,
                 'removed_folders': removed_folders, 'unchanged': plan['unchanged']}
+
+    def forget_suggestions():
+        """The suggestions are of the system that was there: an import or a restore that changed
+        anything removes them, and the page then offers to generate them for this one (its
+        notice of none, from the ping). Until 2026-10-25 an import generated them by itself
+        (`autocomplete`), and with that off, or the run failing, the old system's stayed in the
+        editor without a word; the user chose the notice and a click."""
+        d = api.autocomplete_dir
+        try:
+            names = os.listdir(d)
+        except OSError:
+            return
+        for name in names:
+            if name.endswith('.json'):
+                try:
+                    os.remove(os.path.join(d, name))
+                except OSError:
+                    pass
 
     def entries_of(value):
         """The usable entries of a `generate` list: {file, command}, both set. Anything else in

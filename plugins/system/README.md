@@ -18,7 +18,6 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 services.eznix.plugins.system = {
   backups = 10;
   exclude = [ ".git" "hardware-configuration.nix" "*.key" ];
-  autocomplete = false;
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
     { name = "Import from Templates"; url = "https://example.org/systems/index.json"; }
@@ -33,7 +32,6 @@ services.eznix.plugins.system = {
 | `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
 | `generate` | none | a list of `{ file, command }`: files to make when an import leaves them missing, each with the command that makes it (see below). An entry needs both, or it is ignored: there are no defaults, since it has to fit every platform and a template sets it |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
-| `autocomplete` | `true` | generate the suggestions after an import, as the Autocomplete button does |
 | `enabled` | `true` | `false` leaves the plugin out |
 
 ## 🌍 Sources
@@ -115,7 +113,11 @@ Each entry is a file and the command that makes it:
 The question shows the command of each file that will be missing, and after the import they are
 typed into the terminal, one after the other, each only if the one before worked (`sudo` asks
 there). The terminal starts in the flake's folder, so a relative file name lands next to
-`flake.nix`. If they worked, the suggestions are generated after them (`autocomplete`).
+`flake.nix`.
+
+An import or a restore that changes anything removes the suggestions, which were of the system
+that was there. A notice in the corner then offers to generate them for the new one; click it
+once the commands above have finished.
 
 The list is the zip's own when it comes from a source of your configuration: it is in the JSON
 files of its configuration folder, at `services.eznix.plugins.system.generate`, so a template
@@ -128,8 +130,8 @@ used instead.
 
 Nix itself knows plugin settings as one option, "attribute set of attribute set of anything", so
 the plugin adds its own to the suggestions when Autocomplete is pressed: `backups`, `exclude`,
-`sources`, `generate` (with `file` and `command`, marked as required for an entry), `autocomplete`
-and `enabled`, each with its description. It is help in the editor only: Nix accepts any value
+`sources`, `generate` (with `file` and `command`, marked as required for an entry) and
+`enabled`, each with its description. It is help in the editor only: Nix accepts any value
 there. Press Autocomplete once after updating eznix to get them.
 
 ## 📝 Notes

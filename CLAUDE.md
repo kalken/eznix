@@ -574,8 +574,14 @@ idea): the page sends the import as a dry run (`?dry=1`, `"dry": true` for a sou
 happen, and the question shows it: a zip without a flake.nix at its top, and the files of the
 plugin's `generate` that will be missing. `generate` is a list of {file, command}, which the
 commands of the missing ones make: typed into the terminal after the import (the page's `run`
-event, or `autocomplete` with `before`), each in a subshell chained with `&&`, so the suggestions
-are generated only if all worked; the request survives the reload in sessionStorage. It was
+event), each in a subshell chained with `&&`; the request survives the reload in sessionStorage.
+The suggestions are not generated after an import since 2026-10-25 (the setting `autocomplete`
+did, chained after these): an import or restore that changed anything removes the `.json` files
+of the suggestions' folder (`forget_suggestions()`, `api.autocomplete_dir`), and the page's notice
+of none offers to make them (see "Suggestions are never generated automatically"). The user's
+idea, once that notice was there: the old system's suggestions stayed, without a word, when the
+setting was off or the run failed. Removed without keeping the old name; an `autocomplete` left
+in a configuration is ignored. It was
 `hardware`, one file, for the machine's hardware-configuration.nix, until the user said any
 file could be one. **No defaults**, at the user's word: an entry needs both `file` and `command`
 or it is ignored, since it has to fit every platform; the NixOS template sets the hardware file
@@ -650,6 +656,20 @@ a dotted name needs its quotes, as in Nix. `checkOptionParsing()`, from the brow
 runs every option of the loaded suggestions through all of it and lists what fails: none of
 27,654 on NixOS and of 1,257 on nix-darwin when it was written. Run it after touching any of
 this, on both kinds of data.
+
+**No `flake.nix`, no new files** (`hasFlake` in the page, `_flake_there()` in the server: `flake`
+in `/api/v1/files` and in every ping), since 2026-10-25: on the installer (`mode = "install"`,
+the flake left at `/etc/nixos`, empty until a system is imported) the user found it confusing that
+files could be made with nothing to use them. A general rule, not install mode's: the empty page
+says there is no flake and has no menu (the system plugin's line and cards still come, through
+`empty`), the tab bar's blank space has no New file, New folder or Import, a drop is refused, and
+files that are there anyway open with a notice (`#no-flake-notice`). The ping redraws when it
+changes, so an import or a `git clone` in the terminal needs no reload. It only looks for the
+file, not whether the flake imports `jsonDir`. The bottom-right notices are the page's since then
+(`.notices`, `.notice` in `style.css`, the terminal's restart and no-suggestions ones put into its
+stack by `terminal.js`): a box of no height in the page's column, right above the terminal's slot
+or the status bar, so nothing measures where the bar is (the restart notice was fixed to the
+window and placed from the bar's top). In `test_server.py`; the page not looked at.
 
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
@@ -1193,12 +1213,16 @@ was a plain list until Autocomplete was pressed once, and had its chips again af
 works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
-the user. When there are none yet (`options.json` answered 204, as on a machine just installed,
-where only an import from the System menu would have run it), the page says so at load
-(`loadSiblingFiles()`): with the Autocomplete button there, as a notice like the terminal's restart
-one, a click on which presses the button (the `suggestions` event, `#term-suggest-popup`, since
-2026-10-25: the user's wish; both notices stand in `#term-popups`, stacked), and in the status line
-without it (since 2026-10-24); neither with no files (the empty page). Made after the user found a
+the user. When there are none yet (no `.json` file in their folder, as on a machine just installed or after a system import,
+which removes them), the page says so: with the Autocomplete button there, as a notice like the terminal's restart one,
+a click on which presses the button (`#term-suggest-popup`, since 2026-10-25, the user's wish; the
+page's notices stack, see "No `flake.nix`, no new files"), and once in the status line without it
+(`_noSuggestionsLine()`, since 2026-10-24). Both go by the ping: a flake.nix there (`flake`) and an
+`autocomplete_stamp` of 0, which is no `.json` file in the folder, so it follows an import, a clone
+or the folder emptied. Chosen over a check per file (options or packages missing) on 2026-10-25,
+the user's call: a run that fails leaves a file as it was, so none there means none ever made;
+the one case given up is a first run whose options failed and packages worked, which says so in
+the terminal. Made after the user found a
 fresh install with none, and running the generator at every start, or at boot from the module,
 was talked through and not wanted. Of several configurations it takes the one named like the machine (for home-manager
 `user@host` or `user`), else the first; since 2026-10-18, at the user's wish, the first also

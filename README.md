@@ -212,6 +212,10 @@ Importing and exporting files is on right-click too: a tab for one file, a folde
 files, and the empty part of the tab bar for all of them (Import, Export all). The System
 button at the top is the whole flake instead; see [plugins](#-plugins).
 
+While the flake's folder has no `flake.nix`, as on an installer before a system is imported,
+nothing would read the files, so the editor offers no new file, folder or import. Files that
+are there anyway open as usual, with a notice in the corner that they are not used.
+
 ## 🧩 Adding it to a flake you already have
 
 Add it to the inputs, then use the module for your system.
