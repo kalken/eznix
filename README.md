@@ -333,6 +333,10 @@ or `"both"`.
 A button can have a `separator` too: a line beside it in the bar, or across the list when it
 is in a menu. Two lines never end up next to each other, and there is none at either end.
 
+Set in Nix instead, in a `.nix` file of your own, a button needs `static = true`, and so does a
+menu's entry under `services.eznix.menus`: those are built into eznix's configuration, where
+the editor's files are read as they are.
+
 ## 🔄 Suggestions
 
 The option and package suggestions are generated from your own flake, so they match exactly

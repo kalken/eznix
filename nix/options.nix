@@ -74,6 +74,12 @@ let
     key              = if generateCert then "${certDir}/localhost-key.pem" else if cfg.enableHttps then cfg.key else null;
     ca               = if generateCert then "${certDir}/ca.pem" else null;
     buttons          = map noNulls cfg.buttons;
+    # The page reads [menus.NAME] beside the menus' settings in the *.json files (STATIC_MENUS).
+    # Only the static ones, as with the buttons: the files' own are in cfg.menus as well, and one
+    # taken out in the editor would stay until the next rebuild. Left out of eznix.toml until
+    # 2026-10-25, so a menu of buttons set in Nix (the installer's) could have no order or
+    # separator.
+    menus            = lib.mapAttrs (_: m: noNulls (removeAttrs m [ "static" ])) (lib.filterAttrs (_: m: m.static) cfg.menus);
     plugin           = lib.recursiveUpdate { password = passwordPlugin; } cfg.plugins;
     # dir and shell go to the terminal process as arguments too, and the page compares the two
     # (a terminal started with other settings than these is offered a restart).
@@ -396,6 +402,7 @@ in
         options = {
           order     = mkOption { type = types.int; default = 0; description = "Where the menu stands in the bar: lowest first, where plain buttons and menus without a number count as 0. So 10 puts it after them and -10 before them."; };
           separator = mkOption { type = types.nullOr (types.enum [ "before" "after" "both" ]); default = null; description = "A dividing line beside the menu, on the side named."; };
+          static    = mkOption { type = types.bool; default = false; description = "Set in Nix, for a menu of buttons that are static too: these settings are then built into eznix's configuration. Without it they count only when they are in the editor's *.json files."; };
         };
       });
     };
