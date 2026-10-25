@@ -999,11 +999,12 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* Fixed in the window and not laid out with the editor: its top and bottom are measured
    (--side-top, --side-bottom: eznix.sidePanel()), so that it keeps its height when the
    terminal at the bottom opens and pushes the editor up; that terminal then comes up in
-   front of it. --below-bar is the height of what always stands on the status bar, which the
-   side ends above: the terminal's row of buttons, published by the terminal panel. */
+   front of it. The side ends above --below-buttons: the terminal's row of buttons, published
+   by the terminal panel. Not above the lines a hidden terminal shows over them
+   (terminal_hidden_lines; --below-bar includes them), which the side covers where it stands. */
 .side-panels {
   position: fixed; right: 0;
-  top: var(--side-top, 0px); bottom: calc(var(--side-bottom, 0px) + var(--below-bar, 0px));
+  top: var(--side-top, 0px); bottom: calc(var(--side-bottom, 0px) + var(--below-buttons, var(--below-bar, 0px)));
   width: var(--side-panel-width, 50vw);   /* set by dragging its left edge */
   z-index: 15; pointer-events: none;
   display: flex;

@@ -232,7 +232,10 @@ the panel has no window either (`.peek-off`, remembered in `eznix-terminal-peek`
 gets the room; a press elsewhere leaves the window; the room is given back when the panel opens,
 under it, never on a press in the editor (which would move the editor under the pointer). The
 terminal behind keeps its size in both, only invisible. The row of buttons has `--bg2` behind it
-while hidden, or the terminal's rows below the window would show through it. Syntax-checked and served by the test server;
+while hidden, or the terminal's rows below the window would show through it. The side panels reach
+down to the buttons (`--below-buttons`, without the window) and cover the window where they
+stand: a hidden terminal's slot is behind them (z-index 10, `:has(> .collapsed)`), the user's
+wish the same day after first agreeing to the side ending above it. Syntax-checked and served by the test server;
 not looked at in a browser.
 
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a

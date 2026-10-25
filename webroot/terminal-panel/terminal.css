@@ -6,6 +6,11 @@
    terminal.js) and no more. The panel is pinned to its bottom edge and grows upwards out of
    it, in front of the editor, which keeps its size (see the top of terminal.js). */
 .terminal-slot { position: relative; z-index: 30; flex-shrink: 0; height: var(--below-bar, 37px); }
+/* Hidden, it is behind the panels on the side (15), which cover its lines of
+   terminal_hidden_lines where they stand (the user, 2026-10-25); it reaches no higher than its
+   place then, so nothing else is in front of it. Open, it is in front of them again until the
+   side is pressed (.side-front in style.css). */
+.terminal-slot:has(> .terminal-panel.collapsed) { z-index: 10; }
 .terminal-panel {
   position: absolute; left: 0; right: 0; bottom: 0;
   background: var(--bg2);

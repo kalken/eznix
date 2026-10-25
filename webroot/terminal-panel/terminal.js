@@ -1041,7 +1041,13 @@ if (TERMINAL_HIDDEN_LINES) {
 // move when the terminal opens, which then comes up in front of them.
 {
   const bars = document.querySelector('#terminal-panel .terminal-header-group');
-  const publish = () => document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
+  // --below-buttons is the same without the lines of terminal_hidden_lines: the side reaches
+  // down to the buttons and covers the lines where it stands (the user, 2026-10-25).
+  const peek = document.getElementById('term-peek');
+  const publish = () => {
+    document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
+    document.documentElement.style.setProperty('--below-buttons', (bars.offsetHeight - peek.offsetHeight) + 'px');
+  };
   new ResizeObserver(publish).observe(bars);
   publish();
   // And how much of the editor the open panel stands in front of (--covered-below): the
