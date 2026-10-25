@@ -3120,8 +3120,9 @@ function renderEditor() {
   area.oncontextmenu = async e => {
     e.preventDefault();
     e.stopPropagation();
+    const after = _rowUnder(e, []);
     showContextMenu(e, _menu({
-      add: [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, [], _rowUnder(e, [])) }],
+      add: [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, [], after) }],
       clipboard: _clipboard ? [{ label: 'Paste', onclick: pastePath }] : [],
       view: _foldAllMenuItems(),
     }, await _fileMenuItems(activeFile)));
@@ -3513,7 +3514,9 @@ function _detachForFloat(el) {
 function _addMenuItems(event, path) {
   const obj = _enabledValue(getAtPath(config, path));
   const label = obj !== null && typeof obj === 'object' ? _addLineFor(path, obj) : null;
-  return label ? [{ label, onclick: () => showAddOptionMenu(event, path, _rowUnder(event, path)) }] : [];
+  if (!label) return [];
+  const after = _rowUnder(event, path);
+  return [{ label, onclick: () => showAddOptionMenu(event, path, after) }];
 }
 
 // Right-click "Add option…": rather than a separate/duplicate implementation, this temporarily
@@ -3538,28 +3541,34 @@ function _closeFloatingAddPanel() {
   _floatingAddState = null;
 }
 
-// Where "Add option…" puts what it adds (2026-10-26, the user's idea): opened from the empty
-// part of an option's row, which brings up the menu of what the row lies in (_onRowItself()),
-// right after that option; from a section's heading first in it (for an hour at the end,
-// until the user asked why); from blank space at the end, as before. _rowUnder() gives the
-// name of that option when the row is one of path's own, or _ADD_FIRST for path's heading;
-// _newKeyPlace() and _putNewKey() move the new key there (for a deeper path typed, the part
-// of it at path's level, when that part is new).
+// Where "Add option…" puts what it adds (2026-10-26, the user's idea), by one rule for every
+// object, a section, an object in a list or the file: after the last of its options (rows and
+// sub-sections alike) that starts above where the menu was opened, or first when it was opened
+// above all of them, on a heading or over the first key. So the empty part of a row (which
+// brings up the menu of what the row lies in, _onRowItself()) adds after that row, and below
+// the last one at the end. On the way to it, for some hours that day: a heading first, a row
+// after itself, an object in a list first by its margin, anywhere else at the end; the user
+// then found the room just above a section's first key adding at the end, and asked for one
+// rule. _rowUnder() works out the option (or _ADD_FIRST) when the menu opens, while the rows
+// are where they were seen; _newKeyPlace() and _putNewKey() move the new key there (for a
+// deeper path typed, the part of it at path's level, when that part is new).
 const _ADD_FIRST = { first: true };
 function _rowUnder(event, path) {
-  const t = event && event.target;
-  const head = t && t.closest && t.closest('.section-header');
-  if (head) {
-    const sec = head.closest('.section');
-    return sec && sec.dataset.path === path.join('.') ? _ADD_FIRST : null;
-  }
-  const row = t && t.closest && t.closest('.field-row');
-  if (!row || row.dataset.path === undefined) return null;
-  const prefix = path.length ? path.join('.') + '.' : '';
-  if (!row.dataset.path.startsWith(prefix)) return null;
-  const key = row.dataset.path.slice(prefix.length);
   const obj = _contentAt(path);
-  return obj && typeof obj === 'object' && !Array.isArray(obj) && Object.prototype.hasOwnProperty.call(obj, key) ? key : null;
+  if (!event || !obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+  const prefix = path.length ? path.join('.') + '.' : '';
+  const own = p => p.startsWith(prefix) && Object.prototype.hasOwnProperty.call(obj, p.slice(prefix.length)) ? p.slice(prefix.length) : null;
+  let after = _ADD_FIRST;
+  for (const el of document.querySelectorAll('.editor-area .field-row[data-path], .editor-area .section[data-path]')) {
+    // A compacted heading stands for each section of its chain (data-chain).
+    const paths = el.dataset.chain ? JSON.parse(el.dataset.chain) : [el.dataset.path];
+    const key = paths.map(own).find(k => k !== null);
+    if (key === undefined || key === null) continue;
+    const r = el.getBoundingClientRect();
+    if (!r.height) continue;                    // folded away
+    if (r.top <= event.clientY) after = key;
+  }
+  return after;
 }
 function _newKeyPlace(parts) {
   const st = _floatingAddState;
