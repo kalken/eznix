@@ -19,11 +19,16 @@ const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME
 // terminal"). The restart notice is fixed to the
 // right corner of the screen, right above wherever the terminal bar starts (bottom set fresh
 // by _updateTermRestartPopup()): that edge is a constant screen position whatever the panel's
-// size, while the panel's own top edge moves -- anchoring there made the notice jump.
+// size, while the panel's own top edge moves -- anchoring there made the notice jump. The
+// notice that there are no suggestions yet stands in the same place, in the same box
+// (#term-popups), so that the two stack and never cover each other.
 // Two arrows in a circle: the terminal's restart button and the header's Autocomplete button.
 const _RELOAD_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
 document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
+<div class="term-popups" id="term-popups">
 <div class="term-restart-popup hidden" id="term-restart-popup" onclick="restartTerminal()">Terminal has changed - click to restart</div>
+<div class="term-restart-popup hidden" id="term-suggest-popup" onclick="_startAutocomplete()">No suggestions yet - click to generate them</div>
+</div>
 
 <div class="terminal-slot"><div class="terminal-panel collapsed" id="terminal-panel">
   <div class="terminal-body">
@@ -102,9 +107,10 @@ function _terminalNeedsRestart() { return _terminalStale; }
 // Positioned fresh every time it's shown -- see the markup comment above #term-restart-popup for
 // why this is anchored to the terminal bar's own top edge rather than any specific button.
 function _updateTermRestartPopup() {
-  const popup = document.getElementById('term-restart-popup');
-  if (!_terminalNeedsRestart()) { popup.classList.add('hidden'); return; }
-  popup.classList.remove('hidden');
+  document.getElementById('term-restart-popup').classList.toggle('hidden', !_terminalNeedsRestart());
+  _placeTermPopups();
+}
+function _placeTermPopups() {
   // Right corner of the screen (fixed in CSS -- see .term-restart-popup) rather than anchored to
   // any one button, so it isn't tied to that button's own width/label/icon at all -- just
   // #terminal-header-group's own top edge (both rows, in install mode, not just the first),
@@ -115,7 +121,7 @@ function _updateTermRestartPopup() {
   // its *top* edge up into .layout above it). window.innerHeight - top, not top itself, since
   // bottom-anchoring the popup means its own height never has to be measured here at all.
   const barTop = document.querySelector('.terminal-header-group').getBoundingClientRect().top;
-  popup.style.bottom = (window.innerHeight - barTop + 1) + 'px';
+  document.getElementById('term-popups').style.bottom = (window.innerHeight - barTop + 1) + 'px';
 }
 // The one restart mechanism now -- runs systemctl directly from eznix.py's own process (see
 // POST /api/v1/terminal/restart there) rather than typing the command into the terminal's own
@@ -436,7 +442,7 @@ function initTerminalAutoHide() {
   document.addEventListener('mousedown', e => {
     if (panel.classList.contains('collapsed') || panel.contains(e.target)) return;
     if (_ctxMenuStack.some(m => m.contains(e.target))) return;
-    if (e.target.closest && e.target.closest('#term-restart-popup, .hover-tooltip')) return;
+    if (e.target.closest && e.target.closest('#term-popups, .hover-tooltip')) return;
     toggleTerminal();
   }, true);
 }
@@ -830,6 +836,18 @@ function _spinAutocomplete(running, stamp) {
   const busy = running || Date.now() - _autocompleteClickedAt < _AUTOCOMPLETE_GRACE_MS;
   btn.classList.toggle('is-running', busy);
   btn.disabled = busy;
+  _updateSuggestPopup();
+}
+// The page says whether it has suggestions ('suggestions' below, at load and after every
+// reload of them). Without any, a notice like the restart one, a click on which is the
+// Autocomplete button; it stands aside while the generator runs, so a run that fails brings
+// it back. (2026-10-25, the user's wish: it was a line in the status bar.)
+let _suggestionsMissing = false;
+function _updateSuggestPopup() {
+  const btn = document.getElementById('autocomplete-btn');
+  document.getElementById('term-suggest-popup').classList.toggle('hidden',
+    !_suggestionsMissing || !btn || btn.disabled);
+  _placeTermPopups();
 }
 if (_TERM_CONFIG.autocomplete) {
   eznix.addButton('header', {
@@ -840,6 +858,7 @@ if (_TERM_CONFIG.autocomplete) {
     onclick: () => _startAutocomplete(),
   });
   eznix.on('autocomplete', opts => _startAutocomplete(opts));
+  eznix.on('suggestions', ({ missing }) => { _suggestionsMissing = missing; _updateSuggestPopup(); });
 }
 // `run`: a command typed into the terminal, for a plugin (the system plugin, after an import).
 eznix.on('run', command => _runInTerminal({ command }));
@@ -850,6 +869,7 @@ function _startAutocomplete(opts) {
   // Turning at once, without this counting as a ping having seen the generator.
   const btn = document.getElementById('autocomplete-btn');
   if (btn) { btn.classList.add('is-running'); btn.disabled = true; }
+  _updateSuggestPopup();
   _runInTerminal({ command: opts && opts.before ? `( ${opts.before} ) && ${_TERM_CONFIG.autocomplete}` : _TERM_CONFIG.autocomplete });
 }
 

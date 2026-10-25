@@ -1193,7 +1193,14 @@ was a plain list until Autocomplete was pressed once, and had its chips again af
 works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
-the user. Of several configurations it takes the one named like the machine (for home-manager
+the user. When there are none yet (`options.json` answered 204, as on a machine just installed,
+where only an import from the System menu would have run it), the page says so at load
+(`loadSiblingFiles()`): with the Autocomplete button there, as a notice like the terminal's restart
+one, a click on which presses the button (the `suggestions` event, `#term-suggest-popup`, since
+2026-10-25: the user's wish; both notices stand in `#term-popups`, stacked), and in the status line
+without it (since 2026-10-24); neither with no files (the empty page). Made after the user found a
+fresh install with none, and running the generator at every start, or at boot from the module,
+was talked through and not wanted. Of several configurations it takes the one named like the machine (for home-manager
 `user@host` or `user`), else the first; since 2026-10-18, at the user's wish, the first also
 when the machine's own entry's options do not evaluate (`pick_options()`), and the options are
 evaluated before the plugins and packages so that all three come from the one host. A host

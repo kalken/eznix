@@ -153,9 +153,13 @@
    eznix-terminal.service is stale relative to what's on disk. That edge is a constant screen
    position regardless of the panel's quarter/half/full/collapsed size (only the panel's own top
    edge moves with it), so the popup itself never jumps around when the panel resizes. */
-.term-restart-popup {
+.term-popups {
   position: fixed;
   right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
   /* Deliberately higher than every other z-index in the app (context menus, modals, the drag
      ghost, ...) -- a restart-needed indicator is more important than whatever's on screen, so
      this should never end up hidden behind something else open at the time. The one deliberate
@@ -164,6 +168,8 @@
      where the popup already is, with the popup (being on top) making it unreadable -- exactly
      the case a tooltip exists to prevent. */
   z-index: 99999;
+}
+.term-restart-popup {
   background: var(--bg2);
   border: 1px solid var(--accent2);
   border-radius: var(--radius);
