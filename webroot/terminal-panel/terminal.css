@@ -26,19 +26,35 @@
   /* How tall the lines of output shown while it is hidden are (#term-peek, .has-peek). */
   --term-peek: 0px;
 }
-/* terminal_hidden_lines (see _updateTermPeek() in terminal.js): the latest lines of output,
-   above the row of buttons, in the terminal's colours and a font like its own. Part of the
-   row all the time; while the panel is open the terminal shows through it. */
+/* terminal_hidden_lines (see _placeTermPeek() in terminal.js): a window onto the terminal's
+   newest lines, above the row of buttons. The terminal keeps its open height behind it and is
+   clipped by the panel; the window's frame, in the terminal's background, hides the rows next
+   to the ones shown (3px, `frame` there). The height is measured (--term-peek on the panel);
+   this one is until the terminal has drawn. Part of the row all the time; while the panel is
+   open it is invisible and the terminal shows through it. */
 .terminal-panel.has-peek { --term-peek: calc(var(--term-peek-lines) * 16px + 6px); }
 .term-peek {
   height: var(--term-peek); box-sizing: border-box; flex-shrink: 0;
-  padding: 3px 12px;
-  font: 12px/16px 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Hack', ui-monospace, monospace;
-  white-space: pre; overflow: hidden;
-  color: var(--term-fg); background: var(--term-bg);
+  border-top: 3px solid var(--term-bg); border-bottom: 3px solid var(--term-bg);
   cursor: pointer;
 }
 .terminal-panel:not(.collapsed) .term-peek { visibility: hidden; }
+.terminal-panel.collapsed.has-peek { overflow: hidden; }
+/* The rows below the window would otherwise show through the row of buttons. */
+.terminal-panel.collapsed.has-peek .terminal-header { background: var(--bg2); }
+/* Hidden by its own button (_showTermPeek()): no window, and the terminal behind it invisible
+   but keeping its size. */
+.terminal-panel.peek-off .term-peek { display: none; }
+.terminal-panel.collapsed.peek-off .terminal-body { visibility: hidden; }
+.terminal-panel.collapsed.has-peek.peek-off { height: var(--term-bar) !important; }
+.terminal-panel.collapsed.install-mode.has-peek.peek-off { height: calc(2 * var(--term-bar)) !important; }
+.terminal-panel.collapsed.has-peek.peek-off .terminal-header { border-top: none; padding-top: 5px; }
+.terminal-panel.collapsed.has-peek .terminal-body {
+  display: flex; position: absolute; left: 0; right: 0; top: 0;
+  height: var(--term-body-h, 25vh);
+  transform: translateY(var(--term-peek-shift, 0px));
+  pointer-events: none;
+}
 /* No line between the panel and the status bar under it: the two read as one strip at the
    bottom of the page. Without a terminal the status bar keeps its line, against the editor. */
 .terminal-slot + .statusbar { border-top: none; }
