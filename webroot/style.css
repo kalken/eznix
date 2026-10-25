@@ -990,9 +990,25 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* ── Null value display ── */
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
 
-/* What an empty list shows where its first item would be (renderArrayField()): the placeholder's
-   colour, on the line and at the left edge where a value's text is. */
-.list-add { padding: 4px 8px; color: var(--text3); cursor: pointer; }
+/* The "+" of something empty (_addPlus()): a box of the toggle's size, border and corners. An
+   empty list has it where its first item would be, as a toggle is placed (.field-row.nest
+   .toggle-wrap); an empty object where its first option's name would be: one indent step in
+   from the section's name (the section's --depth is inherited), at the edge of an object in a
+   list, and in a top-level card in a box of its own as a run of options is. */
+.list-add-wrap { display: flex; align-items: center; min-height: var(--row-height); padding-left: 8px; }
+.section-body > .list-add-wrap { padding-left: calc((var(--depth, 0) + 1) * var(--indent-step)); }
+.section.nest-top > .section-body > .list-add-wrap {
+  box-sizing: content-box; border-top: 1px solid var(--card-divider);
+  padding: var(--card-gap) 0 calc(var(--card-gap) + 4px) calc(var(--block-pad) + var(--indent-step));
+}
+.array-obj-fields > .list-add-wrap { padding-left: 0; }
+.list-add {
+  width: 32px; height: 17px; box-sizing: border-box;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg4); border: 1px solid var(--input-border); border-radius: var(--input-radius);
+  color: var(--text2); font-size: 14px; line-height: 1; cursor: pointer; user-select: none;
+}
+.list-add:hover { color: var(--text); }
 .is-disabled .list-add { pointer-events: none; }
 
 /* ── Panels on the side (eznix.sidePanel()) ── */

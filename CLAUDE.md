@@ -838,7 +838,7 @@ cause was found. Edit that file by exact strings.
 
 **Adding**: there is no button for it in the page (2026-10-23, the user's wish: "the + button removed
 on all the fields and a right click menu option for it instead"). A list has "Add item" on its
-menu and on its items' (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list says "Add item…" in the placeholder's tone, a click adding the first (`.list-add`); a section and
+menu and on its items' (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list has a "+" in a box shaped like a true/false toggle (since 2026-10-25; it said "Add item…" before), a click adding the first, as an empty object (a section, an item of a list) has one that opens "Add option…" when that rule offers it (`_addPlus()`, `_emptyObjPlus()`, `.list-add`); a section and
 an object in a list have "Add option…" (`_addMenuItems()`), and the editor's blank space has "Add
 option…" for the file. One rule says whether it is there (`_addLineFor()`): always, except where
 every option the suggestions list is already set *and* the object certainly takes no others
