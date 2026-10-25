@@ -229,13 +229,14 @@ is part of the row of buttons whether the panel is open or not (invisible while 
 `--below-bar` stays the same and the editor is not resized. With it set the terminal connects at
 page load, hidden, at the height it will open at. Hidden by its own button (`toggleTerminal(true)`)
 the panel has no window either (`.peek-off`, remembered in `eznix-terminal-peek`) and the editor
-gets the room; a press elsewhere leaves the window; the room is given back when the panel opens,
+gets the room; a press elsewhere leaves the window, and the button then takes it away
+(pointing down, "Hide") instead of opening the panel, which a click on the window does; the room is given back when the panel opens,
 under it, never on a press in the editor (which would move the editor under the pointer). The
 terminal behind keeps its size in both, only invisible. The row of buttons has `--bg2` behind it
-while hidden, or the terminal's rows below the window would show through it. The side panels reach
-down to the buttons (`--below-buttons`, without the window) and cover the window where they
-stand: a hidden terminal's slot is behind them (z-index 10, `:has(> .collapsed)`), the user's
-wish the same day after first agreeing to the side ending above it. Syntax-checked and served by the test server;
+while hidden, or the terminal's rows below the window would show through it. The side panels end
+above the window (`--below-bar` includes it). For some hours the same day they reached down to
+the buttons and covered the window where they stood (`--below-buttons`, the hidden terminal's
+slot behind them, commit `f4a6762`), at the user's wish, until the user asked for it back. Syntax-checked and served by the test server;
 not looked at in a browser.
 
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a

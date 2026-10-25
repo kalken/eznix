@@ -388,10 +388,17 @@ function _persistTerminalSize(size) {
 
 // `all`: hidden by its own button, which takes the lines of terminal_hidden_lines away too
 // (_placeTermPeek()); a press elsewhere leaves them.
+// While the lines are showing, the button takes them away rather than opening the panel (the
+// user, 2026-10-25); the lines themselves open it (#term-peek).
 function toggleTerminal(all = false) {
   const panel = document.getElementById('terminal-panel');
   const btn = document.getElementById('term-toggle');
   const collapsed = panel.classList.contains('collapsed');
+  if (collapsed && all && _termPeekShown()) {
+    _showTermPeek(false);
+    _termToggleLook();
+    return;
+  }
   if (collapsed) {
     _showTermPeek(true);
     panel.classList.remove('collapsed');
@@ -413,10 +420,21 @@ function toggleTerminal(all = false) {
     // CSS rules (!important) already decide the visible height on their own, regardless of
     // whatever the inline style still says.
     panel.classList.add('collapsed');
-    btn.classList.remove('expanded');
-    btn.dataset.tooltip = 'Show';
+    _termToggleLook();
     _persistTerminalOpen(false);
   }
+}
+// The hidden panel's lines are in view (terminal_hidden_lines, not taken away by the button).
+function _termPeekShown() {
+  return !!TERMINAL_HIDDEN_LINES && !document.getElementById('terminal-panel').classList.contains('peek-off');
+}
+// The button points down and says Hide while there is something to hide: the open panel, or
+// the hidden one's lines.
+function _termToggleLook() {
+  const btn = document.getElementById('term-toggle');
+  const hides = !document.getElementById('terminal-panel').classList.contains('collapsed') || _termPeekShown();
+  btn.classList.toggle('expanded', hides);
+  btn.dataset.tooltip = hides ? 'Hide' : 'Show';
 }
 
 // Hides the open terminal panel on a press anywhere outside it, when TERMINAL_AUTO_HIDE. On
@@ -462,7 +480,7 @@ function setTerminalSize(size) {
   panel.style.height = h;
   _showTermPeek(true);
   panel.classList.remove('collapsed');
-  document.getElementById('term-toggle').classList.add('expanded');
+  _termToggleLook();
   _persistTerminalOpen(true);
   _persistTerminalSize(size);
   initTerminal().then(() => {
@@ -1034,6 +1052,7 @@ if (TERMINAL_HIDDEN_LINES) {
   let off = false;
   try { off = localStorage.getItem('eznix-terminal-peek') === 'off'; } catch (e) {}
   if (off) panel.classList.add('peek-off');
+  _termToggleLook();
 }
 
 // How tall the panel is when it is hidden, its row (or rows) of buttons: what always stands on
@@ -1041,13 +1060,7 @@ if (TERMINAL_HIDDEN_LINES) {
 // move when the terminal opens, which then comes up in front of them.
 {
   const bars = document.querySelector('#terminal-panel .terminal-header-group');
-  // --below-buttons is the same without the lines of terminal_hidden_lines: the side reaches
-  // down to the buttons and covers the lines where it stands (the user, 2026-10-25).
-  const peek = document.getElementById('term-peek');
-  const publish = () => {
-    document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
-    document.documentElement.style.setProperty('--below-buttons', (bars.offsetHeight - peek.offsetHeight) + 'px');
-  };
+  const publish = () => document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
   new ResizeObserver(publish).observe(bars);
   publish();
   // And how much of the editor the open panel stands in front of (--covered-below): the
