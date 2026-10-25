@@ -400,7 +400,22 @@ const eznix = {
       toggle.onclick = e => { e.stopPropagation(); set(!stack.classList.contains('side-hidden')); };
       stack.appendChild(toggle);
       stack.addEventListener('click', () => { if (stack.classList.contains('side-hidden')) set(false); });
-      this._sideShow = () => set(false);
+      // In front of what is drawn over it (the terminal panel at the bottom) once it is
+      // pressed or typed in, or a panel in it is brought forward; behind again only on a
+      // press on that other thing, which is a press inside the side's box that did not land
+      // on the side. A press in the editor beside it changes nothing (the user's wish,
+      // 2026-10-25, for both kept open; a press anywhere else sent it back at first). Only a
+      // press or focus moves it, never the pointer passing over, and focus never sends it
+      // back: the page focuses things of its own accord.
+      const inFront = on => stack.classList.toggle('side-front', on);
+      document.addEventListener('mousedown', e => {
+        if (e.target.closest && e.target.closest('.context-menu, .modal-overlay, .hover-tooltip')) return;
+        if (stack.contains(e.target)) { inFront(true); return; }
+        const box = stack.getBoundingClientRect();
+        if (e.clientX >= box.left && e.clientX < box.right && e.clientY >= box.top && e.clientY < box.bottom) inFront(false);
+      }, true);
+      document.addEventListener('focusin', e => { if (stack.contains(e.target)) inFront(true); });
+      this._sideShow = () => { set(false); inFront(true); };
       document.addEventListener('mousedown', e => {
         if (stack.classList.contains('side-hidden') || stack.contains(e.target)) return;
         if (!this._sideWindows.some(w => w.panels.some(p => p.autoHide))) return;

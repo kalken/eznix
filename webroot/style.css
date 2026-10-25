@@ -31,7 +31,7 @@ body {
   /* Above .tab-bar-row: a blurred shadow spreads in every direction, so the tab bar's own would
      otherwise also show as a faint dark line along its top edge, over the bottom of this row. */
   position: relative;
-  z-index: 31;
+  z-index: 33;   /* 31 until the side could come in front of the terminal (.side-front) */
   padding: 10px 18px;
   display: flex;
   align-items: center;
@@ -104,7 +104,7 @@ body {
      because .main below is positioned and would otherwise paint over the shadow. */
   box-shadow: 0 1px 0 var(--panel-hairline), 0 1px var(--panel-shadow-size) var(--panel-shadow);
   position: relative;
-  z-index: 30; /* above what floats over the editor (plugins' panels), so the shade falls across their top */
+  z-index: 32; /* above what floats over the editor (plugins' panels, .side-front included), so the shade falls across their top */
   display: flex;
   align-items: flex-start;
   flex-shrink: 0;
@@ -1008,6 +1008,10 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   z-index: 15; pointer-events: none;
   display: flex;
 }
+/* In front of the terminal panel (30) while it has the user's attention (eznix.sidePanel()).
+   Above 30 and so above the tab bar too, which is therefore 32 and the header 33: the tab
+   bar's shade still falls across the side's top, and the header still covers the tab bar's. */
+.side-panels.side-front:not(.side-hidden) { z-index: 31; }
 /* Out of the way (autoHide in eznix.sidePanel(), or its button): slid off the window's right
    edge, still laid out, so that a terminal in it keeps its size, and only so far that its
    left corner with the button stays in the window. The button is one of the page's own with

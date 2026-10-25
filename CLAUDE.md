@@ -1067,7 +1067,11 @@ lay over it and showed one file at a time, and the user missed having several th
 stack in the page; and the user asked for tabs "in the editor window or document window"
 instead of a window per file, and then for the two windows "side by side" and not one
 behind the other. A plugin fills a panel's body and header and keeps its own
-list of what is open.
+list of what is open. Where the open terminal and the side overlap, the one last pressed is in
+front (`.side-front`, since 2026-10-25, the user's wish with both kept open): a press in the side
+brings it forward, a press inside the side's box that is not on the side (the terminal) sends it
+back, and a press in the editor beside it changes nothing; for that the tab bar is 32 and the
+header 33. Syntax-checked and served by the test server; not tried in a browser.
 
 **`files`** (2026-10-12, the user's idea) is menus of the flake's files by their kind: each
 entry of `[plugin.files] menus` is a button with a `name`, the `extensions` it lists and the
