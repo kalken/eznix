@@ -365,3 +365,5 @@ function closeMarkdownPanel(name) {
 }
 
 eznix.on('ready', initMarkdownMenu);
+// A Markdown file the page is asked to show (an imported system's README, say).
+eznix.on('open', path => { if (path.endsWith('.md')) openMarkdownFile(path); });

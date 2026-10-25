@@ -621,6 +621,15 @@ ezinstall's `ezhwconfig` (it stays there, for the with-disks case at `--root /mn
 ISO's own configuration). A file that is there, or one the zip brings, is never made. In
 `test_server.py` (`system_sources()`). Not tried in the page, in a terminal or on NixOS.
 
+**An imported system can say which files to open** (`open` in the system plugin, 2026-10-25,
+the user's idea: a template's `README.md`): a list of paths in the flake, read from the zip's
+configuration folder like `generate` (`setting_in()`), but from any zip, since it runs nothing.
+The import's answer lists those that are there (`to_open()`), with `tab` for a `.json` in the
+configuration folder, which the page does not know the place of; the page switches to a tab and
+sends anything else out as the `open` event, heard by Documents (`.md`) and the files plugin (a
+menu's endings), so the system plugin names neither. Kept over the reload with `generate`'s
+commands. In `test_server.py`; the page not tried.
+
 **Systems can be imported from places named in the configuration** (`sources` in the
 system plugin, 2026-10-19, the user's idea: "import systems from an url, listing a
 folder/zip hierarchy"): a zip, whose every folder with a `flake.nix` is a system (a GitHub

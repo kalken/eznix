@@ -16,7 +16,17 @@ eznix.on('ready', () => {
   let after = null;
   try { after = JSON.parse(sessionStorage.getItem(_AFTER_IMPORT)); sessionStorage.removeItem(_AFTER_IMPORT); } catch (e) { /* no storage: nothing is asked */ }
   if (after && after.command) setTimeout(() => eznix.emit('run', after.command), 0);
+  if (after && after.open) setTimeout(() => _openAfterImport(after.open), 0);
 });
+// `open`: the files the imported system says to show (services.eznix.plugins.system.open in its
+// configuration), each {path} in the flake and `tab` for one of the editor's own files, which
+// the page switches to; any other goes out as 'open', for whatever shows its kind.
+function _openAfterImport(list) {
+  for (const item of list || []) {
+    if (item.tab && files.includes(item.tab)) switchFile(item.tab);
+    else if (item.path) eznix.emit('open', item.path);
+  }
+}
 
 // Unlike exportAll() (which zips the in-memory fileConfigs — unsaved edits included, but only
 // eznix's own *.json tabs), this is the *on-disk* NIXOS_TARGET tree, flake and all — the server
@@ -156,8 +166,9 @@ function _afterSystemImport(res, data) {
   if (isAnyDirty()) {
     setStatus(parts.join(', ') + ' — reload once you save/undo to see the changes', 6000, 'ok');
     if (command) eznix.emit('run', command);
+    _openAfterImport((data.open || []).filter(item => !item.tab));
   } else {
-    if (command) { try { sessionStorage.setItem(_AFTER_IMPORT, JSON.stringify({ command })); } catch (e) { /* see above */ } }
+    if (command || data.open) { try { sessionStorage.setItem(_AFTER_IMPORT, JSON.stringify({ command, open: data.open })); } catch (e) { /* see above */ } }
     location.reload();
   }
 }

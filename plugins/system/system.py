@@ -48,6 +48,13 @@ Settings ([plugin.system] in eznix.toml):
             files), but is taken from there only when the zip came from a source of the
             configuration: one uploaded from disk may not say what runs in a terminal, and the
             running configuration's setting is used.
+  open      [path]: files to open after an import, relative to the flake (2026-10-25, the
+            user's idea: a template's README.md). Read from the zip's configuration folder, at
+            services.eznix.plugins.system.open, from any zip, since it runs nothing: the page
+            opens each that is there afterwards with whatever it has for its kind (the 'open'
+            event: Documents for .md, a menu of the files plugin for its endings, a tab for
+            one of the editor's own JSON files). Set in the running configuration it does
+            nothing.
   sources   where systems can be imported from (2026-10-19, the user's idea), each a location
             or {name, url}. A location is an https address or a path on this machine (an
             installer's own templates), and what is there is a zip or an index, told apart by
@@ -331,13 +338,13 @@ def setup(api):
                 out.append({'file': e['file'].strip(), 'command': e['command'].strip()})
         return out
 
-    def generate_in(zf):
-        """What the zip says about files to make when an import leaves them missing: `generate`
-        under services.eznix.plugins.system in the JSON files of its configuration folder, a
-        list of {file, command}. A disabled setting does not count."""
-        rel = os.path.relpath(api.config_dir or os.path.join(flake, 'eznix'), flake).replace(os.sep, '/')
+    def setting_in(zf, key):
+        """The value of services.eznix.plugins.system.KEY in the JSON files of the zip's
+        configuration folder, the first file that has one; None when none has. A disabled
+        setting does not count."""
+        rel = os.path.relpath(os.path.realpath(api.config_dir or os.path.join(flake, 'eznix')), flake).replace(os.sep, '/')
         if rel.startswith('..'):
-            return []
+            return None
         def step(node, key):
             if isinstance(node, dict) and '_value' in node and '_disabled' in node:
                 node = None if node['_disabled'] else node['_value']
@@ -350,14 +357,56 @@ def setup(api):
                 node = json.loads(zf.read(info))
             except ValueError:
                 continue
-            for key in ('services', 'eznix', 'plugins', 'system', 'generate'):
-                node = step(node, key)
+            for k in ('services', 'eznix', 'plugins', 'system', key):
+                node = step(node, k)
             if isinstance(node, dict) and '_value' in node and '_disabled' in node:
                 node = None if node['_disabled'] else node['_value']
-            found = entries_of(node)
-            if found:
-                return found
-        return []
+            if node is not None:
+                return node
+        return None
+
+    def generate_in(zf):
+        """What the zip says about files to make when an import leaves them missing: `generate`
+        in its configuration, a list of {file, command}."""
+        return entries_of(setting_in(zf, 'generate'))
+
+    def open_in(zf):
+        """The files the zip says to open once it is imported (`open` in its configuration, a
+        list of paths in the flake: a template's README, say; 2026-10-25, the user's idea).
+        Taken from any zip, uploaded or not: opening runs nothing the zip chose, a file being
+        shown by whatever the running page has for its kind. Anything that is no plain
+        relative path is left out."""
+        value = setting_in(zf, 'open')
+        out = []
+        for e in value if isinstance(value, list) else []:
+            if isinstance(e, dict) and '_value' in e and '_disabled' in e:
+                e = None if e['_disabled'] else e['_value']
+            if not isinstance(e, str):
+                continue
+            path = e.strip().replace('\\', '/')
+            if path and not path.startswith('/') and not any(p in ('', '.', '..') for p in path.split('/')) and path not in out:
+                out.append(path)
+        return out
+
+    def to_open(paths):
+        """The files of `open` that are there after the import, each {path} relative to the
+        flake, and `tab` when it is one of the editor's own (a .json in the configuration
+        folder), for the page to switch to: the page does not know where that folder is."""
+        base = os.path.realpath(flake)
+        conf = os.path.realpath(api.config_dir or os.path.join(flake, 'eznix'))
+        out = []
+        for path in paths:
+            full = os.path.join(flake, path)
+            if os.path.islink(full) or not os.path.isfile(full):
+                continue
+            real = os.path.realpath(full)
+            if os.path.commonpath([base, real]) != base:
+                continue
+            item = {'path': path}
+            if path.endswith('.json') and os.path.commonpath([conf, real]) == conf:
+                item['tab'] = os.path.relpath(real, conf).replace(os.sep, '/')
+            out.append(item)
+        return out
 
     def generate_for(zf, trusted):
         """(entries, untrusted): the files to make when missing, each with the command that makes
@@ -394,6 +443,9 @@ def setup(api):
         missing = [e for e in entries if not os.path.lexists(os.path.join(flake, e['file']))]
         if missing:
             result['generate'] = missing
+        opened = to_open(open_in(zf))
+        if opened:
+            result['open'] = opened
         return result
 
     def is_web(loc):

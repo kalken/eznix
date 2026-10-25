@@ -657,6 +657,15 @@ def system_sources():
         check('generate: and the commands to run come back after the import', result['generate'] == [hw, key], result)
         report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/off', 'path': '', 'dry': True}).encode())
         check('generate: a disabled setting in the zip is no setting', report['generate'] == [], report)
+        # Files to open after an import: taken from any zip, since nothing of it is run.
+        opens = json.dumps({'services': {'eznix': {'plugins': {'system': {'open': [
+            'README.md', 'eznix/system.json', 'missing.md', '../out.md', '/etc/hosts', 'a/./b.md', 7, 'README.md']}}}}})
+        saved_conf, ez.CONFIG_DIR = ez.CONFIG_DIR, f'{d}/op1/eznix'
+        result = machine({}, 'op1')('POST', 'import', {}, zbytes({**plain, 'README.md': '# hi', 'eznix/system.json': opens}))
+        ez.CONFIG_DIR = saved_conf
+        check('open: an uploaded zip names files to open; those that are there come back, a JSON tab with its name',
+              result.get('open') == [{'path': 'README.md'}, {'path': 'eznix/system.json', 'tab': 'system.json'}], result)
+        check('open: nothing named, nothing to open', 'open' not in machine({}, 'op2')('POST', 'import', {}, zbytes(plain)))
         check('sources: a path that is not a system of the folder is refused',
               refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': 'nothing'}).encode())) == 400
               and refused(lambda: get2('POST', 'import-source', json.dumps({'url': f'{d}/shipped', 'path': '../src'}).encode())) == 400)

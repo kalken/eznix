@@ -209,6 +209,13 @@ function openFlakeFile(name, menu, newFolder) {
   _filesOpen.set(name, panel);
   _filesKeepOpen();
 }
+// A file the page is asked to show (one an imported system names) opens in the first menu
+// whose endings it has.
+eznix.on('open', path => {
+  if (!eznix.listens('terminal')) return;
+  const menu = (_filesConfig.menus || []).find(m => m.extensions.some(end => path.endsWith(end)));
+  if (menu) openFlakeFile(path, menu);
+});
 // What is open is kept for a reload of the page, with the menu each was opened from.
 function _filesKeepOpen() {
   try { localStorage.setItem('eznix-files-open', JSON.stringify([..._filesOpen].map(([name, panel]) => [name, panel.menu]))); } catch (e) { /* ignore */ }

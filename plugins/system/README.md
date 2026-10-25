@@ -31,6 +31,7 @@ services.eznix.plugins.system = {
 | `backups` | `5` | how many backups are kept; `0` for none |
 | `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
 | `generate` | none | a list of `{ file, command }`: files to make when an import leaves them missing, each with the command that makes it (see below). An entry needs both, or it is ignored: there are no defaults, since it has to fit every platform and a template sets it |
+| `open` | none | files to open after an import, relative to the flake: set in a template's own configuration (see below) |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
 | `enabled` | `true` | `false` leaves the plugin out |
 
@@ -126,11 +127,26 @@ without `--no-filesystems` the disks mounted now are included. A zip you upload 
 what runs in a terminal: its list is not taken, and the setting of the running configuration is
 used instead.
 
+## 📖 Files to open
+
+A template can name files to be opened once it is imported, a README that says what to do
+next, say. The list is in the JSON files of its configuration folder:
+
+```json
+"services": { "eznix": { "plugins": { "system": { "open": [ "README.md" ] } } } }
+```
+
+After the import each file that is there is opened with what the page has for its kind: a
+`.md` file in Documents, a file with the endings of a menu of the files plugin in that menu's
+program, one of the editor's own JSON files as its tab. It is taken from any zip, uploaded or
+from a source, since opening a file runs nothing the zip chose. Set in the running
+configuration it does nothing.
+
 ## 🔎 Suggestions
 
 Nix itself knows plugin settings as one option, "attribute set of attribute set of anything", so
 the plugin adds its own to the suggestions when Autocomplete is pressed: `backups`, `exclude`,
-`sources`, `generate` (with `file` and `command`, marked as required for an entry) and
+`sources`, `generate` (with `file` and `command`, marked as required for an entry), `open` and
 `enabled`, each with its description. It is help in the editor only: Nix accepts any value
 there. Press Autocomplete once after updating eznix to get them.
 

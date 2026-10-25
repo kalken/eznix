@@ -46,5 +46,11 @@ def generate(ctx):
         _option("generate.*.command", "string", "What makes the file, typed into the terminal, which starts in "
                 "the flake's folder: a name without a path lands next to flake.nix.", required=True,
                 example="sudo sh -c 'nixos-generate-config --show-hardware-config > hardware-configuration.nix'"),
+        _option("open", "list of string", "Files to open once a system is imported, relative to the flake: set in "
+                "a template's own configuration, so that importing it shows its README, say. Each opens with "
+                "what the page has for its kind (Documents for .md, a menu of the files plugin, a tab for one of "
+                "the editor's own files); one that is not there is left out. Taken from any zip, since it runs "
+                "nothing; set in the running configuration it does nothing.", default="[ ]",
+                example='[ "README.md" ]'),
         _option("enabled", "boolean", "false leaves the plugin out.", default="true"),
     ]}
