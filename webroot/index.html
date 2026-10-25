@@ -4264,6 +4264,24 @@ function _isBlankItem(v) {
   return false;
 }
 
+// What an object of a list becomes as the template of a new one ("Add item like this"): the
+// same options, nested ones too, with every value emptied, a value being of the kind it was:
+// text "", a list [], true/false false, a number 0 (JSON has no empty number), a Nix
+// expression empty. Something switched off stays off. The user's idea (2026-10-25), for
+// lists such as services.eznix.buttons, where a new entry has the options of the others.
+function _blankLike(v) {
+  if (Array.isArray(v)) return [];
+  if (v === null) return null;
+  if (typeof v === 'object') {
+    if (isExprPkg(v)) return { _expr: '' };
+    if (isDisabled(v)) return { ...v, _value: _blankLike(v._value) };
+    return Object.fromEntries(Object.entries(v).map(([k, x]) => [k, _blankLike(x)]));
+  }
+  if (typeof v === 'boolean') return false;
+  if (typeof v === 'number') return 0;
+  return '';
+}
+
 function renderArray(container, arr, path) {
   arr.forEach((v, i) => {
     const itemPath = [...path, i];
@@ -4278,7 +4296,14 @@ function renderArray(container, arr, path) {
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, _menu({ add: [..._addMenuItems(e, itemPath), { label: 'Add item', onclick: () => _addListItem(arr, path) }] }, _commonMenuItems(itemPath)));
+        showContextMenu(e, _menu({ add: [..._addMenuItems(e, itemPath), { label: 'Add item', onclick: () => _addListItem(arr, path) },
+          { label: 'Add item like this', onclick: () => {
+            arr.splice(i + 1, 0, _blankLike(arr[i]));
+            renderAll();
+            const added = document.querySelectorAll('.field-row[data-path="' + CSS.escape(path.join('.')) + '"] > .field-value > :is(.array-obj-item, .array-item)')[i + 1];
+            const box = added && added.querySelector('input[type=text], input[type=number], textarea');
+            if (box) box.focus();
+          } }] }, _commonMenuItems(itemPath)));
       };
       // Backspace in a text field that is already empty takes the whole item away when there
       // is nothing in any of its options (_isBlankItem()), as it does an empty item of a list

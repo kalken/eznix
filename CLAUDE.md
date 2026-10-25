@@ -838,7 +838,7 @@ cause was found. Edit that file by exact strings.
 
 **Adding**: there is no button for it in the page (2026-10-23, the user's wish: "the + button removed
 on all the fields and a right click menu option for it instead"). A list has "Add item" on its
-menu and on its items' (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list says "Add item…" in the placeholder's tone, a click adding the first (`.list-add`); a section and
+menu and on its items' (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list says "Add item…" in the placeholder's tone, a click adding the first (`.list-add`); an object in a list also has "Add item like this", a copy put after it with every value emptied (`_blankLike()`, 2026-10-25, the user's idea for lists like `services.eznix.buttons`; checked by running it, lifted out of the page, not in a browser); a section and
 an object in a list have "Add option…" (`_addMenuItems()`), and the editor's blank space has "Add
 option…" for the file. One rule says whether it is there (`_addLineFor()`): always, except where
 every option the suggestions list is already set *and* the object certainly takes no others

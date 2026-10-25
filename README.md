@@ -196,6 +196,9 @@ A setting the suggestions don't know can be added all the same, as free-form set
 often need: type its whole name in **Add option…**, press Enter and pick what kind of value
 it is.
 
+In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
+item like this** for a new one with the same settings, all of them empty.
+
 A value can also be a raw Nix expression (right-click a value), which can use what a Nix
 module is given: `pkgs`, `lib`, `config`, `options`, and what your flake passes in
 `specialArgs` (often `inputs`). For example `pkgs.hello`, `lib.mkForce 1`,
