@@ -3708,33 +3708,11 @@ function renderSection(container, key, obj, path) {
   const body = document.createElement('div');
   body.className = 'section-body';
   renderObj(body, obj, path);
-  _emptyObjPlus(body, obj, path);
   section.appendChild(body);
   // The whole heading line is the drag handle; a drag only starts once the pointer has moved
   // (see makeDraggable()), so a plain click on it is still just a click.
   makeDraggable(section, outerKey, outer.slice(0, -1), header);
   container.appendChild(section);
-}
-
-// The "+" of something that is empty and waits to be filled (2026-10-25, the user wanting it
-// visible): a list with no items, an object (a section, an item of a list) with no options.
-// A box of a toggle's size and shape, where a toggle would be.
-function _addPlus(tip, onclick) {
-  const wrap = document.createElement('div');
-  wrap.className = 'list-add-wrap';
-  const plus = document.createElement('div');
-  plus.className = 'list-add';
-  plus.textContent = '+';
-  _wireHoverTooltip(plus, tip);
-  plus.onclick = onclick;
-  wrap.appendChild(plus);
-  return wrap;
-}
-// An empty object's "+": "Add option…" opened at the "+", where the rule of the menus has it.
-function _emptyObjPlus(container, obj, path) {
-  if (Object.keys(obj).length) return;
-  const item = _addMenuItems(null, path)[0];
-  if (item) container.appendChild(_addPlus(item.label.replace(/…$/, ''), e => showAddOptionMenu(e, path)));
 }
 
 // Adds an item to the end of a list and puts the cursor in it.
@@ -3797,13 +3775,18 @@ function renderArrayField(container, key, arr, path) {
   else renderArray(valEl, arr, path);
 
   // A list has no button for its next item: "Add item" is on its right-click menu, and on that
-  // of its items, and Enter in a plain item adds the next one. An empty list has a "+" in a box
-  // shaped like a true/false toggle, and a click on it adds the first. It was the words under
-  // every list, then a "+" (2026-10-12), until the user asked for the menu instead (2026-10-23),
-  // then the words "Add item…" on an empty list, and the boxed "+" since 2026-10-25, the user
-  // wanting something visible there.
+  // of its items, and Enter in a plain item adds the next one. An empty list says "Add item…"
+  // in the tone of a placeholder, as the other kinds of list do ("Add value…"), and a click on
+  // it adds the first. It was the words under every list, then a "+" (2026-10-12), until the
+  // user asked for the menu instead (2026-10-23) and then for the words on an empty list.
   const canAddItem = !isPkgArrayPath(path) && !enumOpts;
-  if (canAddItem && !arr.length) valEl.appendChild(_addPlus('Add item', () => _addListItem(arr, path)));
+  if (canAddItem && !arr.length) {
+    const hint = document.createElement('div');
+    hint.className = 'list-add';
+    hint.textContent = 'Add item…';
+    hint.onclick = () => _addListItem(arr, path);
+    valEl.appendChild(hint);
+  }
 
   row.oncontextmenu = e => {
     if (!_onRowItself(e)) return;
@@ -4292,7 +4275,6 @@ function renderArray(container, arr, path) {
       const fields = document.createElement('div');
       fields.className = 'array-obj-fields';
       renderObj(fields, v, itemPath);
-      _emptyObjPlus(fields, v, itemPath);
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
