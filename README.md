@@ -196,6 +196,9 @@ A setting the suggestions don't know can be added all the same, as free-form set
 often need: type its whole name in **Add option…**, press Enter and pick what kind of value
 it is.
 
+Right-click the empty part of an option's row and choose **Add option…** to have the new
+option put right after that one; from a section's heading it goes first in the section.
+
 In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
 item like this** for a new one with the same settings, all of them empty.
 

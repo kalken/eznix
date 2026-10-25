@@ -2551,10 +2551,12 @@ function doForceAddWithType(type) {
   const raw = inp.value.trim();
   if (!raw) return;
   const parts = _addPathParts(raw);
+  const place = _newKeyPlace(parts);
   const cur = traverseForSet(config, parts);
   if (!cur) return;
   const key = parts[parts.length - 1];
   if (!(key in cur)) cur[key] = defaultForType(type);
+  _putNewKey(place);
   inp.value = '';
   _closeFloatingAddPanel();
   renderAll();
@@ -2630,6 +2632,7 @@ function doAdd() {
   }
 
   const parts = rawParts;
+  const place = _newKeyPlace(parts);
   const cur = traverseForSet(config, parts);
   if (!cur) return;
   const key = parts[parts.length - 1];
@@ -2677,6 +2680,7 @@ function doAdd() {
       }
     }
     cur[key] = initialVal;
+    _putNewKey(place);
   }
 
   inp.value = '';
@@ -3117,7 +3121,7 @@ function renderEditor() {
     e.preventDefault();
     e.stopPropagation();
     showContextMenu(e, _menu({
-      add: [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, []) }],
+      add: [{ label: 'Add option…', onclick: () => showAddOptionMenu(e, [], _rowUnder(e, [])) }],
       clipboard: _clipboard ? [{ label: 'Paste', onclick: pastePath }] : [],
       view: _foldAllMenuItems(),
     }, await _fileMenuItems(activeFile)));
@@ -3509,7 +3513,7 @@ function _detachForFloat(el) {
 function _addMenuItems(event, path) {
   const obj = _enabledValue(getAtPath(config, path));
   const label = obj !== null && typeof obj === 'object' ? _addLineFor(path, obj) : null;
-  return label ? [{ label, onclick: () => showAddOptionMenu(event, path) }] : [];
+  return label ? [{ label, onclick: () => showAddOptionMenu(event, path, _rowUnder(event, path)) }] : [];
 }
 
 // Right-click "Add option…": rather than a separate/duplicate implementation, this temporarily
@@ -3534,7 +3538,55 @@ function _closeFloatingAddPanel() {
   _floatingAddState = null;
 }
 
-function showAddOptionMenu(event, path) {
+// Where "Add option…" puts what it adds (2026-10-26, the user's idea): opened from the empty
+// part of an option's row, which brings up the menu of what the row lies in (_onRowItself()),
+// right after that option; from a section's heading first in it (for an hour at the end,
+// until the user asked why); from blank space at the end, as before. _rowUnder() gives the
+// name of that option when the row is one of path's own, or _ADD_FIRST for path's heading;
+// _newKeyPlace() and _putNewKey() move the new key there (for a deeper path typed, the part
+// of it at path's level, when that part is new).
+const _ADD_FIRST = { first: true };
+function _rowUnder(event, path) {
+  const t = event && event.target;
+  const head = t && t.closest && t.closest('.section-header');
+  if (head) {
+    const sec = head.closest('.section');
+    return sec && sec.dataset.path === path.join('.') ? _ADD_FIRST : null;
+  }
+  const row = t && t.closest && t.closest('.field-row');
+  if (!row || row.dataset.path === undefined) return null;
+  const prefix = path.length ? path.join('.') + '.' : '';
+  if (!row.dataset.path.startsWith(prefix)) return null;
+  const key = row.dataset.path.slice(prefix.length);
+  const obj = _contentAt(path);
+  return obj && typeof obj === 'object' && !Array.isArray(obj) && Object.prototype.hasOwnProperty.call(obj, key) ? key : null;
+}
+function _newKeyPlace(parts) {
+  const st = _floatingAddState;
+  if (!st || st.after == null) return null;
+  const base = st.path;
+  if (parts.length <= base.length || base.some((seg, i) => String(parts[i]) !== String(seg))) return null;
+  const holder = _contentAt(base);
+  const top = parts[base.length];
+  if (!holder || typeof holder !== 'object' || Array.isArray(holder) || top in holder) return null;
+  return { base, top, after: st.after };
+}
+function _putNewKey(place) {
+  if (!place) return;
+  const holder = _contentAt(place.base);
+  if (!holder || !(place.top in holder) || (place.after !== _ADD_FIRST && !(place.after in holder))) return;
+  // Reordered in place, the file's top level being the file's own object.
+  const entries = Object.entries(holder), added = holder[place.top];
+  for (const [k] of entries) delete holder[k];
+  if (place.after === _ADD_FIRST) holder[place.top] = added;
+  for (const [k, v] of entries) {
+    if (k === place.top) continue;
+    holder[k] = v;
+    if (k === place.after) holder[place.top] = added;
+  }
+}
+
+function showAddOptionMenu(event, path, after = null) {
   _closeFloatingAddPanel();
 
   const wrap = document.querySelector('.topbar .autocomplete-wrap');
@@ -3568,7 +3620,7 @@ function showAddOptionMenu(event, path) {
   function outsideHandler(e) { if (!container.contains(e.target)) _closeFloatingAddPanel(); }
   setTimeout(() => document.addEventListener('mousedown', outsideHandler, true), 0);
 
-  _floatingAddState = { wrap, restoreWrap, restoreBtn, restoreForce, outsideHandler, container };
+  _floatingAddState = { wrap, restoreWrap, restoreBtn, restoreForce, outsideHandler, container, path, after };
 
   const inp = document.getElementById('add-input');
   inp.value = path.length ? path.join('.') + '.' : '';
