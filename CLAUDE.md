@@ -603,9 +603,9 @@ commands of the missing ones make: typed into the terminal after the import (the
 event), each in a subshell chained with `&&`; the request survives the reload in sessionStorage.
 The suggestions are not generated after an import since 2026-10-25 (the setting `autocomplete`
 did, chained after these): an import or restore that changed anything removes the `.json` files
-of the suggestions' folder (`forget_suggestions()`, `api.autocomplete_dir`), and the page's notice
-of none offers to make them (see "Suggestions are never generated automatically"). The user's
-idea, once that notice was there: the old system's suggestions stayed, without a word, when the
+of the suggestions' folder (`forget_suggestions()`, `api.autocomplete_dir`), and the page marks the
+Autocomplete button for it (see "Suggestions are never generated automatically"). The user's
+idea, once the page said so: the old system's suggestions stayed, without a word, when the
 setting was off or the run failed. Removed without keeping the old name; an `autocomplete` left
 in a configuration is ignored. It was
 `hardware`, one file, for the machine's hardware-configuration.nix, until the user said any
@@ -701,10 +701,17 @@ says there is no flake and has no menu (the system plugin's line and cards still
 files that are there anyway open with a notice (`#no-flake-notice`). The ping redraws when it
 changes, so an import or a `git clone` in the terminal needs no reload. It only looks for the
 file, not whether the flake imports `jsonDir`. The bottom-right notices are the page's since then
-(`.notices`, `.notice` in `style.css`, the terminal's restart and no-suggestions ones put into its
-stack by `terminal.js`): a box of no height in the page's column, right above the terminal's slot
-or the status bar, so nothing measures where the bar is (the restart notice was fixed to the
-window and placed from the bar's top). In `test_server.py`; the page not looked at.
+(`.notices`, `.notice` in `style.css`): a box of no height in the page's column, right above the
+terminal's slot or the status bar, so nothing measures where the bar is. The terminal's restart
+and no-suggestions notices were in it for a day; they are marks on buttons now (see "A button
+that is waited on is marked"). In `test_server.py`; the page not looked at.
+
+**A button that is waited on is marked** (`.needs-attention` in `style.css`: the accent colour,
+a dot on its corner, a tooltip that says why), since 2026-10-25: the terminal's Restart (which
+then shows its word beside the icon) while the running terminal is out of date, and Autocomplete
+while there are no suggestions. They were notices in the bottom right corner, over the editor,
+for a day; asked whether there was a better place, I proposed the buttons and the user, having
+seen it in the test server, found it "much better". Not looked at in a browser by me.
 
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
@@ -1253,9 +1260,8 @@ works!").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
 the user. When there are none yet (no `.json` file in their folder, as on a machine just installed or after a system import,
-which removes them), the page says so: with the Autocomplete button there, as a notice like the terminal's restart one,
-a click on which presses the button (`#term-suggest-popup`, since 2026-10-25, the user's wish; the
-page's notices stack, see "No `flake.nix`, no new files"), and once in the status line without it
+which removes them), the page says so: with the Autocomplete button there, by marking it (see "A button that is
+waited on is marked"), and once in the status line without it
 (`_noSuggestionsLine()`, since 2026-10-24). Both go by the ping: a flake.nix there (`flake`) and an
 `autocomplete_stamp` of 0, which is no `.json` file in the folder, so it follows an import, a clone
 or the folder emptied. Chosen over a check per file (options or packages missing) on 2026-10-25,

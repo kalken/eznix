@@ -117,8 +117,8 @@ there). The terminal starts in the flake's folder, so a relative file name lands
 `flake.nix`.
 
 An import or a restore that changes anything removes the suggestions, which were of the system
-that was there. A notice in the corner then offers to generate them for the new one; click it
-once the commands above have finished.
+that was there. The **Autocomplete** button is then marked until they are generated for the
+new one; press it once the commands above have finished.
 
 The list is the zip's own when it comes from a source of your configuration: it is in the JSON
 files of its configuration folder, at `services.eznix.plugins.system.generate`, so a template

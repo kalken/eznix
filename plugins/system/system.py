@@ -312,9 +312,9 @@ def setup(api):
     def forget_suggestions():
         """The suggestions are of the system that was there: an import or a restore that changed
         anything removes them, and the page then offers to generate them for this one (its
-        notice of none, from the ping). Until 2026-10-25 an import generated them by itself
+        mark on the Autocomplete button, from the ping). Until 2026-10-25 an import generated them by itself
         (`autocomplete`), and with that off, or the run failing, the old system's stayed in the
-        editor without a word; the user chose the notice and a click."""
+        editor without a word; the user chose a mark and a click."""
         d = api.autocomplete_dir
         try:
             names = os.listdir(d)

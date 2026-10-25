@@ -10,7 +10,7 @@ const SYSTEM_SOURCES = !!(eznix.config.system || {}).sources;
 // to make (see _afterSystemImport()). The import reloads the page, so what is to be run is kept
 // in the browser's session across the reload and run once the page is up again. The
 // suggestions are not generated after an import: the server removes the old system's, and the
-// page's notice of none offers to (since 2026-10-25; the `autocomplete` setting did it before).
+// page marks the Autocomplete button for it (since 2026-10-25; the `autocomplete` setting did it before).
 const _AFTER_IMPORT = 'eznix-system-after-import';
 eznix.on('ready', () => {
   let after = null;

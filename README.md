@@ -340,8 +340,8 @@ the editor's files are read as they are.
 ## 🔄 Suggestions
 
 The option and package suggestions are generated from your own flake, so they match exactly
-what your configuration can set. Until they are generated, a notice in the bottom right corner
-says so when the page opens; click it to generate them. The **Autocomplete** button at the top generates them: it
+what your configuration can set. Until they are generated, the **Autocomplete** button is
+marked, in the accent colour with a dot on its corner. The **Autocomplete** button at the top generates them: it
 runs this in the terminal, where you can follow it:
 
 ```sh

@@ -295,7 +295,7 @@ input[type=text].key-rename-input {
    inherited from .tooltip, for the rare long command that needs it. */
 /* z-index above .notices' 99999, not just the ordinary tooltip base's 1000 -- a tooltip only
    ever shows because the user is actively hovering to read it, which should never be obscured
-   by a passive notification, #term-restart-btn's own most of all (see there). */
+   by a passive notification. */
 .hover-tooltip { min-width: 0; padding: 5px 8px; z-index: 100000; }
 /* Tooltip visibility: .tt-anchor wraps just the rendered title text so the hover target is the
    text itself, not the whole reserved-width key column (which is wider than short titles). It's
@@ -680,6 +680,13 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .notice.notice-info { cursor: default; }
 .notice.notice-info:hover { background: var(--bg2); }
 .notice.hidden { display: none; }
+/* A button that something is waiting on (the terminal to restart, suggestions to generate): in
+   the accent colour with a dot on its corner, until it is done. */
+.btn.needs-attention { position: relative; color: var(--accent); border-color: var(--accent2); }
+.btn.needs-attention::after {
+  content: ''; position: absolute; top: -3px; right: -3px;
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+}
 
 .statusbar {
   /* Above .terminal-panel, for the same reason .header is above .tab-bar-row: the panel's

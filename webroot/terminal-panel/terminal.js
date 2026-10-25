@@ -1,5 +1,5 @@
 // The terminal's part of the page: the panel at the bottom, its command buttons, and the
-// notice that the running terminal program is out of date. Part of eznix itself, not a plugin
+// mark that the running terminal program is out of date. Part of eznix itself, not a plugin
 // (a plugin needs nothing from the system; a terminal needs a process run for each user) --
 // but kept out of index.html and loaded the way a plugin's files are, only when a terminal is
 // set up (TERMINAL_PANEL in eznix.py), and talking to the page through the same events. So
@@ -17,15 +17,12 @@ const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME
 // hide on a click outside it, a click in the editor resized the editor under the pointer,
 // and near the end of a file what was clicked on moved (the user: "sometimes when i click
 // in the editor the page scrolls", "the editor window should not be affected at all by the
-// terminal"). The restart notice and the one that there are no suggestions yet are the page's
-// kind (.notice), in its stack in the bottom right corner (#notices), which stands on this bar
-// since the slot comes right after it in the page.
+// terminal"). That the terminal is out of date and that there are no suggestions yet are each a
+// mark on the button that does it (.needs-attention: the accent colour and a dot), Restart in
+// this row and Autocomplete in the header, since 2026-10-25 (the user's choice, after seeing it);
+// they were notices in the page's stack in the bottom right corner, over the editor.
 // Two arrows in a circle: the terminal's restart button and the header's Autocomplete button.
 const _RELOAD_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>';
-document.getElementById('notices').insertAdjacentHTML('beforeend', `
-<div class="notice hidden" id="term-restart-popup" onclick="restartTerminal()">Terminal has changed - click to restart</div>
-<div class="notice hidden" id="term-suggest-popup" onclick="_startAutocomplete()">No suggestions yet - click to generate them</div>
-`);
 document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
 <div class="terminal-slot"><div class="terminal-panel collapsed" id="terminal-panel">
   <div class="terminal-body">
@@ -37,7 +34,7 @@ document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
     <div class="terminal-header">
       <div class="terminal-cmd-btns" id="terminal-cmd-btns"></div>
       <div class="terminal-header-actions">
-        <button class="btn" id="term-restart-btn" data-tooltip="Restart terminal service" onclick="restartTerminal()">${_RELOAD_ICON}</button>
+        <button class="btn" id="term-restart-btn" data-tooltip="Restart terminal service" onclick="restartTerminal()">${_RELOAD_ICON}<span class="hidden">Restart</span></button>
         <button class="btn" data-tooltip="Quarter screen" onclick="setTerminalSize('quarter')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="16" width="18" height="5" fill="currentColor" stroke="none"/></svg></button>
         <button class="btn" data-tooltip="Half screen" onclick="setTerminalSize('half')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="12" width="18" height="9" fill="currentColor" stroke="none"/></svg></button>
         <button class="btn" data-tooltip="Full screen" onclick="setTerminalSize('full')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" stroke="none"/></svg></button>
@@ -103,7 +100,12 @@ let _termExited = false;
 let _terminalStale = false;
 function _terminalNeedsRestart() { return _terminalStale; }
 function _updateTermRestartPopup() {
-  document.getElementById('term-restart-popup').classList.toggle('hidden', !_terminalNeedsRestart());
+  const btn = document.getElementById('term-restart-btn'), stale = _terminalNeedsRestart();
+  btn.classList.toggle('needs-attention', stale);
+  btn.querySelector('span').classList.toggle('hidden', !stale);
+  btn.dataset.tooltip = stale
+    ? 'eznix was updated: restart the terminal to use the new version (ends what runs in it)'
+    : 'Restart terminal service';
 }
 // The one restart mechanism now -- runs systemctl directly from eznix.py's own process (see
 // POST /api/v1/terminal/restart there) rather than typing the command into the terminal's own
@@ -122,7 +124,7 @@ async function restartTerminal() {
     const data = await res.json().catch(() => ({}));
     if (res.ok) {
       setStatus('Terminal service restarted', 3000, 'ok');
-      // Take the notice down now and not with the next ping, up to five seconds on; that ping
+      // Take the mark down now and not with the next ping, up to five seconds on; that ping
       // puts it back if the restart didn't bring up the right terminal after all.
       _terminalStale = false;
       _updateTermRestartPopup();
@@ -854,19 +856,22 @@ function _spinAutocomplete(running, stamp) {
 }
 // No suggestions at all and a flake.nix to make them from (the ping: a stamp of 0 when their
 // folder has no .json file, and `flake`), so it updates by itself, after an import, a clone or
-// the folder emptied. Then a notice like the restart one, a click on which is the Autocomplete
-// button; it stands aside while the generator runs, so a run that fails brings it back.
-// (2026-10-25, the user's wish: it was a line in the status bar.)
+// the folder emptied. Then the Autocomplete button is marked (.needs-attention), its tooltip
+// saying why; not while the generator runs, so a run that fails brings it back. (2026-10-25: a
+// line in the status bar, then a notice in the corner, then this, each the user's wish.)
 let _suggestionsMissing = false;
+const _AUTOCOMPLETE_TIP = 'Generate the suggestions for options and packages from your flake, in the terminal';
 function _updateSuggestPopup() {
   const btn = document.getElementById('autocomplete-btn');
-  document.getElementById('term-suggest-popup').classList.toggle('hidden',
-    !_suggestionsMissing || !btn || btn.disabled);
+  if (!btn) return;
+  const missing = _suggestionsMissing && !btn.disabled;
+  btn.classList.toggle('needs-attention', missing);
+  btn.dataset.tooltip = missing ? 'No suggestions yet: click to generate them from your flake, in the terminal' : _AUTOCOMPLETE_TIP;
 }
 if (_TERM_CONFIG.autocomplete) {
   eznix.addButton('header', {
     id: 'autocomplete-btn',
-    tooltip: 'Generate the suggestions for options and packages from your flake, in the terminal',
+    tooltip: _AUTOCOMPLETE_TIP,
     html: _RELOAD_ICON + 'Autocomplete',
     group: 'tools',
     onclick: () => _startAutocomplete(),
