@@ -6,6 +6,7 @@
 // the page still never names anything in here. xterm.js and its addons are loaded before this.
 const _TERM_CONFIG       = eznix.config.terminal || {};
 const TERMINAL_AUTO_HIDE = _TERM_CONFIG.auto_hide !== false; // terminal_auto_hide in eznix.toml -- see initTerminalAutoHide()
+const TERMINAL_HIDDEN_LINES = _TERM_CONFIG.hidden_lines > 0 ? _TERM_CONFIG.hidden_lines : 0; // terminal_hidden_lines -- see _updateTermPeek()
 const STATIC_BUTTONS     = _TERM_CONFIG.buttons || [];       // from [[buttons]] in eznix.toml — not tied to any tab
 const STATIC_MENUS       = _TERM_CONFIG.menus || {};         // from [menus.NAME] in eznix.toml, see getMenus()
 
@@ -32,6 +33,7 @@ document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
     <div class="term-status-banner hidden" id="term-status-banner"></div>
   </div>
   <div class="terminal-header-group">
+    <div class="term-peek hidden" id="term-peek" onclick="toggleTerminal()"></div>
     <div class="terminal-header">
       <div class="terminal-cmd-btns" id="terminal-cmd-btns"></div>
       <div class="terminal-header-actions">
@@ -193,6 +195,7 @@ async function initTerminal() {
     } catch (_) {}
     _term.open(container);
     _termFit.fit();
+    _term.onWriteParsed(_scheduleTermPeek);
     let _fitTimer = null;
     new ResizeObserver(() => {
       clearTimeout(_fitTimer);
@@ -290,6 +293,10 @@ function connectTerminalWs() {
     // that then ran real commands into an unusably tiny pane -- looking like the command never
     // ran, when it was actually just rendered somewhere no one could see it.
     setTimeout(() => {
+      // Connected while the panel is hidden (terminal_hidden_lines): it has no size to give,
+      // and fit() would leave xterm's 80x24 to be sent to a shell that may be running a
+      // rebuild. The size is sent once the panel opens (_termSizeAfterOpen()).
+      if (document.getElementById('terminal-panel').classList.contains('collapsed')) { _termSizeOwed = true; return; }
       if (_term && _termFit && _termWs && _termWs.readyState === WebSocket.OPEN) {
         // fit() forces an actual fresh layout/cell-metrics measurement and applies it to _term;
         // proposeDimensions() alone is a pure calculation that can be stale right after a fast
@@ -395,6 +402,7 @@ function toggleTerminal() {
     initTerminal().then(() => {
       if (_term) {
         if (!_termWs || _termWs.readyState === WebSocket.CLOSED) connectTerminalWs();
+        else _termSizeAfterOpen();
         _term.focus();
       }
     });
@@ -452,6 +460,7 @@ function setTerminalSize(size) {
   initTerminal().then(() => {
     if (_term) {
       if (!_termWs || _termWs.readyState === WebSocket.CLOSED) connectTerminalWs();
+      else _termSizeAfterOpen();
       _term.focus();
     }
   });
@@ -947,6 +956,55 @@ function _extraTerminal(opts) {
 eznix.on('terminal', _extraTerminal);
 eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme = _buildTermTheme(); });
 
+// terminal_hidden_lines (terminalHiddenLines, 1 unless set): the hidden panel keeps that many
+// lines of the latest output in view above its buttons (#term-peek), so that a rebuild started
+// there can be followed from the editor (the user's wish, 2026-10-25, as a setting: the
+// lines take that much room from the editor all the time). They are read off xterm's buffer
+// as plain text, ending at the cursor's line (or the last line with anything on it above
+// it), and not a window onto the bottom of the screen: output fills a cleared screen from the
+// top. Colours are not kept. The strip is part of the row of buttons all the time and only
+// invisible while the panel is open, where the terminal itself shows through it, so that the
+// panel's place in the page (--below-bar) does not change when it opens and the editor keeps
+// its size. A click on it opens the panel. 1 by default since the same day: hidden then means
+// out of the way and not gone, as the side panels are (the user's idea).
+let _termPeekQueued = false;
+let _termSizeOwed = false;
+function _scheduleTermPeek() {
+  if (!TERMINAL_HIDDEN_LINES || _termPeekQueued) return;
+  _termPeekQueued = true;
+  requestAnimationFrame(() => { _termPeekQueued = false; _updateTermPeek(); });
+}
+function _updateTermPeek() {
+  const peek = document.getElementById('term-peek');
+  if (!peek || !_term) return;
+  const buf = _term.buffer.active;
+  const text = y => { const line = buf.getLine(y); return line ? line.translateToString(true) : ''; };
+  let end = buf.baseY + buf.cursorY;
+  while (end > 0 && text(end) === '') end--;
+  const lines = [];
+  for (let y = Math.max(0, end - TERMINAL_HIDDEN_LINES + 1); y <= end; y++) lines.push(text(y));
+  peek.textContent = lines.join('\n');
+}
+// The panel opened on a terminal that connected while it was hidden and so gave no size
+// (connectTerminalWs()): this browser's, once the panel has its height. Only then, so that an
+// ordinary open sends nothing it did not before.
+function _termSizeAfterOpen() {
+  if (!_termSizeOwed) return;
+  setTimeout(() => {
+    if (!_term || !_termFit || !_termWs || _termWs.readyState !== WebSocket.OPEN) return;
+    if (document.getElementById('terminal-panel').classList.contains('collapsed')) return;
+    _termSizeOwed = false;
+    _termFit.fit();
+    _termWs.send(JSON.stringify({ type: 'resize', cols: _term.cols, rows: _term.rows }));
+  }, 200);
+}
+if (TERMINAL_HIDDEN_LINES) {
+  document.getElementById('term-peek').classList.remove('hidden');
+  const panel = document.getElementById('terminal-panel');
+  panel.classList.add('has-peek');
+  panel.style.setProperty('--term-peek-lines', TERMINAL_HIDDEN_LINES);
+}
+
 // How tall the panel is when it is hidden, its row (or rows) of buttons: what always stands on
 // the status bar. The panels on the side end above it (--below-bar in style.css) and do not
 // move when the terminal opens, which then comes up in front of them.
@@ -990,6 +1048,12 @@ eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme
 eznix.on('ready', () => {
   if (localStorage.getItem('eznix-terminal-open') === 'true') {
     setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'quarter');
+  } else if (TERMINAL_HIDDEN_LINES) {
+    // Connected while hidden, so the lines show what runs (a rebuild that restarted the
+    // editor and reloaded this page) without the panel having been opened first.
+    initTerminal().then(() => {
+      if (_term && (!_termWs || _termWs.readyState === WebSocket.CLOSED)) connectTerminalWs();
+    });
   }
 });
 eznix.on('render', renderButtons);

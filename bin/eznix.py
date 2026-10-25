@@ -163,6 +163,7 @@ TERMINAL_END_ON_LOGOUT = True   # the shell belongs to a login: it ends when its
 TERMINAL_SCRIPT        = None   # the eznix-terminal program on disk
 TERMINAL_PROGRAM       = ''     # sha256 of that file, half of what a terminal's stamp is made of (_terminal_for())
 TERMINAL_AUTO_HIDE     = True   # hide the open terminal panel on a click outside it
+TERMINAL_HIDDEN_LINES  = 1      # lines of the terminal's latest output shown while the panel is hidden
 DEBUG                  = False  # the `debug` setting: see _debug()
 
 def _debug(what):
@@ -1286,7 +1287,7 @@ def _render_index():
     # block this is embedded into.
     config = {name: p['config'] for name, p in PLUGINS.items()}
     if TERMINALS:
-        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'buttons': STATIC_BUTTONS,
+        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'hidden_lines': TERMINAL_HIDDEN_LINES, 'buttons': STATIC_BUTTONS,
                               'menus': STATIC_MENUS, 'autocomplete': _autocomplete_command()}
     plugin_config = json.dumps(config).replace('</', '<\\/')
     return (open(os.path.join(WEBROOT, 'index.html')).read()
@@ -2742,7 +2743,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL, COMPACT_LEVEL
+    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL, COMPACT_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2898,6 +2899,10 @@ def main():
     indent = cfg.get('indent', 2)
     INDENT = float(indent) if isinstance(indent, (int, float)) and not isinstance(indent, bool) and indent >= 0 else 2
     TERMINAL_AUTO_HIDE = bool(cfg.get('terminal_auto_hide', True))
+    # terminal_hidden_lines: how many lines of the latest output the hidden panel shows, 1 when
+    # not set, 0 for none.
+    hidden_lines = cfg.get('terminal_hidden_lines', 1)
+    TERMINAL_HIDDEN_LINES = min(hidden_lines, 20) if isinstance(hidden_lines, int) and not isinstance(hidden_lines, bool) and hidden_lines > 0 else 0
     STATIC_BUTTONS = [b for b in cfg.get('buttons', []) if isinstance(b, dict) and b.get('label') and b.get('command')]
     STATIC_MENUS = {name: m for name, m in (cfg.get('menus') or {}).items() if isinstance(m, dict)}
 

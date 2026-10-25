@@ -23,17 +23,32 @@
      above it, the 1px line among those. (10px, what the top bar's buttons have to that bar's
      lower edge, was tried and was too much.) Everything that makes room for a row uses this. */
   --term-bar: 37px;
+  /* How tall the lines of output shown while it is hidden are (#term-peek, .has-peek). */
+  --term-peek: 0px;
 }
+/* terminal_hidden_lines (see _updateTermPeek() in terminal.js): the latest lines of output,
+   above the row of buttons, in the terminal's colours and a font like its own. Part of the
+   row all the time; while the panel is open the terminal shows through it. */
+.terminal-panel.has-peek { --term-peek: calc(var(--term-peek-lines) * 16px + 6px); }
+.term-peek {
+  height: var(--term-peek); box-sizing: border-box; flex-shrink: 0;
+  padding: 3px 12px;
+  font: 12px/16px 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Hack', ui-monospace, monospace;
+  white-space: pre; overflow: hidden;
+  color: var(--term-fg); background: var(--term-bg);
+  cursor: pointer;
+}
+.terminal-panel:not(.collapsed) .term-peek { visibility: hidden; }
 /* No line between the panel and the status bar under it: the two read as one strip at the
    bottom of the page. Without a terminal the status bar keeps its line, against the editor. */
 .terminal-slot + .statusbar { border-top: none; }
-.terminal-panel.collapsed { height: var(--term-bar) !important; }
+.terminal-panel.collapsed { height: calc(var(--term-bar) + var(--term-peek)) !important; }
 /* Its top edge is dragged to size it (eznix.resizable()), which a hidden terminal has no use for. */
 .terminal-panel.collapsed > .resize-handle { display: none; }
 /* The install-mode row is a second .terminal-header — collapsed height needs to fit both
    when it's visible. More specific than the plain .collapsed rule above (same !important), so
    this wins whenever both classes are present. */
-.terminal-panel.collapsed.install-mode { height: calc(2 * var(--term-bar)) !important; }
+.terminal-panel.collapsed.install-mode { height: calc(2 * var(--term-bar) + var(--term-peek)) !important; }
 /* The whole ordinary row disabled at once during install mode, rather than each button
    individually — a title attribute (set alongside this class, see the init IIFE) gives the
    native hover tooltip explaining why. pointer-events: none goes on the buttons, not the
@@ -67,6 +82,8 @@
 }
 /* Without its line the row keeps its height, so the padding takes the line's pixel over. */
 .terminal-panel.collapsed .terminal-header { border-top: none; padding-top: 5px; }
+/* With the lines above it the row has its line again, between them and the buttons. */
+.terminal-panel.collapsed.has-peek .terminal-header { border-top: 1px solid var(--border); padding-top: 4px; }
 
 .terminal-cmd-btns {
   display: flex;

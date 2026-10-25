@@ -52,6 +52,7 @@ port   = 9090
 terminal               = true
 # terminal_port        = 9091         # default: port + 1
 terminal_auto_hide     = true         # hide the open panel on a click outside it
+terminal_hidden_lines  = 1            # lines of the latest output still shown while it is hidden (0-20, 0: none)
 terminal_end_on_logout = true
 # terminal_restart = ["systemctl", "--user", "restart", "eznix-terminal.service"]   # {user}, {uid} are filled in
 

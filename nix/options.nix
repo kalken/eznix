@@ -70,6 +70,7 @@ let
     terminal         = cfg.terminal;
     terminal_script  = "${packages.eznix-terminal}/share/eznix-terminal/eznix-terminal.py";
     terminal_auto_hide = cfg.terminalAutoHide;
+    terminal_hidden_lines = cfg.terminalHiddenLines;
     cert             = if generateCert then "${certDir}/localhost.pem" else if cfg.enableHttps then cfg.cert else null;
     key              = if generateCert then "${certDir}/localhost-key.pem" else if cfg.enableHttps then cfg.key else null;
     ca               = if generateCert then "${certDir}/ca.pem" else null;
@@ -375,6 +376,11 @@ in
       type        = types.bool;
       default     = true;
       description = "Hide the open terminal panel on a click anywhere outside it.";
+    };
+    terminalHiddenLines = mkOption {
+      type        = types.ints.between 0 20;
+      default     = 1;
+      description = "How many lines of the terminal's latest output stay in view while the panel is hidden, above its buttons, so that what runs there can still be followed. 0 shows none, only the buttons. Above 0 the terminal also connects when the page loads, not first when it is opened. A click on the lines opens the panel.";
     };
     buttons = mkOption {
       default     = [ ];

@@ -213,6 +213,18 @@ took the room away and the browser moved the file down by as much. That this is 
 user saw is again my reading: whether the terminal was open was not said. The rule was run
 on made-up numbers; not in a browser.
 
+**The hidden terminal can keep its latest lines in view** (`terminalHiddenLines`,
+`terminal_hidden_lines`, 1 unless set (0 for none), at most 20; `#term-peek`, `_updateTermPeek()`), since
+2026-10-25, the user's wish, so that a rebuild can be followed from the editor; a setting
+because the lines take room from the editor all the time. The default was 0 for an hour,
+then 1 at the user's word: hidden should mean out of the way, as the side panels are, not gone;
+`terminalAutoHide` stays, being when it hides and not what is left. Plain text off xterm's buffer, up to
+the cursor's line. The strip is part of the row of buttons whether the panel is open or not
+(invisible while open, the terminal showing through), so `--below-bar` stays the same and the
+editor is not resized. With it set the terminal connects at page load, hidden; no size is sent
+then (`_termSizeOwed`, fitting a hidden xterm would send 80x24 to the shell) until it opens.
+Syntax-checked and served by the test server; not looked at in a browser.
+
 **A terminal is never restarted by a rebuild.** It forks the shell as its own child, so a
 restart kills what runs there, most likely the rebuild itself. NixOS: `restartIfChanged =
 false`. home-manager: `X-SwitchMethod = keep-old`. nix-darwin has no such switch and reloads a

@@ -651,6 +651,8 @@ The common ones, the same in all three modules:
 | `openFirewall` | `false` | NixOS: open the port in the firewall, where `interfaces` or `listenAddresses` say; see [HTTPS](#-https) |
 | `paths` | `{ }` | where a tab stands, see [How the configuration is stored](#-how-the-configuration-is-stored) |
 | `terminal` | `true` | the terminal panel |
+| `terminalAutoHide` | `true` | hide the open terminal on a click outside it |
+| `terminalHiddenLines` | `1` | lines of the terminal's latest output still shown above its buttons while it is hidden, to follow a rebuild from the editor (`0`: none, only the buttons) |
 | `buttons`, `menus` | | command buttons and their menus, see [Buttons](#-buttons) |
 | `theme`, `themes` | | see [Themes](#-themes) |
 | `plugins`, `extraPlugins` | | see [Plugins](#-plugins) |
