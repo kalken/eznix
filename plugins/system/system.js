@@ -123,7 +123,7 @@ function initSystemImportButton() {
         headers: { 'Content-Type': 'application/zip' },
         body: file,
       });
-      if (!await _askImport(`Import ${file.name}?\n\nThis replaces the current system. A backup is made first.`, post)) return;
+      if (!await _askImport(`Import ${file.name}?`, 'This replaces the current system. A backup is made first.', post)) return;
       const res = await post(false);
       _afterSystemImport(res, await res.json().catch(() => ({})));
     } catch (err) {
@@ -132,25 +132,63 @@ function initSystemImportButton() {
   });
 }
 
-// What an import would do, before it is done (a dry run: nothing is written), as lines under
-// the question: what it leaves alone (`protect` and the zip's `exclude`) and what it removes, a
-// zip without a flake.nix at its top, and the files that will be missing, with the command
-// that makes each. `post(dry)` makes the request. True when it is to go on.
-async function _askImport(question, post) {
+// What an import would do, before it is done (a dry run: nothing is written), in a dialog of
+// the page's: what it leaves alone (`protect`) and what it removes, a zip without a flake.nix
+// at its top, and the files that will be missing, with the command that makes each. `post(dry)`
+// makes the request. True when it is to go on. It was the browser's confirm() until 2026-10-26,
+// with the lists cut at 12 names; with enough in it the user found its scrolling strange. Here
+// the lists are whole, in a box of their own that scrolls, and the question and the buttons stay.
+async function _askImport(title, about, post) {
   const res = await post(true);
   const report = await res.json().catch(() => ({}));
   if (!res.ok) { setStatus('Import failed: ' + (report.error || res.status), 5000, 'err'); return false; }
-  const lines = [];
-  // A long list is cut short: the question is a plain dialog.
-  const names = list => list.slice(0, 12).join(', ') + (list.length > 12 ? `, and ${list.length - 12} more` : '');
-  if ((report.kept || []).length) lines.push(`Left as they are: ${names(report.kept)}`);
-  if ((report.removed || []).length) lines.push(`Removed: ${names(report.removed)}`);
-  if (report.flake_nix === false) {
-    lines.push('\u26a0 There is no flake.nix at the top level.');
-  }
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.innerHTML =
+    '<div class="modal import-ask"><h2></h2><p class="modal-hint"></p><div class="import-report"></div>' +
+      '<div class="modal-actions"><button class="btn">Cancel</button><button class="btn">Import</button></div></div>';
+  const [head, hint, body, actions] = overlay.firstChild.children;
+  const [cancelBtn, okBtn] = actions.children;
+  head.textContent = title;
+  hint.textContent = about;
+  const add = (tag, cls, text) => {
+    const el = document.createElement(tag);
+    el.className = cls;
+    if (text != null) el.textContent = text;
+    body.appendChild(el);
+    return el;
+  };
+  const list = (label, names) => {
+    if (!names || !names.length) return;
+    add('div', 'import-report-head', `${label} (${names.length})`);
+    const ul = add('ul', 'import-report-list');
+    for (const n of names) {
+      const li = document.createElement('li');
+      li.textContent = n;
+      ul.appendChild(li);
+    }
+  };
+  if (report.flake_nix === false) add('div', 'modal-error', 'There is no flake.nix at the top level.');
   const missing = (report.generate || []).filter(g => g.missing);
-  missing.forEach(g => lines.push(`\u26a0 ${g.file} is missing. It will be created with:\n    ${g.command}`));
-  return confirm(question + (lines.length ? '\n\n' + lines.join('\n') : ''));
+  if (missing.length) {
+    add('div', 'import-report-head', 'Created afterwards, in the terminal');
+    for (const g of missing) {
+      add('div', 'import-report-file', g.file);
+      add('code', 'import-report-command', g.command);
+    }
+  }
+  list('Removed', report.removed);
+  list('Left as they are', report.kept);
+  if (!body.children.length) body.remove();
+  document.body.appendChild(overlay);
+  okBtn.focus();
+  return new Promise(resolve => {
+    const close = answer => { overlay.remove(); resolve(answer); };
+    cancelBtn.onclick = () => close(false);
+    okBtn.onclick = () => close(true);
+    overlay.onmousedown = e => { if (e.target === overlay) close(false); };
+    overlay.onkeydown = e => { if (e.key === 'Escape') close(false); };
+  });
 }
 
 function _afterSystemImport(res, data) {
@@ -200,17 +238,18 @@ function loadSystemSources(refresh, only) {
 }
 
 async function importSystemSource(system) {
-  const about = system.description ? `\n\n${system.description}` : '';
-  const sure = system.add_only
-    ? `Start from ${system.name}?${about}\n\nIts files are added to the current system and nothing is removed. A backup is made first.`
-    : `Import ${system.name}?${about}\n\nThis replaces the current system. A backup is made first.`;
+  const about = system.description ? `${system.description}\n\n` : '';
+  const title = system.add_only ? `Start from ${system.name}?` : `Import ${system.name}?`;
+  const sure = about + (system.add_only
+    ? 'Its files are added to the current system and nothing is removed. A backup is made first.'
+    : 'This replaces the current system. A backup is made first.');
   try {
     const post = dry => apiFetch('/plugin/system/import-source', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url: system.url, path: system.path, add_only: system.add_only === true, dry }),
     });
-    if (!await _askImport(sure, post)) return;
+    if (!await _askImport(title, sure, post)) return;
     setStatus('Importing ' + system.name + '…', 30000);
     const res = await post(false);
     _afterSystemImport(res, await res.json().catch(() => ({})));

@@ -494,14 +494,13 @@ def system_sources():
         check("sources: an import removes the suggestions, which were the old system's",
               os.listdir(f'{d}/state/autocomplete') == ['.generating'], os.listdir(f'{d}/state/autocomplete'))
         tree = sorted(os.path.relpath(os.path.join(p, n), f'{d}/flake') for p, _, ns in os.walk(f'{d}/flake') for n in ns)
-        check("sources: a folder of a zip is imported as a system, this machine's hardware file kept",
-              tree == ['eznix/c.json', 'flake.nix', 'hardware-configuration.nix']
-              and open(f'{d}/flake/flake.nix').read() == 'nixos' and result['removed'] == ['eznix/a.json']
+        check("sources: a folder of a zip is imported as a system, no old file kept (this machine's hardware file too)",
+              tree == ['eznix/c.json', 'flake.nix']
+              and open(f'{d}/flake/flake.nix').read() == 'nixos' and sorted(result['removed']) == ['eznix/a.json', 'hardware-configuration.nix']
               and len(os.listdir(f'{d}/state/system-backups')) == 1, (tree, result))
         result = status({'url': f'{d}/src/one.zip', 'path': ''})()
-        check('sources: and a whole zip', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
-              and open(f'{d}/flake/hardware-configuration.nix').read() == 'this machine'
-              and result['skipped'] == ['hardware-configuration.nix'], result)
+        check('sources: and a whole zip, what it holds written, its hardware file too', open(f'{d}/flake/eznix/b.json').read() == '{"b": 1}'
+              and 'hardware-configuration.nix' in result['written'] and result['skipped'] == [], result)
 
         # A folder on this machine: every folder under it with a flake.nix is a system, and a
         # source with `add_only` adds the files and removes none.
@@ -539,11 +538,11 @@ def system_sources():
         zipped(f'{d}/state/system-backups/system-20200101-000000.zip', {})
         result = get(('POST', 'restore'), {'name': 'system-20200101-000000.zip'})
         left = [os.path.join(p, n) for p, _, ns in os.walk(f'{d}/flake') for n in ns]
-        check('system: an empty backup can be restored, the folder is empty again but for what exclude leaves alone',
-              left == [f'{d}/flake/hardware-configuration.nix'] and result['removed'], (left, result))
-        # One exclude for all of it: an import makes the tree look exactly like the zip, folders
-        # too (an empty one), dot-files included, and leaves what exclude names as it is; an
-        # export holds all but that; a restore writes everything its backup holds.
+        check('system: an empty backup can be restored, the folder is empty again but for what protect leaves alone',
+              left == [] and result['removed'], (left, result))
+        # An import makes the tree look exactly like the zip, folders too (an empty one), dot-files
+        # included, and leaves only what protect names as it is; an export holds all but what
+        # protect and exclude name; a restore is the tree of its backup, protect aside.
         os.makedirs(f'{d}/flake3/old')
         os.makedirs(f'{d}/flake3/emptyold')
         os.makedirs(f'{d}/flake3/.git')
@@ -564,10 +563,10 @@ def system_sources():
         result = ask3('POST', 'import', body=buf.getvalue())
         left = sorted(os.path.relpath(os.path.join(p, n), f'{d}/flake3') + ('/' if dirs else '')
                       for p, ds, ns in os.walk(f'{d}/flake3') for n, dirs in [(x, False) for x in ns] + [(x, True) for x in ds])
-        check('import: the tree is the zip, folders and dot-files too, with what exclude names left as it was',
+        check('import: the tree is the zip, folders and dot-files too, with only what protect names left as it was',
               left == ['.git/', '.git/HEAD', '.gitignore', 'flake.nix', 'hardware-configuration.nix', 'newdir/', 'sub/', 'sub/a.txt']
-              and open(f'{d}/flake3/flake.nix').read() == 'new' and open(f'{d}/flake3/hardware-configuration.nix').read() == 'mine'
-              and sorted(result['skipped']) == ['.git/evil', 'hardware-configuration.nix']
+              and open(f'{d}/flake3/flake.nix').read() == 'new' and open(f'{d}/flake3/hardware-configuration.nix').read() == 'zip'
+              and result['skipped'] == ['.git/evil']
               and sorted(result['removed_folders']) == ['emptyold', 'old'], (left, result))
         exported = zipfile.ZipFile(io.BytesIO(ask3('GET', 'export').data))
         check('export: files and folders (an empty one too), all but what exclude names',
@@ -575,12 +574,12 @@ def system_sources():
         os.makedirs(f'{d}/state/system-backups', exist_ok=True)
         zipped(f'{d}/state/system-backups/system-20200102-000000.zip', {'flake.nix': 'back', '.git/x': 'x', 'hardware-configuration.nix': 'older'})
         result = ask3('POST', 'restore', {'name': 'system-20200102-000000.zip'})
-        check('restore: writes all its backup holds, excluded paths too but not protected ones, and removes the rest but what exclude names',
+        check('restore: writes all its backup holds, excluded paths too but not protected ones, and removes the rest but what protect names',
               open(f'{d}/flake3/flake.nix').read() == 'back' and not os.path.exists(f'{d}/flake3/.git/x')
               and open(f'{d}/flake3/hardware-configuration.nix').read() == 'older' and os.path.exists(f'{d}/flake3/.git/HEAD')
               and not os.path.exists(f'{d}/flake3/.gitignore') and not os.path.exists(f'{d}/flake3/sub'), result)
-        # The zip's own `exclude` decides what an import leaves alone, with this machine's
-        # `protect` beside it; the question is told both, and the backup holds what can go.
+        # An import leaves alone only what `protect` names, whatever `exclude` (the zip's or
+        # this machine's) says; the question is told, and the backup holds what goes.
         os.makedirs(f'{d}/flake4/.git')
         os.makedirs(f'{d}/flake4/generated')
         for n, t in {'flake.nix': 'old', 'flake.lock': 'lock', 'generated/hw.nix': 'hw', '.git/HEAD': 'ref',
@@ -600,16 +599,16 @@ def system_sources():
             for n, t in {'flake.nix': 'new', 'eznix/system.json': theirs, '.git/evil': 'x', 'flake.lock': 'zip'}.items():
                 zf.writestr(n, t)
         report = ask4('POST', 'import', {'dry': '1'}, zbuf.getvalue())
-        check("import: the question is told what is left alone (protect and the zip's exclude) and what is removed",
-              report['kept'] == ['.git/', 'flake.lock', 'generated/'] and report['removed'] == ['hardware-configuration.nix', 'notes.txt'], report)
+        check("import: the question is told what is left alone (protect only) and what is removed",
+              report['kept'] == ['.git/'] and report['removed'] == ['generated/hw.nix', 'hardware-configuration.nix', 'notes.txt'], report)
         result = ask4('POST', 'import', {}, zbuf.getvalue())
-        check("import: the zip's exclude is followed, and protect whatever the zip says",
-              open(f'{d}/flake4/flake.lock').read() == 'lock' and open(f'{d}/flake4/generated/hw.nix').read() == 'hw'
+        check("import: no exclude is followed, only protect, so no old file is left",
+              open(f'{d}/flake4/flake.lock').read() == 'zip' and not os.path.exists(f'{d}/flake4/generated')
               and not os.path.exists(f'{d}/flake4/hardware-configuration.nix') and not os.path.exists(f'{d}/flake4/.git/evil')
-              and os.path.exists(f'{d}/flake4/.git/HEAD') and sorted(result['skipped']) == ['.git/evil', 'flake.lock'], result)
+              and os.path.exists(f'{d}/flake4/.git/HEAD') and result['skipped'] == ['.git/evil'], result)
         backups4 = sorted(os.listdir(api4.state_dir + "/system-backups"))
         held = zipfile.ZipFile(os.path.join(api4.state_dir, 'system-backups', backups4[-1])).namelist()
-        check("import: the backup before it holds what this machine's exclude names, so a removed one can come back, and not what protect names",
+        check("import: the backup before it holds what this machine's exclude names, so every removed file can come back, and not what protect names",
               'hardware-configuration.nix' in held and 'notes.txt' in held and not any(n.startswith('.git') for n in held), held)
         if ez_state is not None:
             ez.STATE_DIR = ez_state
@@ -630,7 +629,7 @@ def system_sources():
         check('import: a file where the zip has a folder, and a folder where it has a file, do not get in the way',
               open(f'{d}/flake5/was-file/now.txt').read() == 'dir' and open(f'{d}/flake5/was-dir').read() == 'now a file')
         # Files made by a command after an import that leaves them missing. The zip can name the
-        # commands, but only a source's are believed.
+        # commands, uploaded or from a source.
         def zbytes(files):
             b = io.BytesIO()
             with zipfile.ZipFile(b, 'w') as zf:
@@ -658,13 +657,14 @@ def system_sources():
         check('generate: an import that leaves them says what to run', result['generate'] == [hw, key], result)
         with open(f'{d}/hw1/hardware-configuration.nix', 'w') as f:
             f.write('here')
-        result = mine('POST', 'import', {}, zbytes(plain))
-        check('generate: one that is there already (it is excluded, so left alone) is not made again',
-              result['generate'] == [key] and mine('POST', 'import', {'dry': '1'}, zbytes(plain))['generate'][0]['missing'] is False, result)
-        os.remove(f'{d}/hw1/hardware-configuration.nix')
+        report = mine('POST', 'import', {'dry': '1'}, zbytes(plain))
+        check('generate: one that is there now but that the import removes is made again',
+              report['generate'][0]['missing'] is True and 'hardware-configuration.nix' in report['removed'], report)
+        result = mine('POST', 'import', {}, zbytes({**plain, 'hardware-configuration.nix': 'zip'}))
+        check('generate: a file the zip brings is not made',
+              result['generate'] == [key] and mine('POST', 'import', {'dry': '1'}, zbytes({**plain, 'hardware-configuration.nix': 'zip'}))['generate'][0]['missing'] is False, result)
         result = mine('POST', 'import', {}, zbytes({**plain, 'secrets/key.txt': 'k', 'hardware-configuration.nix': 'zip'}))
-        check('generate: a file the zip brings is not made either (the excluded one is skipped, and is made)',
-              result['generate'] == [hw], result)
+        check('generate: nothing is run when the zip brings them all', 'generate' not in result, result)
         for config in ({}, {'generate': []}, {'generate': [{'command': 'echo'}]}, {'generate': [{'file': 'x'}]}, {'generate': 'echo'}):
             check('generate: with nothing, or an entry without its file or its command, there is no check at all',
                   machine(config, 'hw0')('POST', 'import', {'dry': '1'}, zbytes(plain))['generate'] == []
@@ -970,21 +970,19 @@ def main():
                   status == 200 and result.get('written') == ['eznix/a.json'] and result.get('unchanged') == 3
                   and json.load(open(f'{tmp}/flake/eznix/a.json')) == {'a': 9}, result)
             os.chmod(f'{tmp}/flake/flake.nix', 0o644)
-            # What describes the machine stays the machine's through an import, not a restore.
+            # An import replaces the whole system: the machine's hardware file goes the way of any
+            # other old file, and one the zip brings is written.
             now['eznix/a.json'] = '{"a": 9}'       # as the import above left it
             with open(f'{tmp}/flake/hardware-configuration.nix', 'w') as f:
                 f.write('this machine')
             status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
-            check("system: an import leaves this machine's hardware file as it is, and says so",
-                  status == 200 and result.get('skipped') == ['hardware-configuration.nix']
-                  and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'this machine', result)
+            check("system: an import writes the zip's hardware file over this machine's",
+                  status == 200 and result.get('skipped') == []
+                  and open(f'{tmp}/flake/hardware-configuration.nix').read() == 'another machine', result)
             status, result = b.json('/api/v1/plugin/system/import', zipped(now), 'POST')
-            check('system: nor is it removed by a zip that has none',
-                  status == 200 and result.get('removed') == [] and os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
-            os.remove(f'{tmp}/flake/hardware-configuration.nix')
-            status, result = b.json('/api/v1/plugin/system/import', zipped({**now, 'hardware-configuration.nix': 'another machine'}), 'POST')
-            check('system: an excluded path of the zip is not written even where the machine has none',
-                  status == 200 and not os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
+            check('system: and a zip that has none removes it',
+                  status == 200 and result.get('removed') == ['hardware-configuration.nix']
+                  and not os.path.exists(f'{tmp}/flake/hardware-configuration.nix'), result)
             # A zip that is not a system at all would, taken for one, remove the whole flake: the
             # page is told, with nothing written (a dry run), and asks before it goes on.
             tree = lambda: sorted(os.path.relpath(os.path.join(d, f), f'{tmp}/flake') for d, _, fs in os.walk(f'{tmp}/flake') for f in fs)

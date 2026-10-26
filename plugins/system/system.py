@@ -19,15 +19,17 @@ adds one on request. Only the newest `backups` are kept, whichever way they were
 
 Settings ([plugin.system] in eznix.toml):
   backups   how many backups to keep (default 5; 0: none)
-  protect   what belongs to this machine and is never touched, whatever a zip says: not exported,
-            not backed up, never written or removed by an import or a restore (2026-10-26, the
-            user's, when an import came to go by the zip's `exclude`). Default [".git"], the
-            repository; read like `exclude`. A .gitignore is the flake's and travels.
-  exclude   since 2026-10-26: what is each machine's own, left out of an export and left alone
-            by an import, which goes by the zip's own list when it has one (keep_for(); the
-            user's: "it should be read from the vms template"), this machine's else; backups
-            hold it, since such an import can remove one of this machine's. The question
-            before an import lists what is left alone and what is removed. Before that day:
+  protect   what belongs to this machine and is never touched: not exported, not backed up,
+            never written or removed by an import or a restore (2026-10-26, the user's).
+            Default [".git"], the repository; read like `exclude`. A .gitignore is the flake's
+            and travels. It is all that an import or a restore leaves alone: an import changes
+            the whole system, and leaves none of the old files (the user's, the same day: "i
+            dont want there to be any old files left"); the backup taken first holds them, and
+            what the new system needs and does not bring, its `generate` makes. For some hours
+            that day an import left alone the zip's own `exclude` (this machine's when it had
+            none), and before that this machine's.
+  exclude   since 2026-10-26: what an export leaves out, nothing more (backups hold it, an
+            import and a restore remove it like anything else). Before that day:
             the files and folders eznix never touches, in an export, a backup, an import and a
             restore alike (the user's rule, 2026-10-22: one list, "everything but the excluded
             files" out, and an import "has to look exactly like the zip-file structure + the
@@ -120,7 +122,7 @@ def setup(api):
     keep = int(api.config.get('backups', 5))
     protected = api.ignore(api.config.get('protect', DEFAULT_PROTECT))
     excluded = api.ignore(api.config.get('exclude', DEFAULT_EXCLUDE))
-    # What this machine leaves out of an export and keeps through a restore: both lists.
+    # What this machine leaves out of an export: both lists.
     here = lambda rel: protected(rel) or excluded(rel)
     sources = [e if isinstance(e, dict) else {'url': e} for e in api.config.get('sources', [])]
     source_dir = os.path.join(api.state_dir, 'system-sources')
@@ -130,8 +132,7 @@ def setup(api):
 
     def tree_files(skip):
         """(absolute path, path in the zip) for every file but what `skip` (a path's test) leaves
-        out: `here` for an export, `protected` for a backup, what an import leaves alone for
-        what it removes. Symlinks are always skipped: `nix build`'s "result" links point into
+        out: `here` for an export, `protected` for a backup and for what an import removes. Symlinks are always skipped: `nix build`'s "result" links point into
         /nix/store, and without them this is a plain walk with no cycles."""
         for dirpath, dirnames, filenames in os.walk(flake):
             rel = lambda name: os.path.relpath(os.path.join(dirpath, name), flake).replace(os.sep, '/')
@@ -232,17 +233,14 @@ def setup(api):
             folder = os.path.dirname(folder)
         return os.access(folder, os.W_OK | os.X_OK)
 
-    def prepare(zf, removing=True, keep=None, write_all=False):
+    def prepare(zf, removing=True):
         """What making the tree look exactly like the zip takes, decided before anything is
         touched (the snapshot included): {'write': [(target, entry)], 'make': [folder],
         'remove': [(path, name)], 'remove_dirs': [(path, name)], 'skipped', 'unchanged'}.
 
-        The tree ends up as the zip has it, files and folders, and what `keep` (a path's test,
-        `here` unless given) names is left as it is: a file or folder of the zip that it names
-        is not written ('skipped'), and one on disk that it names is not removed. An import's
-        `keep` is `protect` and the zip's `exclude` (keep_for()). `write_all`: the zip's are
-        written all the same but what `protect` names, for a restore, where the backup is
-        eznix's own and may be of another `exclude` than now.
+        The tree ends up as the zip has it, files and folders, and what `protect` names is left
+        as it is: a file or folder of the zip that it names is not written ('skipped'), and one
+        on disk that it names is not removed. Nothing else is left: `exclude` is the export's.
         `removing` false: nothing is removed, the zip is only added over what is there (a
         source with `add_only`). A zip without a flake.nix is not refused: check() tells the
         page, which asks before it goes on (the user, 2026-10-22: it should warn, "people can
@@ -261,7 +259,6 @@ def setup(api):
         # hold when unpacked, and how much one does. The sizes are the zip's own claims, and
         # reading stops at them (ZipExtFile reads no more than file_size), so they bind what
         # is written. 2026-10-16.
-        keep = keep or here
         infos = zf.infolist()
         if (len(infos) > MAX_ENTRIES or sum(i.file_size for i in infos) > MAX_UNPACKED
                 or any(i.file_size > MAX_FILE for i in infos)):
@@ -279,7 +276,7 @@ def setup(api):
                 # Not expected after the check above; abort before writing anything.
                 raise api.Error(400, 'invalid entry path: ' + info.filename)
             name = os.path.relpath(target, flake).replace(os.sep, '/')
-            if protected(name) if write_all else keep(name):
+            if protected(name):
                 skipped.append(info.filename)
                 continue
             # Every folder above what the zip holds is one it holds, and a folder entry is one.
@@ -294,8 +291,8 @@ def setup(api):
                 unchanged += 1
             else:
                 write.append((target, info))
-        remove = [(full, arcname) for full, arcname in tree_files(keep) if removing and arcname not in names]
-        remove_dirs = sorted(((full, arcname) for full, arcname in tree_dirs(keep) if removing and arcname not in folders),
+        remove = [(full, arcname) for full, arcname in tree_files(protected) if removing and arcname not in names]
+        remove_dirs = sorted(((full, arcname) for full, arcname in tree_dirs(protected) if removing and arcname not in folders),
                              key=lambda f: -f[1].count('/'))
         denied = ([os.path.relpath(t, flake) for t, _ in write if not writable(t)]
                   + [os.path.relpath(t, flake) for t in make if not writable(t)]
@@ -305,7 +302,7 @@ def setup(api):
             raise api.Error(403, f'eznix may not change {len(denied)} of the files this would change '
                                  f'({", ".join(denied[:3])}{", ..." if len(denied) > 3 else ""}); nothing was changed')
         return {'write': write, 'make': make, 'remove': remove, 'remove_dirs': remove_dirs,
-                'skipped': skipped, 'unchanged': unchanged, 'names': names, 'keep': keep}
+                'skipped': skipped, 'unchanged': unchanged, 'names': names}
 
     def apply(zf, plan):
         """Carry out what prepare() decided: what the zip does not hold is removed first, files,
@@ -439,23 +436,6 @@ def setup(api):
             out.append(item)
         return out
 
-    def keep_for(zf):
-        """What an import leaves alone: what `protect` names, which is this machine's alone, and
-        what the zip's `exclude` names (the system knows what is each machine's own: its
-        generated files, its flake.lock), else this machine's (2026-10-26, the user's: "it
-        should be read from the vms template"). The question shows both before the import."""
-        theirs = setting_in(zf, 'exclude')
-        if isinstance(theirs, list):
-            entries = []
-            for e in theirs:
-                if isinstance(e, dict) and '_value' in e and '_disabled' in e:
-                    e = None if e['_disabled'] else e['_value']
-                if isinstance(e, str):
-                    entries.append(e)
-            theirs = api.ignore(entries)
-            return lambda rel: protected(rel) or theirs(rel)
-        return here
-
     def generate_for(zf):
         """The files to make when missing, each with the command that makes it: the zip's own
         list (the system knows what it needs), else the running configuration's. No defaults
@@ -475,14 +455,14 @@ def setup(api):
         gone = [n for _, n in plan['remove']]
         gone += [n + '/' for _, n in plan['remove_dirs'] if not any(g.startswith(n + '/') for g in gone)]
         return {'dry': True, 'flake_nix': 'flake.nix' in names,
-                'kept': left_alone(plan['keep']), 'removed': sorted(gone),
+                'kept': left_alone(protected), 'removed': sorted(gone),
                 'generate': [{**e, 'missing': not present(e['file'])} for e in entries],
                 'write': len(plan['write']), 'remove': len(plan['remove']), 'skipped': plan['skipped']}
 
     def run_import(zf, removing=True, dry=False):
         """An import, or with `dry` what it would do. After one, what has to be run to make the
         files that are missing, when something says how."""
-        plan = prepare(zf, removing=removing, keep=keep_for(zf))
+        plan = prepare(zf, removing=removing)
         if dry:
             return check(zf, plan)
         entries = generate_for(zf)
@@ -837,7 +817,7 @@ def setup(api):
         # The backup being restored may itself be pruned by the snapshot taken here, so it is
         # open before that happens.
         with zf:
-            plan = prepare(zf, write_all=True)
+            plan = prepare(zf)
             backup()
             return apply(zf, plan)
 

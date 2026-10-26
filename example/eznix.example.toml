@@ -118,14 +118,13 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # Export, import and restore of the whole flake.
 # [plugin.system]
 # backups  = 5                        # automatic backups kept; 0: none
-# protect  = [".git", ".direnv"]      # this machine's, never touched whatever a zip says: not
+# protect  = [".git", ".direnv"]      # this machine's, never touched: not
 #                                     # exported, backed up, written or removed. Read like the
 #                                     # lines of a .gitignore, as `exclude` above is. Default [".git"]
 # exclude  = ["hardware-configuration.nix", "secrets", "*.key"]
-#                                     # each machine's own: left out of an export, left alone by an
-#                                     # import (which goes by the zip's own exclude when it has
-#                                     # one). Default ["hardware-configuration.nix"]; a list of
-#                                     # your own replaces it
+#                                     # what an export leaves out; an import replaces all but
+#                                     # `protect`. Default ["hardware-configuration.nix"]; a list
+#                                     # of your own replaces it
 # sources  = ["https://github.com/me/systems/archive/refs/heads/main.zip", "/etc/templates/index.json"]
 #                                     # where systems can be imported from: a zip (every folder
 #                                     # with a flake.nix in it is one) or an index (JSON), at an

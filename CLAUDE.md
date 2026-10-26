@@ -601,21 +601,25 @@ word, 2026-10-22: it should warn). A source's
 `add_only` makes an import remove nothing. In `test_server.py` (`system_sources()`, the
 server tests below it). Not tried in the page or on NixOS.
 
-**`protect` and the zip's `exclude`** (2026-10-26) replaced the one list above. An import goes
-by the zip's own `exclude` (`keep_for()`, from its configuration folder like `generate`), this
-machine's when the zip has none: the user's, "it should be read from the vms template", after
-a test plan where the old ezvm's list (`.git`, the hardware file) would have had the first
-import of the new ezvm (`.git`, `flake.lock`, `generated`) remove `flake.lock`. `protect`
-(default `[".git"]`) is the machine's alone and always wins: never exported, backed up,
-written or removed, whatever a zip says; the user's idea, `.git` only by default
+**`protect`, and `exclude` for export only** (2026-10-26) replaced the one list above. An
+import or a restore replaces the whole system and leaves only what `protect` names (`prepare()`):
+the user's, "importing a system is by definition changing the WHOLE system, so i dont want there
+to be any old files left"; the backup taken first holds every file it removes, and what the new
+system needs and does not bring its `generate` makes. `exclude` is what an export leaves out
+(`here`), nothing more. For some hours that day an import went by the zip's own `exclude`
+(`keep_for()`), this machine's when it had none, then the user asked why an import should look at
+any `exclude` at all. `protect`
+(default `[".git"]`) is the machine's alone: never exported, backed up,
+written or removed; the user's idea, `.git` only by default
 (`.gitignore` was asked about and left out: it is the flake's and has to travel, since Nix
-does not see what it names). `exclude`'s default lost `.git` for it. A backup now holds all
-but `protect` (`write_tree(zf, protected)`), since a zip's `exclude` can let an import remove
-a file this machine's list kept out; an export still leaves out both (`here`). A restore
-writes all but `protect` (`write_all`) and removes by both. The dry run returns `kept` (what
-is left alone on disk, a folder once) and `removed`, and the question shows them, cut at 12
-names, so a zip that forgets something is seen before it happens: the user's idea of a
-"verify dialog". Moving the whole flake aside instead was talked through and not done (eznix
+does not see what it names). `exclude`'s default lost `.git` for it. A backup holds all
+but `protect` (`write_tree(zf, protected)`), so whatever an import removes is in it; an export
+leaves out both (`here`). The dry run returns `kept` (what
+is left alone on disk, a folder once) and `removed`, and the question shows them in full, so a
+zip that forgets something is seen before it happens: the user's idea of a "verify dialog".
+The question is the page's dialog (`_askImport()`, `.import-report` in `system.css`) since the
+same day, the lists in a box that scrolls under the question; it was the browser's `confirm()`,
+the lists cut at 12 names, and with enough in it the user found its scrolling strange. Moving the whole flake aside instead was talked through and not done (eznix
 may not write in `/etc`, and `.git`, `generated/` and the lock would be lost). In
 `test_server.py`; the page not tried.
 
