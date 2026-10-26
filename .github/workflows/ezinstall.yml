@@ -1,20 +1,13 @@
-# Tells ezinstall (github.com/kalken/ezinstall) to build a new installer ISO when what
-# the ISO takes from eznix changes on main: the program, the page, the plugins and the
-# Nix modules. ezinstall's workflow then builds with exactly this commit and releases it.
+# Tells ezinstall (github.com/kalken/ezinstall) to build a new installer ISO with eznix's
+# main at this commit; ezinstall's workflow then builds with exactly it and releases it.
+# Only by hand since 2026-10-26 (the user's choice "for now"): it ran on every push to main
+# that touched flake.nix, bin/, webroot/, plugins/ or nix/.
 # Starting another repository's workflow needs a token of its own: EZINSTALL_TOKEN, a
 # fine-grained token with "Contents: read and write" on kalken/ezinstall.
 name: Tell ezinstall
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - flake.nix
-      - bin/**
-      - webroot/**
-      - plugins/**
-      - nix/**
-  # By hand too (Actions, "Tell ezinstall", Run workflow), to test the token.
+  # By hand: Actions, "Tell ezinstall", Run workflow.
   workflow_dispatch:
 
 permissions: {}
