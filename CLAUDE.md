@@ -619,7 +619,8 @@ but `protect` (`write_tree(zf, protected)`), so whatever an import removes is in
 leaves out both (`here`). The dry run returns `kept` (what
 is left alone on disk, a folder once) and `removed`, and the question shows them in full, so a
 zip that forgets something is seen before it happens: the user's idea of a "verify dialog".
-The question is the page's dialog (`_askImport()`, `.import-report` in `system.css`) since the
+On the installer (`mode = "install"`) nothing is asked and the import is done at once, the
+`generate` commands included (the user's wish, the same day). The question is the page's dialog (`_askImport()`, `.import-report` in `system.css`) since the
 same day, the lists in a box that scrolls under the question; it was the browser's `confirm()`,
 the lists cut at 12 names, and with enough in it the user found its scrolling strange. Moving the whole flake aside instead was talked through and not done (eznix
 may not write in `/etc`, and `.git`, `generated/` and the lock would be lost). In

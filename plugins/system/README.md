@@ -101,7 +101,8 @@ At most 256 MiB is downloaded.
 ## 🔧 Files to make
 
 Before an import is done (an upload, a source), the page asks the server what it would do, with
-nothing written, and shows it under the question: a zip without a `flake.nix` at its top (it
+nothing written, and shows it under the question (not on the installer, `mode = "install"`, where
+an import is done at once, the commands included): a zip without a `flake.nix` at its top (it
 is still imported if you say so), and the files of `generate` that will be missing afterwards.
 A file that is there already, or one the zip brings, is not made.
 

@@ -139,7 +139,10 @@ function initSystemImportButton() {
 // makes the request. True when it is to go on. It was the browser's confirm() until 2026-10-26,
 // with the lists cut at 12 names; with enough in it the user found its scrolling strange. Here
 // the lists are whole, in a box of their own that scrolls, and the question and the buttons stay.
+// On the installer (`mode = "install"`) nothing is asked (the user's wish, 2026-10-26): its flake is
+// a live system's, empty until something is imported, and the backup is still made first.
 async function _askImport(title, about, post) {
+  if (INSTALL_MODE) return true;
   const res = await post(true);
   const report = await res.json().catch(() => ({}));
   if (!res.ok) { setStatus('Import failed: ' + (report.error || res.status), 5000, 'err'); return false; }
