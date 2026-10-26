@@ -24,6 +24,10 @@ Do not push unless the user explicitly says so in that turn. Committing is not a
 
 Always commit to `develop` first. Only merge `develop` into `main`; never commit to `main`.
 
+A push to `main` that touches `flake.nix`, `bin/`, `webroot/`, `plugins/` or `nix/` makes
+the installer ISO be built and released: `.github/workflows/ezinstall.yml` sends
+ezinstall a `repository_dispatch` with the commit (token in the secret `EZINSTALL_TOKEN`).
+
 ## Workflow
 
 Don't use subagents for work in this repo. Don't test changes in a real browser (headless
