@@ -23,11 +23,16 @@ def generate(ctx):
                 "and systems to import from places named here."),
         _option("backups", "signed integer", "How many backups are kept; 0 for none. One is made by itself before "
                 "every import and restore.", default="5"),
-        _option("exclude", "list of string", "The files and folders eznix never touches, in an export, a backup, an "
-                "import and a restore alike: an export holds all but these, an import makes the folder look exactly "
-                "like the zip and leaves these as they are. Each entry is read like a line of a .gitignore. A list "
-                "of your own replaces the default.", default='[ ".git" "hardware-configuration.nix" ]',
-                example='[ ".git" "hardware-configuration.nix" "*.key" ]'),
+        _option("protect", "list of string", "What belongs to this machine and is never touched, whatever a zip "
+                "says: not exported, not backed up, never written or removed by an import or a restore. Each entry "
+                "is read like a line of a .gitignore. A list of your own replaces the default.",
+                default='[ ".git" ]', example='[ ".git" ".direnv" ]'),
+        _option("exclude", "list of string", "What is each machine's own: an export leaves it out, and an import "
+                "leaves it as it is. An import goes by the zip's own exclude when it has one, so a template says "
+                "what each machine keeps; the question before it lists what is left alone and what is removed. "
+                "Each entry is read like a line of a .gitignore. A list of your own replaces the default.",
+                default='[ "hardware-configuration.nix" ]',
+                example='[ "hardware-configuration.nix" "flake.lock" "generated" ]'),
         _option("sources", "list of (string or attribute set)", "Where systems can be imported from: an https "
                 "address or a path on this machine, of a zip, a folder (every folder in it with a flake.nix is a "
                 "system), a folder on GitHub (github.com/OWNER/REPO/tree/BRANCH/PATH) or a JSON index. Written as "

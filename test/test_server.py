@@ -575,10 +575,44 @@ def system_sources():
         os.makedirs(f'{d}/state/system-backups', exist_ok=True)
         zipped(f'{d}/state/system-backups/system-20200102-000000.zip', {'flake.nix': 'back', '.git/x': 'x', 'hardware-configuration.nix': 'older'})
         result = ask3('POST', 'restore', {'name': 'system-20200102-000000.zip'})
-        check('restore: writes all its backup holds, excluded paths too, and removes the rest but what exclude names',
-              open(f'{d}/flake3/flake.nix').read() == 'back' and os.path.exists(f'{d}/flake3/.git/x')
+        check('restore: writes all its backup holds, excluded paths too but not protected ones, and removes the rest but what exclude names',
+              open(f'{d}/flake3/flake.nix').read() == 'back' and not os.path.exists(f'{d}/flake3/.git/x')
               and open(f'{d}/flake3/hardware-configuration.nix').read() == 'older' and os.path.exists(f'{d}/flake3/.git/HEAD')
               and not os.path.exists(f'{d}/flake3/.gitignore') and not os.path.exists(f'{d}/flake3/sub'), result)
+        # The zip's own `exclude` decides what an import leaves alone, with this machine's
+        # `protect` beside it; the question is told both, and the backup holds what can go.
+        os.makedirs(f'{d}/flake4/.git')
+        os.makedirs(f'{d}/flake4/generated')
+        for n, t in {'flake.nix': 'old', 'flake.lock': 'lock', 'generated/hw.nix': 'hw', '.git/HEAD': 'ref',
+                     'hardware-configuration.nix': 'mine', 'notes.txt': 'n'}.items():
+            with open(f'{d}/flake4/{n}', 'w') as f:
+                f.write(t)
+        ez.FLAKE_DIR = f'{d}/flake4'
+        os.makedirs(f'{d}/state4')
+        ez_state, ez.STATE_DIR = getattr(ez, 'STATE_DIR', None), f'{d}/state4'
+        api4 = ez.PluginApi('system', {})
+        system.setup(api4)
+        ez.FLAKE_DIR = f'{d}/flake'
+        ask4 = lambda method, path, query={}, body=b'': api4.routes[(method, path)](ez.PluginRequest(query, body, 'alice'))
+        theirs = json.dumps({'services': {'eznix': {'plugins': {'system': {'exclude': ['flake.lock', 'generated']}}}}})
+        zbuf = io.BytesIO()
+        with zipfile.ZipFile(zbuf, 'w') as zf:
+            for n, t in {'flake.nix': 'new', 'eznix/system.json': theirs, '.git/evil': 'x', 'flake.lock': 'zip'}.items():
+                zf.writestr(n, t)
+        report = ask4('POST', 'import', {'dry': '1'}, zbuf.getvalue())
+        check("import: the question is told what is left alone (protect and the zip's exclude) and what is removed",
+              report['kept'] == ['.git/', 'flake.lock', 'generated/'] and report['removed'] == ['hardware-configuration.nix', 'notes.txt'], report)
+        result = ask4('POST', 'import', {}, zbuf.getvalue())
+        check("import: the zip's exclude is followed, and protect whatever the zip says",
+              open(f'{d}/flake4/flake.lock').read() == 'lock' and open(f'{d}/flake4/generated/hw.nix').read() == 'hw'
+              and not os.path.exists(f'{d}/flake4/hardware-configuration.nix') and not os.path.exists(f'{d}/flake4/.git/evil')
+              and os.path.exists(f'{d}/flake4/.git/HEAD') and sorted(result['skipped']) == ['.git/evil', 'flake.lock'], result)
+        backups4 = sorted(os.listdir(api4.state_dir + "/system-backups"))
+        held = zipfile.ZipFile(os.path.join(api4.state_dir, 'system-backups', backups4[-1])).namelist()
+        check("import: the backup before it holds what this machine's exclude names, so a removed one can come back, and not what protect names",
+              'hardware-configuration.nix' in held and 'notes.txt' in held and not any(n.startswith('.git') for n in held), held)
+        if ez_state is not None:
+            ez.STATE_DIR = ez_state
         # A file where the zip has a folder and a folder where it has a file: out of the way first.
         os.makedirs(f'{d}/flake5/was-dir')
         for n, c in {'flake.nix': 'x', 'was-file': 'file', 'was-dir/inner.txt': 'x'}.items():
@@ -637,9 +671,14 @@ def system_sources():
                   and 'generate' not in machine(config, 'hw0')('POST', 'import', {}, zbytes(plain)), config)
         nothing = machine({}, 'hw2')
         report = nothing('POST', 'import', {'dry': '1'}, zbytes(with_cmd))
-        check("generate: a list in an uploaded zip is not taken, and the page is told it was there",
-              report['generate'] == [] and report['untrusted_generate'], report)
-        check('generate: an upload has nothing to run afterwards', 'generate' not in nothing('POST', 'import', {}, zbytes(with_cmd)))
+        check("generate: an uploaded zip's own list is taken too, for the question to show",
+              [g['command'] for g in report['generate']] == ['echo hw', 'echo key'], report)
+        check('generate: and the upload says what to run afterwards',
+              nothing('POST', 'import', {}, zbytes(with_cmd))['generate'] == [hw, key])
+        other = machine({'generate': [{'file': 'other.nix', 'command': 'echo other'}]}, 'hw4')
+        check("generate: the zip's list stands in for the running configuration's, which is used when the zip has none",
+              [g['file'] for g in other('POST', 'import', {'dry': '1'}, zbytes(with_cmd))['generate']] == [hw['file'], key['file']]
+              and [g['file'] for g in other('POST', 'import', {'dry': '1'}, zbytes(plain))['generate']] == ['other.nix'])
         os.makedirs(f'{d}/trusted/eznix')
         for n, t in {'flake.nix': 'x', 'eznix/system.json': named}.items():
             with open(f'{d}/trusted/{n}', 'w') as f:
@@ -652,7 +691,7 @@ def system_sources():
         src('GET', 'sources')
         report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': '', 'dry': True}).encode())
         check("generate: a source's zip says how, and it is believed",
-              [g['command'] for g in report['generate']] == ['echo hw', 'echo key'] and not report['untrusted_generate'], report)
+              [g['command'] for g in report['generate']] == ['echo hw', 'echo key'], report)
         result = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/trusted', 'path': ''}).encode())
         check('generate: and the commands to run come back after the import', result['generate'] == [hw, key], result)
         report = src('POST', 'import-source', {}, json.dumps({'url': f'{d}/off', 'path': '', 'dry': True}).encode())

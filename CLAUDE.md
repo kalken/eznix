@@ -601,6 +601,24 @@ word, 2026-10-22: it should warn). A source's
 `add_only` makes an import remove nothing. In `test_server.py` (`system_sources()`, the
 server tests below it). Not tried in the page or on NixOS.
 
+**`protect` and the zip's `exclude`** (2026-10-26) replaced the one list above. An import goes
+by the zip's own `exclude` (`keep_for()`, from its configuration folder like `generate`), this
+machine's when the zip has none: the user's, "it should be read from the vms template", after
+a test plan where the old ezvm's list (`.git`, the hardware file) would have had the first
+import of the new ezvm (`.git`, `flake.lock`, `generated`) remove `flake.lock`. `protect`
+(default `[".git"]`) is the machine's alone and always wins: never exported, backed up,
+written or removed, whatever a zip says; the user's idea, `.git` only by default
+(`.gitignore` was asked about and left out: it is the flake's and has to travel, since Nix
+does not see what it names). `exclude`'s default lost `.git` for it. A backup now holds all
+but `protect` (`write_tree(zf, protected)`), since a zip's `exclude` can let an import remove
+a file this machine's list kept out; an export still leaves out both (`here`). A restore
+writes all but `protect` (`write_all`) and removes by both. The dry run returns `kept` (what
+is left alone on disk, a folder once) and `removed`, and the question shows them, cut at 12
+names, so a zip that forgets something is seen before it happens: the user's idea of a
+"verify dialog". Moving the whole flake aside instead was talked through and not done (eznix
+may not write in `/etc`, and `.git`, `generated/` and the lock would be lost). In
+`test_server.py`; the page not tried.
+
 **An import is asked about first, and can make files that are missing** (2026-10-22, the user's
 idea): the page sends the import as a dry run (`?dry=1`, `"dry": true` for a source;
 `run_import()`, `check()` in the system plugin), which writes nothing and says what would
@@ -621,9 +639,12 @@ or it is ignored, since it has to fit every platform; the NixOS template sets th
 to `nixos-generate-config --show-hardware-config --no-filesystems` (no disks: the template
 cannot know the target's; the terminal starts in the flake's folder, `dir = cfg.flake` in
 `options.nix`, so a relative file name lands right). The zip can carry the list
-(`services.eznix.plugins.system.generate` in its configuration folder's JSON), and it is taken
-only from a zip of a `sources` entry: a zip uploaded may not say what runs in a terminal, so the
-running configuration's setting is used (the page says the zip named some). The idea was
+(`services.eznix.plugins.system.generate` in its configuration folder's JSON), from any zip,
+uploaded or from a source; the running configuration's setting only when the zip has none. The
+question before the import shows each command that will run, and that is the consent. Until
+2026-10-26 an uploaded zip's list was not taken, a rule I had made without asking: a system
+uploaded onto a machine then lacked the files it needs (ezvm's `generated/`), and the user
+asked for the zip's own list with the commands in the question. The idea was
 ezinstall's `ezhwconfig` (it stays there, for the with-disks case at `--root /mnt`, set in the
 ISO's own configuration). A file that is there, or one the zip brings, is never made. In
 `test_server.py` (`system_sources()`). Not tried in the page, in a terminal or on NixOS.

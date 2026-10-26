@@ -4,9 +4,10 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 
 ## ✨ What it does
 
-- **Export** the flake as a zip: all its files and folders, but what `exclude` names
+- **Export** the flake as a zip: all its files and folders, but what `protect` and `exclude` name
 - **Import** a zip over the flake: the files and folders end up exactly as in the zip, and
-  what `exclude` names is left as it is on this machine
+  what `protect` and the zip's `exclude` name is left as it is on this machine. The question
+  before it lists what is left alone and what is removed
 - **Backup** the flake now, and **restore** any backup from the list
 - **Import from** a list of places: zips, folders and indexes of systems, on the web or on
   this machine, shown as headings in the menu
@@ -17,7 +18,8 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 ```nix
 services.eznix.plugins.system = {
   backups = 10;
-  exclude = [ ".git" "hardware-configuration.nix" "*.key" ];
+  protect = [ ".git" ".direnv" ];
+  exclude = [ "hardware-configuration.nix" "*.key" ];
   sources = [
     "https://github.com/me/systems/archive/refs/heads/main.zip"
     { name = "Import from Templates"; url = "https://example.org/systems/index.json"; }
@@ -29,7 +31,8 @@ services.eznix.plugins.system = {
 | Option | Default | |
 |---|---|---|
 | `backups` | `5` | how many backups are kept; `0` for none |
-| `exclude` | `[ ".git" "hardware-configuration.nix" ]` | the files and folders eznix never touches, read like the lines of a `.gitignore` (see below) |
+| `protect` | `[ ".git" ]` | what belongs to this machine and is never touched, whatever a zip says: not exported, not backed up, never written or removed by an import or restore. Read like the lines of a `.gitignore` |
+| `exclude` | `[ "hardware-configuration.nix" ]` | what is each machine's own: left out of an export, and left alone by an import. An import goes by the zip's own `exclude` when it has one (see below) |
 | `generate` | none | a list of `{ file, command }`: files to make when an import leaves them missing, each with the command that makes it (see below). An entry needs both, or it is ignored: there are no defaults, since it has to fit every platform and a template sets it |
 | `open` | none | files to open after an import, relative to the flake: set in a template's own configuration (see below) |
 | `sources` | `[ ]` | where systems can be imported from: an `https` address or a path on this machine, or `{ name, url, add_only }`: `name` is the heading in the menu, `add_only` adds files and removes none |
@@ -42,7 +45,7 @@ entry exactly as you write it (**Import from ezinstall**, **Start from**, …; w
 one made from the address), and the systems in it are the lines under it, named by their
 folders. The ↻ at its end downloads the source again.
 Choosing a system imports it as an import of a zip does: the backup first, and what
-`exclude` names left as it is.
+`protect` and the zip's `exclude` name left as it is.
 
 With `add_only = true` on the entry, choosing a system only adds its files over the flake
 and removes none, so it can start a flake that already has files of its own that the
@@ -120,12 +123,12 @@ An import or a restore that changes anything removes the suggestions, which were
 that was there. The **Autocomplete** button is then marked until they are generated for the
 new one; press it once the commands above have finished.
 
-The list is the zip's own when it comes from a source of your configuration: it is in the JSON
-files of its configuration folder, at `services.eznix.plugins.system.generate`, so a template
-says how its machine gets its files. That is what the NixOS template does for the hardware file;
-without `--no-filesystems` the disks mounted now are included. A zip you upload may not say
-what runs in a terminal: its list is not taken, and the setting of the running configuration is
-used instead.
+The list is the zip's own, uploaded or from a source: it is in the JSON files of its
+configuration folder, at `services.eznix.plugins.system.generate`, so a system says how a
+machine gets its files. That is what the NixOS template does for the hardware file; without
+`--no-filesystems` the disks mounted now are included. Only when the zip has none is the setting
+of the running configuration used. Nothing runs without your yes: every command is shown in the
+question before the import.
 
 ## 📖 Files to open
 
@@ -158,14 +161,22 @@ there. Press Autocomplete once after updating eznix to get them.
 - Only a zip of a system is taken: one with `flake.nix` at its top, as an export has. Any
   other zip is refused and nothing is changed. A repository downloaded as a zip has a folder
   around its files; zip what is inside that folder instead.
-- **One `exclude` for all of it.** It names what eznix never touches, in an export, a backup,
-  an import and a restore alike. An export holds everything but that. An import makes the
-  folder look exactly like the zip, files and folders (an empty folder too), dot-files
-  included: whatever the zip holds is written, what it doesn't hold is removed, and what
-  `exclude` names stays as it is. A path of the zip that `exclude` names is skipped.
-- A restore writes everything its backup holds, since the backup is eznix's own and may be of
-  another `exclude`; what it removes is decided by the `exclude` there is now.
-- A list of your own for `exclude` replaces the default, so it has to name `.git` and the
-  hardware file itself if they are to stay out. Dot-files such as `.env` are in exports and
-  backups unless it names them, and backups can be read by every user in `users` on NixOS.
+- **Two lists.** `protect` is this machine's and always wins: what it names is never exported,
+  backed up, written or removed. `exclude` says what is each machine's own (its hardware file,
+  generated files, its `flake.lock`): an export leaves it out, and an import leaves it alone.
+- An import makes the folder look exactly like the zip, files and folders (an empty folder
+  too), dot-files included: whatever the zip holds is written, what it doesn't hold is
+  removed, and what `protect` or the **zip's** `exclude` names stays as it is (a path of the
+  zip that they name is skipped). The zip's `exclude` is in the JSON files of its
+  configuration folder, at `services.eznix.plugins.system.exclude`, so a template says what is
+  each machine's own; a zip without one goes by this machine's. The question before the import
+  lists what is left alone and what is removed, so you can stop it.
+- A backup holds everything but what `protect` names, `exclude`'s files included: an import
+  that goes by another `exclude` can remove one of this machine's, and the backup taken just
+  before has it.
+- A restore writes everything its backup holds but what `protect` names; what it removes is
+  decided by `protect` and the `exclude` there is now.
+- A list of your own replaces the default, so `exclude` has to name the hardware file itself
+  if it is to stay out. Dot-files such as `.env` are in exports and backups unless one of the
+  lists names them, and backups can be read by every user in `users` on NixOS.
 - A zip of more than 100,000 files, 2 GiB unpacked, or a file over 1 GiB is refused as too big to be a system.

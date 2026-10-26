@@ -133,20 +133,23 @@ function initSystemImportButton() {
 }
 
 // What an import would do, before it is done (a dry run: nothing is written), as lines under
-// the question: a zip without a flake.nix at its top, and a machine that will be without its
-// hardware file, with the command that makes one. `post(dry)` makes the request. True when it
-// is to go on.
+// the question: what it leaves alone (`protect` and the zip's `exclude`) and what it removes, a
+// zip without a flake.nix at its top, and the files that will be missing, with the command
+// that makes each. `post(dry)` makes the request. True when it is to go on.
 async function _askImport(question, post) {
   const res = await post(true);
   const report = await res.json().catch(() => ({}));
   if (!res.ok) { setStatus('Import failed: ' + (report.error || res.status), 5000, 'err'); return false; }
   const lines = [];
+  // A long list is cut short: the question is a plain dialog.
+  const names = list => list.slice(0, 12).join(', ') + (list.length > 12 ? `, and ${list.length - 12} more` : '');
+  if ((report.kept || []).length) lines.push(`Left as they are: ${names(report.kept)}`);
+  if ((report.removed || []).length) lines.push(`Removed: ${names(report.removed)}`);
   if (report.flake_nix === false) {
     lines.push('\u26a0 There is no flake.nix at the top level.');
   }
   const missing = (report.generate || []).filter(g => g.missing);
   missing.forEach(g => lines.push(`\u26a0 ${g.file} is missing. It will be created with:\n    ${g.command}`));
-  if (report.untrusted_generate && !(report.generate || []).length) lines.push('This zip lists files to create, but commands from an uploaded file are not trusted, so they are ignored.');
   return confirm(question + (lines.length ? '\n\n' + lines.join('\n') : ''));
 }
 
