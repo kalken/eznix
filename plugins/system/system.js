@@ -133,8 +133,9 @@ function initSystemImportButton() {
 }
 
 // What an import would do, before it is done (a dry run: nothing is written), in a dialog of
-// the page's: what it leaves alone (`protect`) and what it removes, a zip without a flake.nix
-// at its top, and the files that will be missing, with the command that makes each. `post(dry)`
+// the page's: a zip without a flake.nix at its top, what it removes, the files that will be
+// missing with the command that makes each (in that order, the user's), and what it leaves
+// alone (`protect`). `post(dry)`
 // makes the request. True when it is to go on. It was the browser's confirm() until 2026-10-26,
 // with the lists cut at 12 names; with enough in it the user found its scrolling strange. Here
 // the lists are whole, in a box of their own that scrolls, and the question and the buttons stay.
@@ -169,6 +170,7 @@ async function _askImport(title, about, post) {
     }
   };
   if (report.flake_nix === false) add('div', 'modal-error', 'There is no flake.nix at the top level.');
+  list('Removed', report.removed);
   const missing = (report.generate || []).filter(g => g.missing);
   if (missing.length) {
     add('div', 'import-report-head', 'Created afterwards, in the terminal');
@@ -177,7 +179,6 @@ async function _askImport(title, about, post) {
       add('code', 'import-report-command', g.command);
     }
   }
-  list('Removed', report.removed);
   list('Left as they are', report.kept);
   if (!body.children.length) body.remove();
   document.body.appendChild(overlay);
