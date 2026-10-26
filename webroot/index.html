@@ -1676,7 +1676,11 @@ function _nixParse(s, cautious) {
     const close = _nixMatchBracket(s, 0);
     if (s.slice(close + 1).trim()) throw new Error('unexpected content after list');
     const inner = s.slice(1, close).trim();
-    return inner ? _nixSplitListItems(inner).map(_nixParse) : [];
+    // Not .map(_nixParse): map's index went in as `cautious`, so every item after the first with
+    // a space in it came back as an expression (a list of SSH keys converted to Nix and back).
+    // `cautious` is about a whole default being prose, so items are parsed plainly, as an
+    // attrset's values are.
+    return inner ? _nixSplitListItems(inner).map(item => _nixParse(item)) : [];
   }
   if (s[0] === '{') {
     const close = _nixMatchBracket(s, 0);
