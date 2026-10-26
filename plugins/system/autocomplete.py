@@ -40,8 +40,8 @@ def generate(ctx):
         _option("generate", "list of (submodule)", "Files to make when an import leaves them missing, each with the "
                 "command that makes it. The question before an import lists the ones that will be missing, and "
                 "after it the commands are typed into the terminal, one after the other, each only if the one "
-                "before worked. A template can carry the list in its own configuration; one from a zip you "
-                "upload is not taken. There are no defaults.", default="[ ]",
+                "before worked. A system carries the list in its own configuration, and the running "
+                "configuration's is used only when the zip has none. There are no defaults.", default="[ ]",
                 example='[ { file = "hardware-configuration.nix"; command = "sudo sh -c \'nixos-generate-config '
                         '--show-hardware-config --no-filesystems > hardware-configuration.nix\'"; } ]'),
         _option("generate.*.file", "string", "The file, relative to the flake: made when it is not there after the "

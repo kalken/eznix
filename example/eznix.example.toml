@@ -136,10 +136,8 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # file    = "hardware-configuration.nix"
 # command = "sudo ezhwconfig"         # files to make when an import leaves them missing, and how:
 #                                     # typed into the terminal afterwards, one after the other. An
-#                                     # entry needs both; no defaults. A zip from a source can say
-#                                     # them itself; one you upload can't
-# autocomplete = true                 # generate the suggestions after an import (the Autocomplete
-#                                     # button's job), since the system has other options
+#                                     # entry needs both; no defaults. A zip's own list is used,
+#                                     # this one only when it has none
 
 # [plugin.documents]
 # enabled = false

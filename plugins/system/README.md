@@ -44,8 +44,8 @@ Each source is a heading in the System menu, below Restore, titled by the `name`
 entry exactly as you write it (**Import from ezinstall**, **Start from**, …; with no name,
 one made from the address), and the systems in it are the lines under it, named by their
 folders. The ↻ at its end downloads the source again.
-Choosing a system imports it as an import of a zip does: the backup first, and what
-only what `protect` names left as it is.
+Choosing a system imports it as an import of a zip does: the backup first, and only what
+`protect` names left as it is.
 
 With `add_only = true` on the entry, choosing a system only adds its files over the flake
 and removes none, so it can start a flake that already has files of its own that the

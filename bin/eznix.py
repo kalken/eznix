@@ -938,7 +938,9 @@ def resolve_folder_path(name):
         return None
     base = os.path.realpath(CONFIG_DIR)
     full = os.path.realpath(os.path.join(base, name))
-    if os.path.commonpath([base, full]) != base:
+    # Not the folder itself: a link in it that points back at it resolves to it, and a folder
+    # delete would then remove the whole configuration.
+    if full == base or os.path.commonpath([base, full]) != base:
         return None
     return full
 

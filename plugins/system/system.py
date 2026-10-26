@@ -343,7 +343,17 @@ def setup(api):
         mark on the Autocomplete button, from the ping). Until 2026-10-25 an import generated them by itself
         (`autocomplete`), and with that off, or the run failing, the old system's stayed in the
         editor without a word; the user chose a mark and a click."""
-        d = api.autocomplete_dir
+        d = os.path.realpath(api.autocomplete_dir)
+        # Every .json file in it goes, so never in the flake (the configuration is .json files)
+        # or in the state folder itself (sessions.json), whatever `autocomplete_dir` is set to.
+        def within(path, top):
+            if not top:
+                return False
+            top = os.path.realpath(top)
+            return os.path.commonpath([top, path]) == top
+        if within(d, api.flake) or within(d, api.config_dir) or (api.state_dir and d == os.path.realpath(api.state_dir)):
+            api.debug(f'suggestions not removed: {d} is in the flake or is the state folder')
+            return
         try:
             names = os.listdir(d)
         except OSError:
