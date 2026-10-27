@@ -527,8 +527,10 @@ input[type=text].key-rename-input {
 .field-row.nest > .field-value { gap: 0; }
 /* ...except between a package or value list and the box for adding to it. */
 .field-row.nest > .field-value:has(> .pkg-items) { gap: 2px; }
-/* Chips start on the same vertical line as every other kind of value (see .toggle-wrap). */
-.field-row.nest .pkg-items { padding: 4px 8px; }
+/* A chip's text starts on the same vertical line as every other kind of value, 8px in, as the
+   names in a list's objects do: the chip 4px in and its text 4px in from its edge, border
+   included (2026-10-27, the user's wish; the chip's edge was on that line before). */
+.field-row.nest .pkg-items { padding: 4px 8px 4px 4px; }
 /* With nothing in it, it is not there at all: its padding and the gap under it otherwise made
    an empty list of chips 10px taller than any other empty list (the user's picture of
    homebrew.brews beside homebrew.taps). */
@@ -642,14 +644,21 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .pkg-items { display: flex; flex-wrap: wrap; gap: 4px; }
 .pkg-items .array-item {
   background: transparent; border: 1px solid var(--border2);
-  border-radius: var(--radius); padding: 2px 4px 2px 8px;
+  /* The same 4px, border included, between each edge and what is inside, on all four sides (the
+     user's wish, 2026-10-27): the cross's own 3px of padding is its room on the right, above
+     and below, and the text, one line of 12px, is centred in the cross's 18px. The theme's
+     smaller rounding, --radius-sm: --radius was much rounder on a chip only 20px high. */
+  border-radius: var(--radius-sm); padding: 0 0 0 3px;
   gap: 4px;
 }
 /* Same colour as the name in the "Add package…" suggestion list (.ac-name), so a package
    looks the same before and after it's picked. */
 .pkg-items .array-item .pkg-label {
-  color: var(--accent); font-size: 12px; white-space: nowrap;
+  color: var(--accent); font-size: 12px; line-height: 1; white-space: nowrap;
 }
+/* The cross smaller than the text beside it, which it was as large as (the user: it looked
+   too big); its line stays 12px, so the chip and the 4px round it stay as they are. */
+.pkg-items .array-item .icon-btn.del { font-size: 9px; line-height: 12px; }
 
 /* ── Adding and renaming in a set of plain entries (_makeTable() in index.html) ── */
 /* Looks as any other set: only a name can be clicked to rename it, and a last row has an empty
