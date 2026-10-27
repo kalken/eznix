@@ -103,7 +103,8 @@
   --nested-section-gap: 0px; /* below a section nested inside a sub-section */
   --list-item-gap:  1ch;   /* space around each object in a list (1ch = one letter) */
   --block-pad:      10px;  /* side padding of a block and of a bordered sub-section */
-  --section-title-size: 13px; /* top-level section name */
+  --section-title-size: 14px; /* top-level section name */
+  --section-subtitle-size: 13px; /* the name of a section inside one */
   --panel-shadow-size:  6px;  /* blur of the soft shadow beside a panel edge */
 
   /* ── Editor colours ── */

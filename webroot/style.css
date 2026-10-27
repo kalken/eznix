@@ -397,9 +397,12 @@ input[type=text].key-rename-input {
 /* The heading of a top-level section lines up with the content of the cards beneath it. */
 .section.nest-top > .section-header { padding: 0 var(--block-pad) calc(var(--card-gap) + 4px); }
 /* Section names by depth: a top-level one reads as a title, a sub-section gets the full accent,
-   and anything deeper keeps .section-key's own dimmed tone. */
+   and anything deeper keeps .section-key's own dimmed tone. The size goes down by level too, the
+   theme's --section-title-size and --section-subtitle-size, 12px below (2026-10-27, the user's
+   wish: 14, 13, 12). The level is the place in the page, so a compacted chain ("a.b") has the
+   size of the level it stands at, and a section inside an object of a list keeps the 12px. */
 .section.nest-top > .section-header .section-key { color: var(--section-title-color); font-size: var(--section-title-size); }
-.section.nest-card > .section-header .section-key { color: var(--section-key-color); }
+.section.nest-card > .section-header .section-key { color: var(--section-key-color); font-size: var(--section-subtitle-size, 12px); }
 /* .file-card is the wrapper renderEditor() puts around everything in the file. It used to be a
    filled, outlined block of its own with the sections framed inside it; now it's only spacing
    (--page-margin, the same on every side), and each top-level section is its own card straight
@@ -549,15 +552,21 @@ input[type=text].key-rename-input {
    an option does from the section it is in (it was twice the side padding, 20px). The rows
    inside add nothing of their own on either side, or it would count twice. For some hours on
    2026-10-27 the names started where a value's text does (the item 4px in, the names 4px in
-   from it), the user's wish, until they asked for it back as it was. */
-.field-row.nest .array-obj-item { padding: 4px 4px 4px var(--indent-step); }
+   from it), the user's wish, until they asked for it back as it was.
+   The names are one indent step in from a value's text (8px from the strip's edge), not from
+   the item's edge, which is --list-item-gap in: the same day the user measured the step from
+   the value above the list ("lan") to the names and found it a little more than 2 characters.
+   Both lengths are taken in the 12px of the text (the font-size below), not the page's 13px,
+   whose ch is wider. The item's 1px border is in it too (measured in headless Chrome: 1px more
+   than the step without it). */
+.field-row.nest .array-obj-item { padding: 4px 4px 4px calc(7px + var(--indent-step) - var(--list-item-gap)); }
 .array-obj-fields > .field-group > .field-row.nest-loose { padding-left: 0; padding-right: 0; }
 /* The same space between the items and the value cell holding them on all four sides: the
    theme's --list-item-gap. For an hour on 2026-10-11 it was that only at the sides and 2px
    above and below, to make lists of objects lower, and the last object then sat almost on
    the cell's bottom edge with visibly more room beside it (the user: "why the spacing at the
    bottom is so small"). The lists are lower all the same, by the objects' own padding. */
-.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); font-size: 12px; }
 /* A section's whole heading line and the text of an option's name start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
