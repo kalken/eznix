@@ -201,7 +201,7 @@ first when you click above the first one (on a section's heading, say), and last
 last one.
 
 A set whose entries are plain values or lists, such as `networking.hosts` (an address and
-its names), has a last row of its own: type a new entry's name where it says **Add option…**
+its names), has a last row of its own: type a new entry's name where it says **Add entry…**
 and press Enter. A click on an entry's name there renames it.
 
 In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
