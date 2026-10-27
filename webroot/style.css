@@ -545,20 +545,19 @@ input[type=text].key-rename-input {
    which left only the block behind the names coloured ("i want it to look more like this so
    there is actually a visible color around each list object", with a picture of how it was).
    The values stand in by the same 4px above, below and on the right (the user's rule; the
-   right had more); on the left the names stood in by one step of indent (--indent-step), as
+   right had more); on the left the names stand in by one step of indent (--indent-step), as
    an option does from the section it is in (it was twice the side padding, 20px). The rows
-   inside add nothing of their own on either side, or it would count twice.
-   Since 2026-10-27 the names start 8px from the value strip's edge, where a value's text does
-   (the item 4px in, the names 4px in from it), so an option's value above a list and the names
-   in its objects start in one column: the user's wish, with a picture of a value over a list. */
-.field-row.nest .array-obj-item { padding: 4px 4px 4px 4px; }
+   inside add nothing of their own on either side, or it would count twice. For some hours on
+   2026-10-27 the names started where a value's text does (the item 4px in, the names 4px in
+   from it), the user's wish, until they asked for it back as it was. */
+.field-row.nest .array-obj-item { padding: 4px 4px 4px var(--indent-step); }
 .array-obj-fields > .field-group > .field-row.nest-loose { padding-left: 0; padding-right: 0; }
 /* The same space between the items and the value cell holding them on all four sides: the
    theme's --list-item-gap. For an hour on 2026-10-11 it was that only at the sides and 2px
    above and below, to make lists of objects lower, and the last object then sat almost on
    the cell's bottom edge with visibly more room beside it (the user: "why the spacing at the
    bottom is so small"). The lists are lower all the same, by the objects' own padding. */
-.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); padding-left: 4px; }
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); }
 /* A section's whole heading line and the text of an option's name start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
