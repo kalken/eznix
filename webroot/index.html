@@ -3773,11 +3773,74 @@ function renderSection(container, key, obj, path) {
   const body = document.createElement('div');
   body.className = 'section-body';
   renderObj(body, obj, path);
+  if (_freeEntryType(path)) _makeTable(body, obj, path);
   section.appendChild(body);
   // The whole heading line is the drag handle; a drag only starts once the pointer has moved
   // (see makeDraggable()), so a plain click on it is still just a click.
   makeDraggable(section, outerKey, outer.slice(0, -1), header);
   container.appendChild(section);
+}
+
+// A set whose entries hold no further names (_freeEntryType(): networking.hosts, a set of
+// texts, of numbers, of lists of texts) takes two things more than other sets: a click on an
+// entry's name renames it in place, and a last row with an empty name adds an entry of the type
+// the set holds, the cursor then in its value. It looks and edits as any other set (renderObj());
+// a table with filled name cells and the lists as chips was tried first and turned down the
+// same day (the user: no change to the edit fields, no background behind the names). Read off
+// the set's type alone, as every rule here is. (2026-10-27, the user's wish for networking.hosts.)
+function _makeTable(body, obj, path) {
+  body.classList.add('kv-table');
+  let group = body.querySelector(':scope > .field-group');
+  if (!group) { group = document.createElement('div'); group.className = 'field-group'; body.appendChild(group); }
+  const rows = [...group.children].filter(el => el.classList.contains('field-row'));
+  Object.keys(obj).forEach((k, i) => {
+    const anchor = rows[i] && rows[i].querySelector(':scope > .field-key .tt-anchor');
+    if (anchor) anchor.addEventListener('click', e => {
+      if (rows[i].classList.contains('is-disabled') || anchor.classList.contains('renaming')) return;
+      e.stopPropagation();
+      _startKeyRename([...path, k]);
+    });
+  });
+
+  const row = document.createElement('div');
+  row.className = 'field-row nest kv-add';
+  const keyEl = document.createElement('div');
+  keyEl.className = 'field-key';
+  const keyInner = document.createElement('span');
+  keyInner.className = 'field-key-inner';
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.className = 'kv-add-input';
+  inp.placeholder = 'Add option…';
+  keyInner.appendChild(inp);
+  keyEl.appendChild(keyInner);
+  const valEl = document.createElement('div');
+  valEl.className = 'field-value';
+  row.appendChild(keyEl);
+  row.appendChild(valEl);
+  group.appendChild(row);
+
+  let done = false;
+  function add() {
+    const name = inp.value.trim();
+    if (!name || done) return;
+    const cur = _contentAt(path);
+    if (!cur || typeof cur !== 'object' || Array.isArray(cur)) return;
+    if (Object.prototype.hasOwnProperty.call(cur, name)) { setStatus(`"${name}" already exists here`, 4000, 'err'); return; }
+    done = true;
+    cur[name] = defaultForType(typeFromNix(_freeEntryType(path)));
+    renderAll();
+    const added = document.querySelector('.field-row[data-path="' + CSS.escape([...path, name].join('.')) + '"]');
+    const box = added && added.querySelector('.field-value input[type=text], .field-value input[type=number], .field-value textarea');
+    if (box) box.focus();
+  }
+  inp.addEventListener('keydown', e => {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') { e.preventDefault(); add(); }
+    else if (e.key === 'Escape') { inp.value = ''; inp.blur(); }
+  });
+  inp.addEventListener('blur', add);
+  if (isDisabled(getAtPath(config, path))) inp.disabled = true;
 }
 
 // Adds an item to the end of a list and puts the cursor in it.

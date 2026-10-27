@@ -893,6 +893,17 @@ The bar's buttons and Add keep the cursor in the field, since the field's blur h
 Tried by the user in the test server that day, on `services.samba.settings.global` ("that
 works!"): the type chosen from the bar, and Add pressed with no type chosen.
 
+**A set of plain entries adds and renames in its rows** (`_makeTable()`, `.kv-add` in
+`style.css`), since 2026-10-27, the user asking how to make `networking.hosts` easier to edit:
+a set whose entries hold no further names (`_freeEntryType()`, read off its type) has a last row
+with an empty name, "Add option…", where a name typed and Enter (or leaving the field) adds an
+entry of the type the set holds and puts the cursor in its value; a click on an entry's name
+renames it in place (`_startKeyRename()`). Nothing else differs from any set. A table was built
+first, names in filled cells and lines between the rows, a list of texts as chips on one line;
+the user did not want the value fields changed nor a background behind the names. The add
+field is kept out of the value fields' padding so that its text starts where the names do. Seen
+by the user in the test server on `networking.hosts` and a set of texts ("that works great").
+
 **Sections start out folded from a level**, `collapseLevel` (`collapse_level`): a number, a
 top-level section being 1; not set (null), the default, nothing is folded
 (`SECTIONS_LEVEL`, `_sectionStartsOpen()`). Until 2026-10-12 the setting was `sections`,

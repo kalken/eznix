@@ -510,7 +510,7 @@ input[type=text].key-rename-input {
 .field-row.nest-loose { padding-left: var(--block-pad); padding-right: var(--block-pad); }
 /* Text values have no outline or fill, at rest or on hover, so a set value reads as plain text;
    an empty one says so with a placeholder instead (_setValuePlaceholders()). */
-.field-row.nest :is(input[type=text], input[type=number], input[type=password], textarea, .custom-select-btn):not(.key-rename-input) {
+.field-row.nest :is(input[type=text], input[type=number], input[type=password], textarea, .custom-select-btn):not(.key-rename-input, .kv-add-input) {
   border-color: transparent;
   /* 8px from the strip's edge to the text on the left and on the right, with the 1px border.
      Every kind of value starts on that line (a switch, chips and the "Add item…" of an empty
@@ -647,6 +647,17 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .pkg-items .array-item .pkg-label {
   color: var(--accent); font-size: 12px; white-space: nowrap;
 }
+
+/* ── Adding and renaming in a set of plain entries (_makeTable() in index.html) ── */
+/* Looks as any other set: only a name can be clicked to rename it, and a last row has an empty
+   name to type a new entry's into, its text where the names' text starts (so none of the
+   value fields' padding, border or fill). */
+.kv-table .field-row.nest:not(.is-disabled) > .field-key .tt-anchor { cursor: text; }
+.field-row.nest .kv-add-input {
+  width: 100%; height: 19px; padding: 0; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: var(--font); font-size: 12px;
+}
+.field-row.nest .kv-add-input::placeholder { color: var(--text3); opacity: 1; }
 
 /* ── Status bar ── */
 /* Notices in the bottom right corner (the terminal's restart one, no suggestions, no flake),

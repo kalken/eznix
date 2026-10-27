@@ -200,6 +200,10 @@ it is.
 first when you click above the first one (on a section's heading, say), and last below the
 last one.
 
+A set whose entries are plain values or lists, such as `networking.hosts` (an address and
+its names), has a last row of its own: type a new entry's name where it says **Add option…**
+and press Enter. A click on an entry's name there renames it.
+
 In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
 item like this** for a new one with the same settings, all of them empty.
 
