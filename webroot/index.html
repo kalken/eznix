@@ -4704,6 +4704,10 @@ function renderEnumArray(container, arr, path, enumOpts) {
       inp.focus(); return;
     }
     cur.push(val);
+    // In alphabetical order, as packages are (the user's wish, 2026-10-27; they were added at
+    // the end). The list is sorted whole, so one written in another order is put right too.
+    const text = v => isExprPkg(v) ? v._expr : String(v);
+    cur.sort((a, b) => text(a).localeCompare(text(b)));
     items.innerHTML = '';
     cur.forEach(v => {
       const row = makeChip(v);
