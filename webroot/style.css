@@ -1005,8 +1005,10 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .null-value { color: var(--text3); font-style: italic; padding-top: 4px; display: block; }
 
 /* What an empty list shows where its first item would be (renderArrayField()): the placeholder's
-   colour, on the line and at the left edge where a value's text is. */
-.list-add { padding: 4px 8px; color: var(--text3); cursor: pointer; }
+   colour, on the line and at the left edge where a value's text is, in the inputs' 12px: with the
+   page's 13px it was larger and taller than the "Add value…" of a list of chips beside it (the
+   user's picture of homebrew.taps and homebrew.brews, 2026-10-27). */
+.list-add { padding: 4px 8px; font-size: 12px; color: var(--text3); cursor: pointer; }
 .is-disabled .list-add { pointer-events: none; }
 
 /* ── Panels on the side (eznix.sidePanel()) ── */
