@@ -2,7 +2,7 @@
 // text editor: completion and indenting. Without this plugin they are plain text fields. It
 // reaches the page through nothing but listeners on the document and what the page has in its
 // scope (packages, optionSearch(), findOption(), choicesFor(), parseEnumOptions(), typeFromNix(),
-// _floatPopup(), _escHtml()); the page tells
+// _floatPopup(), _escHtml(), _showFieldTooltip(), _hideFieldTooltip()); the page tells
 // each field the path of the option it is (_exprPath) and knows nothing of this file.
 
 // Completion in any field that holds a Nix expression (.expr-input, .expr-value), wherever it
@@ -166,27 +166,34 @@ function _exprACShow(field, asked) {
 // Where in the window the character at `pos` of a text field is drawn: a copy of the field's
 // text up to there, in the field's font, width and padding, measured and thrown away, less
 // what the field has scrolled.
-function _caretRect(field, pos) {
+// A copy of a text field's text box, unseen, laid over the field where its text is drawn (less
+// what the field has scrolled), so that what is put in it lands where the field draws the same
+// text: how a place in the text is found on screen and the other way round.
+function _mirrorOf(field) {
   const cs = getComputedStyle(field);
   const m = document.createElement('div');
   for (const p of ['fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'letterSpacing', 'lineHeight',
     'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'tabSize', 'textIndent', 'wordBreak']) m.style[p] = cs[p];
+  const r = field.getBoundingClientRect();
   Object.assign(m.style, {
-    position: 'fixed', top: '0', left: '0', visibility: 'hidden', border: '0', boxSizing: 'border-box',
+    position: 'fixed', visibility: 'hidden', border: '0', boxSizing: 'border-box', pointerEvents: 'none',
+    left: (r.left + field.clientLeft - field.scrollLeft) + 'px', top: (r.top + field.clientTop - field.scrollTop) + 'px',
     width: field.clientWidth + 'px', overflowWrap: cs.overflowWrap,
     whiteSpace: field instanceof HTMLTextAreaElement && cs.whiteSpace !== 'nowrap' ? 'pre-wrap' : 'pre',
   });
+  return m;
+}
+// Where in the window the character at `pos` of a text field is drawn.
+function _caretRect(field, pos) {
+  const m = _mirrorOf(field);
   m.textContent = field.value.slice(0, pos);
   const mark = document.createElement('span');
-  mark.textContent = '\u200b';
+  mark.textContent = '​';
   m.appendChild(mark);
   document.body.appendChild(m);
-  const r = field.getBoundingClientRect();
-  const left = r.left + field.clientLeft + mark.offsetLeft - field.scrollLeft;
-  const top = r.top + field.clientTop + mark.offsetTop - field.scrollTop;
-  const height = mark.offsetHeight;
+  const r = mark.getBoundingClientRect();
   m.remove();
-  return { left, top, bottom: top + height };
+  return { left: r.left, top: r.top, bottom: r.bottom };
 }
 function _exprACTake(i) {
   const { field, start, items } = _exprAC;
@@ -249,6 +256,78 @@ document.addEventListener('keydown', e => {
 }, true);
 document.addEventListener('focusout', e => { if (e.target === _exprAC.field) _exprACHide(); }, true);
 document.addEventListener('mousedown', e => { if (e.target === _exprAC.field) _exprACHide(); }, true);
+
+// Help on hovering a name in an expression (the user's wish, 2026-10-27): after the pause the
+// page's own tooltips have, the tooltip of what the name under the pointer is, up to the part
+// pointed at: an option (`config.a.b`, or a setting written in a set, by the same reading as
+// the completion) or a package (`pkgs.x`). Nothing for anything else. Through the page's
+// _showFieldTooltip(), anchored to the part's box.
+function _nameAt(field, x, y) {
+  const m = _mirrorOf(field);
+  const v = field.value, re = /[A-Za-z_][\w'-]*(?:\.[A-Za-z_][\w'-]*)*/g;
+  const spans = [];
+  let last = 0, t;
+  while ((t = re.exec(v))) {
+    m.appendChild(document.createTextNode(v.slice(last, t.index)));
+    let at = t.index;
+    t[0].split('.').forEach((part, i) => {
+      if (i) { m.appendChild(document.createTextNode('.')); at++; }
+      const sp = document.createElement('span');
+      sp.textContent = part;
+      m.appendChild(sp);
+      spans.push({ sp, start: t.index, word: t[0], upto: at + part.length - t.index });
+      at += part.length;
+    });
+    last = t.index + t[0].length;
+  }
+  m.appendChild(document.createTextNode(v.slice(last)));
+  document.body.appendChild(m);
+  let hit = null;
+  for (const s of spans) {
+    const r = s.sp.getBoundingClientRect();
+    if (x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) { hit = { ...s, rect: r }; break; }
+  }
+  m.remove();
+  return hit;
+}
+function _helpFor(field, hit) {
+  const parts = hit.word.slice(0, hit.upto).split('.');
+  if (parts[0] === 'pkgs' && parts.length === 2) {
+    const p = packages.find(p => p.name === parts[1]);
+    return p ? { description: p.description, type: 'package' } : null;
+  }
+  if (parts[0] === 'config' && parts.length > 1) return findOption(parts.slice(1));
+  const at = field._exprPath && _exprBindingAt(field.value.slice(0, hit.start));
+  if (!at || at.value) return null;
+  return findOption([...field._exprPath, ...at.path, ...parts].map(String));
+}
+let _helpTimer = null, _helpShown = null;
+function _helpHide() {
+  clearTimeout(_helpTimer); _helpTimer = null;
+  if (_helpShown) { _hideFieldTooltip(); _helpShown = null; }
+}
+document.addEventListener('mousemove', e => {
+  const f = e.target;
+  if (!_isExprField(f)) { if (_helpTimer || _helpShown) _helpHide(); return; }
+  if (_helpShown) {
+    const r = _helpShown;
+    if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom) return;
+    _helpHide();
+  }
+  clearTimeout(_helpTimer);
+  const x = e.clientX, y = e.clientY;
+  _helpTimer = setTimeout(() => {
+    _helpTimer = null;
+    if (_exprAC.field === f || !f.isConnected) return;
+    const hit = _nameAt(f, x, y);
+    const opt = hit && _helpFor(f, hit);
+    if (!opt) return;
+    _showFieldTooltip({ getBoundingClientRect: () => hit.rect }, opt);
+    _helpShown = hit.rect;
+  }, 1000);
+}, true);
+for (const ev of ['mousedown', 'keydown', 'scroll']) document.addEventListener(ev, () => { if (_helpTimer || _helpShown) _helpHide(); }, true);
+document.addEventListener('mouseout', e => { if (_isExprField(e.target) && !(e.relatedTarget && e.target.contains(e.relatedTarget))) _helpHide(); }, true);
 
 // Indenting in a Nix expression that spans lines (.expr-input), as a text editor does (the
 // user's wish, 2026-10-27): Enter starts the new line at the indent of the one it breaks, a step

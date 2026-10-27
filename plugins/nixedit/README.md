@@ -18,6 +18,10 @@ an expression is a plain text field.
 - **Written out to the value**: a setting taken from the list is written up to its value, by its
   type, the cursor where the value goes: `port = "|";`, `interfaces = [ | ];`, a set opened on a
   line of its own, `enable = |;`
+- **Help on hover**: rest the pointer on a name (a setting written in a set, `config.…`,
+  `pkgs.…`) and after a second its help shows, as on the editor's own names: the option's
+  description, default and type, or the package's description. On a dotted name, the part
+  pointed at: `services` in `services.nginx.enable` shows nothing, `enable` the option
 - **Indenting**: a new line keeps the indent of the one before, two spaces more after `{`, `[`,
   `(` or `=`; Enter between `{` and `}` puts each on a line of its own; a closing bracket typed
   on an empty line takes a step back. Shift+Enter is a plain new line
