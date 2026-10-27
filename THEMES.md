@@ -164,6 +164,11 @@ stay variables in each theme file so a user theme can still choose its own.
 
 `--font` is the theme's to choose. Keep it monospaced: values are configuration and Nix code.
 
+Text sizes are the same in every built-in theme too, macOS's: `--text-size` 13px (names,
+values, menus, dialogs: its body text), and section titles as large, set apart only by weight
+and colour: `--section-title-size` (a top-level section) and `--section-subtitle-size` (one
+inside it), both 13px; deeper ones have `--text-size`. A theme without them gets 12px.
+
 ## Terminal
 
 `--term-*` are xterm.js's colours, read out of the page once the theme has loaded.

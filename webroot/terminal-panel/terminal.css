@@ -171,7 +171,7 @@
   gap: 10px;
   color: var(--term-fg);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   z-index: 5;
   background: var(--term-bg);
   border: 1px solid var(--border2);

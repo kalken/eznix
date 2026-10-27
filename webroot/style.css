@@ -56,7 +56,7 @@ body {
   border-radius: var(--radius);
   cursor: pointer;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   transition: background .15s, border-color .15s;
   display: flex;
   align-items: center;
@@ -123,7 +123,7 @@ body {
 .tab-row-sep { width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); flex-shrink: 0; }
 .tab-folder svg { flex-shrink: 0; opacity: .7; }
 /* Stands in an empty second row, sized as a tab so the bar keeps its height. */
-.tab-row-hint { padding: 5px 0; border: 1px solid transparent; font-size: 12px; color: var(--text3); white-space: nowrap; }
+.tab-row-hint { padding: 5px 0; border: 1px solid transparent; font-size: var(--text-size, 12px); color: var(--text3); white-space: nowrap; }
 /* A tab's fill and line are the theme's (--tab-bg, --tab-border; a button's in most). On
    .tab alone, so that the rules below, of more than one class, still decide. */
 .tab { white-space: nowrap; background: var(--tab-bg); border-color: var(--tab-border); }
@@ -141,7 +141,7 @@ body {
   background: var(--bg); border: 1px solid var(--input-focus-border); color: var(--text);
   border-radius: var(--radius-sm); font-family: var(--font); outline: none;
 }
-.tab-rename-input { font-size: 12px; padding: 1px 4px; }
+.tab-rename-input { font-size: var(--text-size, 12px); padding: 1px 4px; }
 /* A name being renamed stays where it is, unseen, and the field lies on top of it, starting at
    the same place and as tall: nothing around it is laid out again, so the text cannot move
    (the user: "i dont want it to move at all"). Putting the field in the name's place was
@@ -183,7 +183,7 @@ input[type=text].key-rename-input {
   padding: 5px 9px;
   border-radius: var(--input-radius);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   outline: none;
 }
 .autocomplete-list {
@@ -209,7 +209,7 @@ input[type=text].key-rename-input {
   gap: 1px;
 }
 .autocomplete-item:hover, .autocomplete-item.active { background: var(--bg4); }
-.autocomplete-item .ac-name { color: var(--accent); font-size: 12px; }
+.autocomplete-item .ac-name { color: var(--accent); font-size: var(--text-size, 12px); }
 .autocomplete-item .ac-desc { color: var(--text2); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 480px; }
 .autocomplete-item .ac-type { color: var(--purple); font-size: 10px; }
 .autocomplete-item .ac-required { background: var(--required-bg); color: var(--required-text); font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 5px; border-radius: 3px; flex-shrink: 0; align-self: flex-start; }
@@ -247,7 +247,7 @@ input[type=text].key-rename-input {
 }
 /* Depth is carried by how bright a section's name is, in three steps (the two brighter ones
    are set in "Option rows" below): this dimmed tone is what anything below a sub-section gets. */
-.section-key { color: var(--section-key-deep-color); font-size: 12px; font-weight: 600; flex: 1; display: flex; flex-direction: row; align-items: center; gap: 4px; padding-left: calc(var(--depth, 0) * var(--indent-step)); }
+.section-key { color: var(--section-key-deep-color); font-size: var(--text-size, 12px); font-weight: 600; flex: 1; display: flex; flex-direction: row; align-items: center; gap: 4px; padding-left: calc(var(--depth, 0) * var(--indent-step)); }
 .section-key-inner { display: flex; flex-direction: column; align-items: flex-start; }
 .section-key-text { position: relative; }
 .section-key-sub { display: flex; align-items: center; gap: 4px; }
@@ -345,7 +345,7 @@ input[type=text].key-rename-input {
 /* field-key is the positioning context for its tooltip */
 .field-key {
   color: var(--text2); min-width: 140px;
-  font-size: 12px; word-break: break-all; flex-shrink: 0;
+  font-size: var(--text-size, 12px); word-break: break-all; flex-shrink: 0;
   position: relative; display: flex; flex-direction: row; align-items: flex-start; gap: 4px; padding-top: 2px;
 }
 .field-key-inner { display: flex; flex-direction: column; align-items: flex-start; flex: 1; min-width: 0; }
@@ -566,7 +566,7 @@ input[type=text].key-rename-input {
    above and below, to make lists of objects lower, and the last object then sat almost on
    the cell's bottom edge with visibly more room beside it (the user: "why the spacing at the
    bottom is so small"). The lists are lower all the same, by the objects' own padding. */
-.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); font-size: 12px; }
+.field-row.nest > .field-value:has(> .array-obj-item) { padding: var(--list-item-gap); font-size: var(--text-size, 12px); }
 /* A section's whole heading line and the text of an option's name start a drag (see
    makeDraggable()'s callers), with no cursor change to say so; the name of a foldable section
    is a switch on top of that, and does show it. */
@@ -577,7 +577,7 @@ input[type=text].key-rename-input {
 
 .icon-btn {
   background: none; border: none; cursor: pointer; color: var(--text3);
-  padding: 3px; border-radius: var(--radius-sm); font-size: 12px; line-height: 1;
+  padding: 3px; border-radius: var(--radius-sm); font-size: var(--text-size, 12px); line-height: 1;
   transition: color .15s;
 }
 .icon-btn.del:hover { color: var(--red); }
@@ -604,7 +604,7 @@ input[type=text], input[type=number], input[type=password], textarea {
   padding: 3px 6px;
   border-radius: var(--input-radius);
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   outline: none;
   width: 100%;
 }
@@ -626,7 +626,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   transition: transform .2s, background .2s;
 }
 .toggle.on::after { transform: translateX(15px); background: var(--toggle-on-knob); }
-.toggle-label { color: var(--text2); font-size: 12px; }
+.toggle-label { color: var(--text2); font-size: var(--text-size, 12px); }
 
 /* ── Array ── */
 .array-item { display: flex; align-items: center; gap: 4px; }
@@ -656,7 +656,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 /* Same colour as the name in the "Add package…" suggestion list (.ac-name), so a package
    looks the same before and after it's picked. */
 .pkg-items .array-item .pkg-label {
-  color: var(--accent); font-size: 12px; white-space: nowrap;
+  color: var(--accent); font-size: var(--text-size, 12px); white-space: nowrap;
 }
 
 /* ── Adding and renaming in a set of plain entries (_makeTable() in index.html) ── */
@@ -666,7 +666,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .kv-table .field-row.nest:not(.is-disabled) > .field-key .tt-anchor { cursor: text; }
 .field-row.nest .kv-add-input {
   width: 100%; height: 19px; padding: 0; background: transparent; border: none; outline: none;
-  color: var(--text); font-family: var(--font); font-size: 12px;
+  color: var(--text); font-family: var(--font); font-size: var(--text-size, 12px);
 }
 .field-row.nest .kv-add-input::placeholder { color: var(--text3); opacity: 1; }
 
@@ -695,7 +695,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   border-radius: var(--radius);
   box-shadow: 0 4px 16px var(--shadow);
   padding: 10px 16px;
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   color: var(--text);
   cursor: pointer;
   transition: background .15s;
@@ -758,11 +758,11 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
    dialog's look, which a plugin's dialog takes by these names instead of styling its own. */
 .modal-input {
   background: var(--bg); border: 1px solid var(--input-border); color: var(--text);
-  padding: 5px 9px; border-radius: var(--input-radius); font-family: var(--font); font-size: 12px; outline: none;
+  padding: 5px 9px; border-radius: var(--input-radius); font-family: var(--font); font-size: var(--text-size, 12px); outline: none;
 }
-.modal-hint { margin: 0 0 10px; font-size: 12px; color: var(--text3); line-height: 1.5; }
+.modal-hint { margin: 0 0 10px; font-size: var(--text-size, 12px); color: var(--text3); line-height: 1.5; }
 .modal-hint code { font-family: var(--font); color: var(--text2); }
-.modal-error { background: var(--error-bg); border: 1px solid var(--required-bg); color: var(--required-text); border-radius: var(--radius-sm); padding: 8px 12px; font-size: 12px; font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
+.modal-error { background: var(--error-bg); border: 1px solid var(--required-bg); color: var(--required-text); border-radius: var(--radius-sm); padding: 8px 12px; font-size: var(--text-size, 12px); font-family: var(--font); white-space: pre-wrap; word-break: break-all; }
 .modal-error.modal-valid { background: var(--success-bg); border-color: var(--success-border); color: var(--green); }
 .import-examples { display: flex; gap: 8px; align-items: flex-start; }
 .import-example-label { color: var(--text3); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; padding-top: 6px; flex-shrink: 0; }
@@ -851,7 +851,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   width: 100%; box-sizing: border-box; height: 30px;
   background: var(--popup-bg); border: 1px solid var(--border2);
   border-radius: var(--radius); box-shadow: 0 4px 16px var(--shadow);
-  padding: 6px 10px; font-family: var(--font); font-size: 12px; color: var(--text); outline: none;
+  padding: 6px 10px; font-family: var(--font); font-size: var(--text-size, 12px); color: var(--text); outline: none;
 }
 /* The popup's surface (.tooltip), and inside it each result in the colours the same thing has
    in the editor: the option's path like an option name, its value like a value -- plain text,
@@ -884,7 +884,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   flex: 1;
   min-height: unset;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
   background: transparent;
   color: var(--green);
   resize: vertical;
@@ -901,7 +901,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .custom-select-btn {
   background: transparent; border: 1px solid var(--input-border); color: var(--text);
   padding: 3px 22px 3px 6px; border-radius: var(--input-radius); font-family: var(--font);
-  font-size: 12px; cursor: pointer; width: 100%; user-select: none; white-space: nowrap;
+  font-size: var(--text-size, 12px); cursor: pointer; width: 100%; user-select: none; white-space: nowrap;
   overflow: hidden; text-overflow: ellipsis;
 }
 .custom-select-btn::after { content: '▾'; position: absolute; right: 7px; top: 50%; transform: translateY(-50%); color: var(--text3); pointer-events: none; font-size: 10px; }
@@ -918,7 +918,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 }
 .custom-select-list { overflow-y: auto; flex: 1; }
 .custom-select-option {
-  padding: 5px 10px; font-family: var(--font); font-size: 12px;
+  padding: 5px 10px; font-family: var(--font); font-size: var(--text-size, 12px);
   color: var(--select-option-color); cursor: pointer; white-space: nowrap;
 }
 .custom-select-option:hover { background: var(--select-option-hover); }
@@ -957,7 +957,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font);
-  font-size: 12px;
+  font-size: var(--text-size, 12px);
 }
 .context-menu-item:hover { background: var(--select-option-hover); }
 .context-menu-item:disabled { opacity: 0.4; cursor: default; pointer-events: none; }
@@ -1019,7 +1019,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
    colour, on the line and at the left edge where a value's text is, in the inputs' 12px: with the
    page's 13px it was larger and taller than the "Add value…" of a list of chips beside it (the
    user's picture of homebrew.taps and homebrew.brews, 2026-10-27). */
-.list-add { padding: 4px 8px; font-size: 12px; color: var(--text3); cursor: pointer; }
+.list-add { padding: 4px 8px; font-size: var(--text-size, 12px); color: var(--text3); cursor: pointer; }
 .is-disabled .list-add { pointer-events: none; }
 
 /* ── Panels on the side (eznix.sidePanel()) ── */
@@ -1087,7 +1087,7 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   display: flex; align-items: center; gap: 8px;
   min-height: 24px;
 }
-.side-panel-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: var(--text2); }
+.side-panel-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: var(--text-size, 12px); color: var(--text2); }
 .side-panel-actions { display: flex; align-items: center; gap: 8px; }
 .side-panel-actions .btn { padding: 3px 10px; }
 .side-panel-body { flex: 1; min-height: 0; overflow-y: auto; }
