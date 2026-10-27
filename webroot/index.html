@@ -2969,6 +2969,12 @@ function makeDraggable(el, key, parentPath, handle) {
     if (e.target.closest(_DRAG_EXCLUDE_SELECTOR)) return;
     e.preventDefault();
     e.stopPropagation();
+    // preventDefault() also keeps the cursor where it was, so a field being typed in (a name
+    // being renamed, a value) stayed open on a click beside it in a name's column or a heading
+    // (the user, renaming in networking.hosts, 2026-10-27): it is left as a click elsewhere
+    // leaves it.
+    const had = document.activeElement;
+    if (had && had !== document.body && had.matches('input, textarea')) had.blur();
 
     const rect = el.getBoundingClientRect();
     const offsetY = e.clientY - rect.top;
