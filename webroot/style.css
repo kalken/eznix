@@ -892,8 +892,10 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
   overflow-x: auto;
 }
 /* Raw Nix expr rendered inline in an array (renderArray's isExpr branch) -- same color as
-   .expr-input above, so an expression reads as green wherever it's shown as editable text. */
-.expr-value { color: var(--green); }
+   .expr-input above, so an expression reads as green wherever it's shown as editable text.
+   With the element in it: as a bare class it lost to input[type=text]'s colour above, and an
+   expression in a list looked like a text (listenHost = [ config.… ], 2026-10-27). */
+input.expr-value, textarea.expr-value { color: var(--green); }
 
 
 /* ── Custom select ── */
