@@ -3178,12 +3178,12 @@ const _toggledSections = new Set();
 function _sectionOpenKey(el) { return activeFile + '\x00' + el.dataset.path; }
 // How a section starts out: shown above the level the collapseLevel setting names, folded
 // from that level down; with none set (0 here) all are shown. A top-level
-// section is level 1, so one more than its depth (--depth, from _setNestDepths()). The level
+// section is level 1, so one more than its depth (data-depth, from _setNestDepths()). The level
 // was fixed at 3, the first that could be folded then, until the user asked for it to be a
 // setting (2026-10-12), with nothing folded unless it is set: with 4, `services.ezrouter.wan` is then open and
 // `services.ezrouter.wan.bridge` folded.
 function _sectionStartsOpen(el) {
-  return !SECTIONS_LEVEL || (parseInt(el.style.getPropertyValue('--depth'), 10) || 0) + 1 < SECTIONS_LEVEL;
+  return !SECTIONS_LEVEL || (parseInt(el.dataset.depth, 10) || 0) + 1 < SECTIONS_LEVEL;
 }
 function _isSectionOpen(el) { return _sectionStartsOpen(el) !== _toggledSections.has(_sectionOpenKey(el)); }
 function _setSectionOpen(el, open) {
@@ -3225,9 +3225,19 @@ function _setNestDepths(root) {
     }
     const isSection = el.classList.contains('section');
     // Only a section is indented: an option starts in the column of the name of the section it
-    // is in, not a step further in (the user's idea to try, 2026-10-27). The indent only: the
-    // classes below go by where it really is.
-    el.style.setProperty('--depth', !isSection && depth > 0 ? depth - 1 : depth);
+    // is in, not a step further in (the user's wish, 2026-10-27). And only from INDENT_LEVEL down
+    // (indentLevel, 2 unless set, 0 for never; the same day): a section of that level is one
+    // step in from the one it is in, and each level below one more. --depth is the steps; the
+    // level itself, which the classes below and _sectionStartsOpen() go by, is data-depth.
+    // An option's own place goes by its section's arrow (the user's wish the same day): under a
+    // section that has one when open (from ARROW_LEVEL down) it starts where the section's name
+    // does, the arrow marking the level; under one that has none, a step further in.
+    const level = isSection ? depth + 1 : depth;
+    const underArrow = !isSection && depth > 0 && ARROW_LEVEL > 0 && depth >= ARROW_LEVEL;
+    const steps = (INDENT_LEVEL > 0 && level >= INDENT_LEVEL ? level - INDENT_LEVEL + 1 : 0)
+      + (!isSection && depth > 0 && !inArrayObj && !underArrow ? 1 : 0);
+    el.style.setProperty('--depth', steps);
+    el.dataset.depth = depth;
     el.classList.add('nest');
     el.classList.toggle('nest-top', !inArrayObj && isSection && depth === 0);
     el.classList.toggle('nest-card', !inArrayObj && isSection && depth === 1);
@@ -3245,6 +3255,7 @@ function _setNestDepths(root) {
     el.classList.toggle('collapsed', foldable && !_isSectionOpen(el));
     el.classList.toggle('nest-loose', !inArrayObj && !isSection && depth <= 1);
     el.classList.toggle('nest-root', !inArrayObj && !isSection && depth === 0);
+    el.classList.toggle('nest-under-arrow', !inArrayObj && underArrow);
   }
 }
 
@@ -5731,6 +5742,7 @@ function initImportDrop() {
 const API_BASE = '/api/v1';
 const BACKUP_ENABLED    = %%EZNIX_BACKUP%%;
 const ARROW_LEVEL       = %%EZNIX_ARROW_LEVEL%%; // services.eznix.arrowLevel / arrow_level in eznix.toml: the level from which an open section has an arrow; 0 for none -- see _setNestDepths()
+const INDENT_LEVEL      = %%EZNIX_INDENT_LEVEL%%; // services.eznix.indentLevel / indent_level in eznix.toml: the level from which sections are indented; 0 for never -- see _setNestDepths()
 const COMPACT_LEVEL     = %%EZNIX_COMPACT_LEVEL%%; // services.eznix.compactLevel / compact_level in eznix.toml: the level from which a section holding only one section is drawn as one with it; 0 for none -- see renderSection()
 const SECTIONS_LEVEL    = %%EZNIX_SECTIONS_LEVEL%%; // services.eznix.collapseLevel / collapse_level in eznix.toml: the level sections are folded from; 0 when it is not set, for never -- see _sectionStartsOpen()
 const EZNIX_MODE       = %%EZNIX_MODE%%; // null or "install" — services.eznix.mode / mode in eznix.toml, deploy-time only, no in-GUI toggle

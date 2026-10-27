@@ -386,6 +386,9 @@ input[type=text].key-rename-input {
    user preferred the even rows. (Both at once would need the strip to start right under the
    heading's text.) */
 .field-row.nest > .field-key { flex: 0 0 var(--key-width); min-width: 0; padding-left: calc(var(--depth, 0) * var(--indent-step)); padding-top: 5px; }
+/* Under a section with an arrow the options start where its name's text does, so with the
+   arrow counted (--arrow-inline) they move along with the name. */
+.field-row.nest.nest-under-arrow > .field-key { padding-left: calc(var(--depth, 0) * var(--indent-step) + 2ch * var(--arrow-inline, 0)); }
 /* A text value's own text sits 1px border + 3px padding inside its box, above and at the left.
    A toggle (8px from the left, here, as a text value's text is) and the key (4px from the top, above) are offset by the
    same amounts, so every kind of value starts on one vertical line and a key shares a text
@@ -492,17 +495,25 @@ input[type=text].key-rename-input {
    then an arrow only on a folded section, then the arrows of level 3 and down back, but
    never moving the text. After the name, "rotate ▸", was tried the same day and put back
    in front. The level became a setting the same day, at the user's wish.) */
-.section-toggle { display: none; }
+/* Below the top level the arrow hangs two characters before its name, whatever the indent:
+   with the indent of 2 that is where the name of the section above starts (2026-10-24, the
+   user's wish), and a wider indent no longer leaves a gap between arrow and name (2026-10-27,
+   when it was one indent step, the user's wish); nothing moves. A top-level one has only the
+   card's padding to its left, so it stays right before its name (--arrow-box, the room it
+   hangs in).
+   With --arrow-inline at 1 (arrowInline, 2026-10-27, the user's wish) it is counted instead:
+   two characters in the line before the name, which moves by as much. One rule for both: the
+   arrow is a box in the line, as wide as the room it hangs in and pulled back over it, or
+   two characters and not pulled back. */
+.section-toggle { display: none; --arrow-box: 2ch; --arrow-hang: calc(1 - var(--arrow-inline, 0)); }
+.section.nest-top > .section-header .section-toggle { --arrow-box: 1.2ch; }
 .section.foldable.collapsed > .section-header .section-toggle,
 .section.nest-arrow > .section-header .section-toggle {
-  display: block; position: absolute; right: 100%; top: 0; width: 1.2ch;
+  display: inline-block;
+  width: calc(var(--arrow-box) * var(--arrow-hang) + 2ch * var(--arrow-inline, 0));
+  margin-left: calc(-1 * var(--arrow-box) * var(--arrow-hang));
   cursor: pointer; user-select: none;
 }
-/* Below the top level the arrow starts where the name of the section above starts, one indent
-   step to the left of its own name, in the room the indent leaves (2026-10-24, the user's
-   wish); nothing moves. A top-level one has no name above it and only the card's padding to
-   its left, so it stays right before its name. */
-.section.nest:not(.nest-top) > .section-header .section-toggle { right: auto; left: calc(-1 * var(--indent-step)); }
 .section.nest-arrow > .section-header .section-toggle::before { content: '▾'; }
 .section.foldable.collapsed > .section-header .section-toggle::before { content: '▸'; }
 /* A section nested deeper than that has no edge or fill, only a little space below it. */

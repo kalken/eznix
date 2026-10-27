@@ -149,7 +149,8 @@ The "Editor layout" block is the same in every built-in theme, on purpose:
 | `--block-pad` | 10px | inside a card, at the sides |
 | `--row-height` | 24px | a row: one line of text with 4px above and below it |
 | `--card-gap` | 4px | above and below a box inside a card (a sub-section, or a run of plain options), each of which has a line along its top |
-| `--indent-step` | 2ch | per level of nesting |
+| `--indent-step` | 2ch | how far a section is from the one it is in (the `indent` setting sets it) |
+| `--arrow-inline` | 0 (not set) | 1: a section's arrow is counted before its name and moves it; 0: it hangs to the left (`arrowInline` sets it) |
 | `--nested-section-gap` | 0px | below a foldable section, in addition to its rows |
 
 Inside a card everything is rows, one after the other; the only other space is a box's padding

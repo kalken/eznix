@@ -66,7 +66,11 @@ theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, 
                                       # folded one always has); 0: none
 # compact_level = 1                   # from this level down, a section holding only one
                                       # section is shown as one with it ("a.b"); 0: none
-# indent = 2                          # characters a section is indented from the one it is in
+# indent = 2                          # characters a section is indented from the one it is in (and
+                                      # its options from its name, unless it has an arrow)
+# indent_level = 2                    # sections are indented from this level down (a top-
+                                      # level one is 1); 0: none
+# arrow_inline = false                # true: the arrow counted before the name, moving it
 # font = "Hack, monospace"            # the editor's font, a CSS font-family list; not set: the theme's
 # terminal_font = "Hack, monospace"   # the terminal's font, the same way; not set: its own list
 # debug  = true                       # log what is only worth knowing while looking into

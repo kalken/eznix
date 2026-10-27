@@ -730,7 +730,7 @@ def main():
                            'plugins/hello/plugin.json': '{"name": "hello", "scripts": ["hello.js"], "server": "hello.py"}',
                            'plugins/hello/hello.js': '// hello',
                            'plugins/hello/hello.py': 'def setup(api):\n    api.get("hi", lambda req: {"hi": req.user, "n": api.config.get("n")})\n',
-                           'conf.toml': f'interfaces = ["lo", "no-such-interface0"]\nlisten_addresses = ["127.0.0.1"]\ncollapse_level = 6\nindent = 1.5\narrow_level = 1\ncompact_level = 1\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n[plugin.files]\nexclude = [".*", "sub"]\neditor = "hx"\n[[plugin.files.menus]]\nname = "Text"\nextensions = [".md", ".txt"]\ncommand = "nano -w"\n[[plugin.files.menus]]\nextensions = [".nix"]\n'}.items():
+                           'conf.toml': f'interfaces = ["lo", "no-such-interface0"]\nlisten_addresses = ["127.0.0.1"]\ncollapse_level = 6\nindent = 1.5\narrow_level = 1\nindent_level = 3\narrow_inline = true\ncompact_level = 1\nhosts = ["https://nix.example.org"]\nexclude = ["package.json", "vendor/"]\nplugins_dir = "{tmp}/plugins"\n[session]\ndays = 0.5\n[plugin.hello]\nn = 3\n[plugin.documents]\nenabled = false\n[plugin.system]\nexclude = ["*.md", "/secret", "!keep.md", ".*", "!.shown"]\n[plugin.files]\nexclude = [".*", "sub"]\neditor = "hx"\n[[plugin.files.menus]]\nname = "Text"\nextensions = [".md", ".txt"]\ncommand = "nano -w"\n[[plugin.files.menus]]\nextensions = [".nix"]\n'}.items():
             with open(f'{tmp}/{path}', 'w') as f:
                 f.write(text)
 
@@ -929,6 +929,8 @@ def main():
 
             check('no section is folded with nothing set', 'const SECTIONS_LEVEL    = 0;' in page, None)
             check('open sections have arrows from level 3 with nothing set', 'const ARROW_LEVEL       = 3;' in page, None)
+            check('sections are indented from level 2 with nothing set', 'const INDENT_LEVEL      = 2;' in page, None)
+            check('arrow_inline left to the theme with nothing set', '--arrow-inline:' not in page, None)
             check('sections are compacted from level 1 with nothing set', 'const COMPACT_LEVEL     = 1;' in page, None)
             check('the indent is 2 with nothing set', '<style>html:root { --indent-step: 2ch; }</style>' in page, None)
             check('files: with nothing set, one menu of the Nix files, and listing is all it answers',
@@ -1106,8 +1108,10 @@ def main():
             check('a changed configuration changes it', b.json('/api/v1/ping')[1]['page'] != first)
             check('collapse_level is the level they are folded from', 'const SECTIONS_LEVEL    = 6;' in page)
             check('arrow_level is the level open sections have arrows from', 'const ARROW_LEVEL       = 1;' in page)
+            check('indent_level is the level sections are indented from', 'const INDENT_LEVEL      = 3;' in page)
+            check('arrow_inline goes into the page', '--arrow-inline: 1;' in page)
             check('compact_level is the level sections are compacted from', 'const COMPACT_LEVEL     = 1;' in page)
-            check('indent takes the place of the theme\'s', '<style>html:root { --indent-step: 1.5ch; }</style>' in page)
+            check('indent takes the place of the theme\'s', '<style>html:root { --indent-step: 1.5ch; --arrow-inline: 1; }</style>' in page)
             check('your own plugin is loaded, with its settings', 'plugins/hello/hello.js' in page and '"hello": {"n": 3}' in page)
             check('and its server code answers', b.json('/api/v1/plugin/hello/hi')[1].get('n') == 3)
             check('a plugin switched off is gone', 'plugins/documents' not in page

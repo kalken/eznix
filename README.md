@@ -673,7 +673,9 @@ The common ones, the same in all three modules:
 | `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`1` folds them all, `4` what is inside `services.openssh.settings`); not set, nothing is folded |
 | `arrowLevel` | `3` | the level from which an open section has an arrow in front of its name, a top-level section being 1 (`0`: none); a folded section always has one |
 | `compactLevel` | `1` | the level from which a section that holds only one sub-section is shown as one with it, under both names (`a.b`), a top-level section being 1 (`0`: never) |
-| `indent` | `2` | how far each section is indented in the editor from the one it is in, in characters (its options start in the column of its name) |
+| `indent` | `2` | how far a section is indented in the editor from the one it is in, in characters; its options start that far in from its name, or under its name when it has an arrow (see `arrowLevel`) |
+| `indentLevel` | `2` | the level from which sections are indented, a top-level section being 1 (`0`: none); above it everything starts in one column |
+| `arrowInline` | the theme's, else `false` | `true`: a section's arrow is counted in the line before its name, which moves two characters in; otherwise it hangs to the left and moves nothing |
 | `font` | | the editor's font, a CSS font-family list (`"Hack, monospace"`), the first one installed on the computer you browse from being used; not set, the theme's |
 | `terminalFont` | | the terminal's font, the same way; not set, its own list (JetBrains Mono, Fira Code, Cascadia Code, Hack, the system's monospace) |
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |

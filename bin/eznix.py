@@ -193,6 +193,8 @@ SECTIONS_LEVEL   = 0             # the level from which sections start out folde
 ARROW_LEVEL      = 3             # the level from which an open section shows its arrow (arrow_level); 0: none does
 COMPACT_LEVEL    = 1             # the level from which a section holding only one section is drawn as one with it (compact_level); 0: none is
 INDENT           = 2             # characters of indent per level in the editor (indent)
+INDENT_LEVEL     = 2             # the level from which sections are indented (indent_level); 0: none is
+ARROW_INLINE     = None          # the arrow counted in the line before a name (arrow_inline); None: the theme's, else hanging
 FONT             = None          # the editor's font, a CSS font-family list (font); None: the theme's
 TERMINAL_FONT    = None          # the terminal's font (terminal_font); None: its own list
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
@@ -1311,11 +1313,13 @@ def _render_index():
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
+        .replace('%%EZNIX_INDENT_LEVEL%%', str(INDENT_LEVEL))
         .replace('%%EZNIX_COMPACT_LEVEL%%', str(COMPACT_LEVEL))
         # indent, and font when set: put in place of the theme's --indent-step and --font,
         # whichever theme the browser has. `html:root` outweighs a theme's `:root`, so it holds
         # whatever loads after it.
         .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch;'
+                 + (f' --arrow-inline: {int(ARROW_INLINE)};' if ARROW_INLINE is not None else '')
                  + (f' --font: {FONT};' if FONT else '') + ' }</style>')
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
@@ -2759,7 +2763,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
+    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, INDENT_LEVEL, ARROW_INLINE, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2914,6 +2918,15 @@ def main():
     # indent: characters per level of nesting in the editor, 2 when not set.
     indent = cfg.get('indent', 2)
     INDENT = float(indent) if isinstance(indent, (int, float)) and not isinstance(indent, bool) and indent >= 0 else 2
+    # indent_level: the level from which a section is indented from the one it is in, its
+    # options with it; above it everything starts in one column. 2 when not set; 0 for never.
+    indent_level = cfg.get('indent_level', 2)
+    INDENT_LEVEL = indent_level if isinstance(indent_level, int) and not isinstance(indent_level, bool) and indent_level > 0 else 0
+    # arrow_inline: the arrow counted in the line before a section's name instead of hanging to
+    # its left. Not set, what the theme says (--arrow-inline), else hanging: only a value that is
+    # set goes into the page, so a theme can set it too.
+    arrow_inline = cfg.get('arrow_inline')
+    ARROW_INLINE = arrow_inline if isinstance(arrow_inline, bool) else None
     # font, terminal_font: the editor's and the terminal's font, a CSS font-family list ("Hack,
     # monospace"); not set, the theme's and the terminal's own.
     FONT = _font_setting(cfg.get('font'))

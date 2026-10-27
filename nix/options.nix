@@ -62,6 +62,8 @@ let
     plugins_dir      = if cfg.extraPlugins != { } then "${pluginsDir}" else null;
     collapse_level   = cfg.collapseLevel;
     indent           = cfg.indent;
+    indent_level     = cfg.indentLevel;
+    arrow_inline     = cfg.arrowInline;
     font             = cfg.font;
     terminal_font    = cfg.terminalFont;
     arrow_level      = cfg.arrowLevel;
@@ -462,7 +464,19 @@ in
       type        = types.numbers.nonnegative;
       default     = 2;
       example     = 1;
-      description = "How far in the editor a section is indented from the one it is in, in characters. Its options start in the column of its name.";
+      description = "How far in the editor a section is indented from the one it is in, in characters. Its options start that far in from its name, or in the column of its name when it has an arrow (see arrowLevel).";
+    };
+    indentLevel = mkOption {
+      type        = types.ints.unsigned;
+      default     = 2;
+      example     = 3;
+      description = "The level from which a section in the editor is indented from the one it is in (by indent), a top-level section being level 1: with 3, services.openssh starts in the column of services and services.openssh.settings is indented. 0 never.";
+    };
+    arrowInline = mkOption {
+      type        = types.nullOr types.bool;
+      default     = null;
+      example     = true;
+      description = "Whether a section's arrow in the editor is counted in the line before its name, which then starts two characters further in, instead of hanging to the left of it and moving nothing. Not set, what the theme says, else hanging.";
     };
     font = mkOption {
       type        = types.nullOr types.str;

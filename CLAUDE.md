@@ -837,11 +837,20 @@ tried and taken back. As it stands:
   (`.field-group`'s padding), since it is filled to the bottom of its last row.
 - The indent is `--indent-step` (2ch; 1ch was tried on 2026-10-15) per level and nothing
   else, and a setting since that day (`indent`, in characters, 2 unless set, `services.eznix.indent`;
-  the server puts it in the page as `html:root`, which outweighs every theme's `:root`): a section's options start in the column of its name and only a sub-section is one step in
-  (since 2026-10-27, `_setNestDepths()`: an option's `--depth` is one less; the user tried it in
-  the test server and kept it; a one-character indent, the arrow right against the name, a dot
-  for an open section and no indent with dots per level were tried the same hour and not kept;
-  until then the options were one step in from the name), and no arrow takes room in
+  the server puts it in the page as `html:root`, which outweighs every theme's `:root`): a sub-section is one
+  step in from the section it is in, and a section's options go by its arrow (since 2026-10-27,
+  `_setNestDepths()`, the user's rule after an afternoon of trying): under a section with an arrow
+  when open (from `arrowLevel` down) they start where its name's text does, the arrow marking the
+  level; under one without (the cards and the boxes in them, by default) one step in from its
+  name. Until that day options were always one step in; for a commit (`5daec8b`) always in the
+  name's column; tried and not kept the same day: a one-character indent, the arrow right against
+  the name, a dot for an open section, no indent with dots per level, `keyIndent` (options a set
+  amount in) and `cardIndent` (room on the left of everything under a card's title). The indent
+  starts at `indentLevel` (`indent_level`, 2 unless set, 0 for never), everything above it in
+  one column; `--depth` is the steps, `data-depth` the level. `arrowInline` counts the arrow
+  before the name, `--arrow-inline`: one rule for the arrow, a box in the line pulled back over
+  the room it hangs in or not, and the options under it move with the name; only in the page when
+  set, so a theme can set it too. And no arrow takes room in
   the text. Until 2026-10-15 the arrow of level 3 and down was part of the heading's text,
   two characters wide, and the user found the names too busy with everything unfolded; it
   was taken away altogether for a while that day (a click on the name folds). Arrows and a line down the section shown only under the pointer were
@@ -857,7 +866,9 @@ tried and taken back. As it stands:
   container, the depth counted from the DOM; the arrow is outside that). Since the same day,
   below the top level, the arrow starts in the column of the name of the section above, one
   indent step left of its own (the user's wish); a top-level one stays right before its name,
-  with only the card's padding to its left.
+  with only the card's padding to its left. Since 2026-10-27 it is two characters before its
+  name whatever the indent (the same place with the indent of 2): with `indent = 4` it stood
+  apart from the name, which the user did not want.
 - Below level 2 a section has no line, box or shade of its own, only its indent. Turned
   down by the user on 2026-10-15, each tried in the test server: a shade per level, boxes
   and lines along the top taking turns as levels 1 and 2 do, the box as a line down its
