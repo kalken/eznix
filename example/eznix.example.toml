@@ -67,6 +67,8 @@ theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, 
 # compact_level = 1                   # from this level down, a section holding only one
                                       # section is shown as one with it ("a.b"); 0: none
 # indent = 2                          # characters of indent per level in the editor
+# font = "Hack, monospace"            # the editor's font, a CSS font-family list; not set: the theme's
+# terminal_font = "Hack, monospace"   # the terminal's font, the same way; not set: its own list
 # debug  = true                       # log what is only worth knowing while looking into
 #                                     # something: every request and what took long, and in
 #                                     # the browser's console what the page does

@@ -162,7 +162,8 @@ function _termOptions() {
     const _cursorInactiveStyle = _tv('--term-cursor-inactive-style');
     return {
       fontSize: 13,
-      fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Hack', ui-monospace, monospace",
+      // terminal_font (terminalFont) when set, else a list of the terminal's own.
+      fontFamily: _TERM_CONFIG.font || "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Hack', ui-monospace, monospace",
       fontWeight: '400',
       fontWeightBold: '600',
       lineHeight: 1.2,

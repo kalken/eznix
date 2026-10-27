@@ -193,6 +193,8 @@ SECTIONS_LEVEL   = 0             # the level from which sections start out folde
 ARROW_LEVEL      = 3             # the level from which an open section shows its arrow (arrow_level); 0: none does
 COMPACT_LEVEL    = 1             # the level from which a section holding only one section is drawn as one with it (compact_level); 0: none is
 INDENT           = 2             # characters of indent per level in the editor (indent)
+FONT             = None          # the editor's font, a CSS font-family list (font); None: the theme's
+TERMINAL_FONT    = None          # the terminal's font (terminal_font); None: its own list
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
 STATIC_MENUS     = {}            # [menus.NAME]: order and separator of a menu of those buttons
 PLUGINS          = {}            # name -> {dir, scripts, styles, config}; see _load_plugins()
@@ -1289,7 +1291,8 @@ def _render_index():
     # block this is embedded into.
     config = {name: p['config'] for name, p in PLUGINS.items()}
     if TERMINALS:
-        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'hidden_lines': TERMINAL_HIDDEN_LINES, 'buttons': STATIC_BUTTONS,
+        config['terminal'] = {'auto_hide': TERMINAL_AUTO_HIDE, 'hidden_lines': TERMINAL_HIDDEN_LINES, 'font': TERMINAL_FONT,
+                              'buttons': STATIC_BUTTONS,
                               'menus': STATIC_MENUS, 'autocomplete': _autocomplete_command()}
     plugin_config = json.dumps(config).replace('</', '<\\/')
     return (open(os.path.join(WEBROOT, 'index.html')).read()
@@ -1309,9 +1312,11 @@ def _render_index():
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
         .replace('%%EZNIX_COMPACT_LEVEL%%', str(COMPACT_LEVEL))
-        # indent: put in place of the theme's --indent-step, whichever theme the browser has.
-        # `html:root` outweighs a theme's `:root`, so it holds whatever loads after it.
-        .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch; }}</style>')
+        # indent, and font when set: put in place of the theme's --indent-step and --font,
+        # whichever theme the browser has. `html:root` outweighs a theme's `:root`, so it holds
+        # whatever loads after it.
+        .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch;'
+                 + (f' --font: {FONT};' if FONT else '') + ' }</style>')
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_VERSION%%', EZNIX_VERSION)
@@ -1377,6 +1382,15 @@ def _script_files():
                     except (OSError, UnicodeDecodeError):
                         pass
     return texts
+
+
+def _font_setting(value):
+    """A font setting as a CSS font-family list, or None: what would end the declaration, the
+    rule or the <style> it is put in is taken out (; { } < > backslashes and line breaks)."""
+    if not isinstance(value, str):
+        return None
+    value = re.sub(r'[;{}<>\\\r\n]', '', value).strip()
+    return value or None
 
 
 def _compute_page_hash():
@@ -2745,7 +2759,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, ARROW_LEVEL, COMPACT_LEVEL
+    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2900,6 +2914,10 @@ def main():
     # indent: characters per level of nesting in the editor, 2 when not set.
     indent = cfg.get('indent', 2)
     INDENT = float(indent) if isinstance(indent, (int, float)) and not isinstance(indent, bool) and indent >= 0 else 2
+    # font, terminal_font: the editor's and the terminal's font, a CSS font-family list ("Hack,
+    # monospace"); not set, the theme's and the terminal's own.
+    FONT = _font_setting(cfg.get('font'))
+    TERMINAL_FONT = _font_setting(cfg.get('terminal_font'))
     TERMINAL_AUTO_HIDE = bool(cfg.get('terminal_auto_hide', True))
     # terminal_hidden_lines: how many lines of the latest output the hidden panel shows, 1 when
     # not set, 0 for none.

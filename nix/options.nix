@@ -62,6 +62,8 @@ let
     plugins_dir      = if cfg.extraPlugins != { } then "${pluginsDir}" else null;
     collapse_level   = cfg.collapseLevel;
     indent           = cfg.indent;
+    font             = cfg.font;
+    terminal_font    = cfg.terminalFont;
     arrow_level      = cfg.arrowLevel;
     compact_level    = cfg.compactLevel;
     mode             = cfg.mode;
@@ -461,6 +463,18 @@ in
       default     = 2;
       example     = 1;
       description = "How far in the editor each level of nesting is indented, in characters.";
+    };
+    font = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      example     = "Hack, monospace";
+      description = "The editor's font, as a CSS font-family list: the first one installed on the computer the browser runs on is used. Not set, the theme's.";
+    };
+    terminalFont = mkOption {
+      type        = types.nullOr types.str;
+      default     = null;
+      example     = "'JetBrains Mono', monospace";
+      description = "The terminal's font, as a CSS font-family list: the first one installed on the computer the browser runs on is used. Not set, the terminal's own list (JetBrains Mono, Fira Code, Cascadia Code, Hack, the system's monospace).";
     };
     mode = mkOption {
       type        = types.nullOr (types.enum [ "install" ]);

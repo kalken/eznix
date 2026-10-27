@@ -649,9 +649,6 @@ textarea { resize: vertical; min-height: unset; line-height: 1.5; }
 .pkg-items .array-item .pkg-label {
   color: var(--accent); font-size: 12px; white-space: nowrap;
 }
-/* The cross about as high as the text's letters (the user's wish, 2026-10-27; at the text's
-   12px it stood taller); its line stays 12px, so the chip keeps its height. */
-.pkg-items .array-item .icon-btn.del { font-size: 10px; line-height: 12px; }
 
 /* ── Adding and renaming in a set of plain entries (_makeTable() in index.html) ── */
 /* Looks as any other set: only a name can be clicked to rename it, and a last row has an empty
