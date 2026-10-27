@@ -3305,9 +3305,11 @@ function mdToHtml(md) {
   // Protect fenced code blocks
   const blocks = [];
   md = md.replace(/```(?:[^\n]*)?\n([\s\S]*?)```/g, (_, c) => `\x01${blocks.push(c.trimEnd()) - 1}\x01`);
-  // Protect inline code
+  // Protect inline code, with a MyST role in front of it ({option}`x`, {command}, {file},
+  // {manpage}, ...) left out: nixpkgs writes them, and its manual shows the code alone. Taken
+  // with the code it opens, so a {name} that ends a piece of code (`/etc/{name}`) stays.
   const codes = [];
-  md = md.replace(/`([^`]+)`/g, (_, c) => `\x02${codes.push(c) - 1}\x02`);
+  md = md.replace(/(?:\{[a-z]+\})?`([^`]+)`/g, (_, c) => `\x02${codes.push(c) - 1}\x02`);
   // Escape HTML in remaining text
   md = _escHtml(md);
   // Bold / italic

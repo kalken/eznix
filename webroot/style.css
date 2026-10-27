@@ -314,7 +314,7 @@ input[type=text].key-rename-input {
 .tt-desc p:last-child { margin-bottom: 0; }
 .tt-desc ul.tt-list { margin: 2px 0 4px 14px; padding: 0; }
 .tt-desc ul.tt-list li { margin-bottom: 1px; }
-.tt-inline { background: var(--bg4); border-radius: 3px; padding: 0 3px; font-family: var(--font); font-size: 10px; color: var(--accent); }
+.tt-inline { font-family: var(--font); font-size: 10px; color: var(--accent); }
 .tt-block { background: var(--bg4); border-radius: var(--radius-sm); padding: 5px 8px; margin: 4px 0; font-size: 10px; white-space: pre; overflow-x: auto; color: var(--green); }
 .tt-meta {
   display: flex; flex-direction: column; gap: 4px;
