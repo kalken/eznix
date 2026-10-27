@@ -837,7 +837,11 @@ tried and taken back. As it stands:
   (`.field-group`'s padding), since it is filled to the bottom of its last row.
 - The indent is `--indent-step` (2ch; 1ch was tried on 2026-10-15) per level and nothing
   else, and a setting since that day (`indent`, in characters, 2 unless set, `services.eznix.indent`;
-  the server puts it in the page as `html:root`, which outweighs every theme's `:root`): a section's options start one step in from its name, and no arrow takes room in
+  the server puts it in the page as `html:root`, which outweighs every theme's `:root`): a section's options start in the column of its name and only a sub-section is one step in
+  (since 2026-10-27, `_setNestDepths()`: an option's `--depth` is one less; the user tried it in
+  the test server and kept it; a one-character indent, the arrow right against the name, a dot
+  for an open section and no indent with dots per level were tried the same hour and not kept;
+  until then the options were one step in from the name), and no arrow takes room in
   the text. Until 2026-10-15 the arrow of level 3 and down was part of the heading's text,
   two characters wide, and the user found the names too busy with everything unfolded; it
   was taken away altogether for a while that day (a click on the name folds). Arrows and a line down the section shown only under the pointer were

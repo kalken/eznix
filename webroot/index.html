@@ -3224,7 +3224,10 @@ function _setNestDepths(root) {
       if (p.classList.contains('section')) depth++;
     }
     const isSection = el.classList.contains('section');
-    el.style.setProperty('--depth', depth);
+    // Only a section is indented: an option starts in the column of the name of the section it
+    // is in, not a step further in (the user's idea to try, 2026-10-27). The indent only: the
+    // classes below go by where it really is.
+    el.style.setProperty('--depth', !isSection && depth > 0 ? depth - 1 : depth);
     el.classList.add('nest');
     el.classList.toggle('nest-top', !inArrayObj && isSection && depth === 0);
     el.classList.toggle('nest-card', !inArrayObj && isSection && depth === 1);

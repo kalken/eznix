@@ -673,7 +673,7 @@ The common ones, the same in all three modules:
 | `collapseLevel` | | the level from which sections start out folded in the editor, a top-level section being 1 (`1` folds them all, `4` what is inside `services.openssh.settings`); not set, nothing is folded |
 | `arrowLevel` | `3` | the level from which an open section has an arrow in front of its name, a top-level section being 1 (`0`: none); a folded section always has one |
 | `compactLevel` | `1` | the level from which a section that holds only one sub-section is shown as one with it, under both names (`a.b`), a top-level section being 1 (`0`: never) |
-| `indent` | `2` | how far each level of nesting is indented in the editor, in characters |
+| `indent` | `2` | how far each section is indented in the editor from the one it is in, in characters (its options start in the column of its name) |
 | `font` | | the editor's font, a CSS font-family list (`"Hack, monospace"`), the first one installed on the computer you browse from being used; not set, the theme's |
 | `terminalFont` | | the terminal's font, the same way; not set, its own list (JetBrains Mono, Fira Code, Cascadia Code, Hack, the system's monospace) |
 | `debug` | `false` | log what is only worth knowing while looking into something: every request and what took long, and in the browser's console what the page does; the log is otherwise starts, logins and errors |

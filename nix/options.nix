@@ -462,7 +462,7 @@ in
       type        = types.numbers.nonnegative;
       default     = 2;
       example     = 1;
-      description = "How far in the editor each level of nesting is indented, in characters.";
+      description = "How far in the editor a section is indented from the one it is in, in characters. Its options start in the column of its name.";
     };
     font = mkOption {
       type        = types.nullOr types.str;
