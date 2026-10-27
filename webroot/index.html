@@ -4164,6 +4164,7 @@ function renderField(container, key, val, path) {
     const inp = document.createElement('textarea');
     inp.value = val._expr;
     inp.className = 'expr-input';
+    inp._exprPath = path;
     inp.rows = Math.max(1, val._expr.split('\n').length);
     inp.addEventListener('input', () => {
       inp.rows = Math.max(1, inp.value.split('\n').length);
@@ -4517,7 +4518,7 @@ function renderArray(container, arr, path) {
         }
       });
     }
-    if (isExpr) editor.classList.add('expr-value');
+    if (isExpr) { editor.classList.add('expr-value'); editor._exprPath = itemPath; }
     item.oncontextmenu = e => {
       showContextMenu(e, _menu({
         add: [{ label: 'Add item…', onclick: () => _addListItem(arr, path) }],

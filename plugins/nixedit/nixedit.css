@@ -1,0 +1,7 @@
+/* The completion in a Nix expression (_exprACShow()): a text editor's, a name and its
+   description on one line, close together, under the word being typed. The rest is the page's
+   .autocomplete-list. */
+.expr-ac { font-family: var(--font); max-width: 640px; }
+.expr-ac .autocomplete-item { flex-direction: row; align-items: baseline; gap: 12px; padding: 2px 8px; }
+.expr-ac .autocomplete-item .ac-name { white-space: nowrap; flex-shrink: 0; }
+.expr-ac .autocomplete-item .ac-desc { max-width: 360px; }

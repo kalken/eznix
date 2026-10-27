@@ -1,0 +1,10 @@
+{
+  "name": "nixedit",
+  "description": "Nix expressions in the editor completed and indented as in a text editor.",
+  "styles": [
+    "nixedit.css"
+  ],
+  "scripts": [
+    "nixedit.js"
+  ]
+}

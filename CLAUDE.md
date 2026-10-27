@@ -115,7 +115,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12); and `kernels`, `homebrew`, `home-manager`, which hold only a generator file (see "The generator's plugins") |
+| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, `nixedit`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12); and `kernels`, `homebrew`, `home-manager`, which hold only a generator file (see "The generator's plugins") |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |
@@ -747,6 +747,24 @@ then shows its word beside the icon) while the running terminal is out of date, 
 while there are no suggestions. They were notices in the bottom right corner, over the editor,
 for a day; asked whether there was a better place, I proposed the buttons and the user, having
 seen it in the test server, found it "much better". Not looked at in a browser by me.
+
+**An expression is completed by the name before the cursor**, by the plugin `nixedit` since the
+same day (the user's wish: plain fields without it; all of it in `plugins/nixedit/nixedit.js`,
+the page only gives each field `_exprPath`) (`_EXPR_NAMES`, `_exprCompletions()`),
+since 2026-10-27, the user's wish ("package names etc"): in any field with `.expr-input` or
+`.expr-value`, a dotted name starting `pkgs.` or `config.` gets the package list or the options,
+and where a setting's name is written in a set, the options under the field's own path
+(`_exprPath`) and the sets and lists around the cursor (`_exprBindingAt()`, `a = [ {` being
+`a.*`), so a section converted to Nix completes at every depth (the user's wish the same hour).
+Nothing else of Nix is read (no `with`, `let` or arguments: an editor that knows Nix was built
+and dropped, see the files plugin). A new source is an entry in `_EXPR_NAMES` (`lib.` and
+`builtins.` would need the generator to list them). The keys are taken in the capture phase,
+before a list item's Enter. It comes up only once a letter of the name's last part is typed, or on
+Ctrl+Space (the user got stuck in the list on an empty `{}` in a list item, when it showed at
+once and Up and Down were the list's); moving the cursor closes it. A setting taken in a set is written out to its value by its type
+(`_exprACTake()`, `typeFromNix()`), the cursor where the value goes. A field of several lines indents as an editor does (the listener
+after `_insertInField()`, the same day). `_exprBindingAt()` was run on made-up text (nesting, lists,
+`lib.mkIf`, strings, comments); not in a browser.
 
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
