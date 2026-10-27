@@ -1,14 +1,16 @@
 // nixedit: the fields that hold a Nix expression (.expr-input, .expr-value) edited as in a
 // text editor: completion and indenting. Without this plugin they are plain text fields. It
 // reaches the page through nothing but listeners on the document and what the page has in its
-// scope (packages, optionSearch(), typeFromNix(), _floatPopup(), _escHtml()); the page tells
+// scope (packages, optionSearch(), findOption(), choicesFor(), parseEnumOptions(), typeFromNix(),
+// _floatPopup(), _escHtml()); the page tells
 // each field the path of the option it is (_exprPath) and knows nothing of this file.
 
 // Completion in any field that holds a Nix expression (.expr-input, .expr-value), wherever it
 // is drawn (the user's wish, 2026-10-27: package names and the like, not an editor that knows
-// Nix). Two things are completed. A dotted name before the cursor that starts with a name there
-// is a list for (_EXPR_NAMES): `pkgs.` the packages, `config.` the options. And the name of a
-// setting where one is written in a set: the field knows its own path (_exprPath, set where it
+// Nix). Three things are completed. A dotted name before the cursor that starts with a name
+// there is a list for (_EXPR_NAMES): `pkgs.` the packages, `config.` the options. A value, from
+// what the option can be chosen from (_exprValuesFor()). And the name of a setting where one is
+// written in a set: the field knows its own path (_exprPath, set where it
 // is drawn), and _exprBindingAt() follows the sets and lists before the cursor
 // (`a = { b = [ { ` is a.b.*), so a section turned into an expression completes the options
 // under it, at every depth. Nothing more of Nix is read: `let`, `with` and a function's
@@ -20,16 +22,27 @@ const _EXPR_NAMES = {
     .slice(0, 50).map(p => ({ name: p.name, label: 'pkgs.' + p.name, desc: p.description })),
   config: rest => optionSearch(rest).map(o => ({ name: o.displayPath, label: 'config.' + o.displayPath, desc: o.description })),
 };
-// Where in the sets the end of `text` is: { path, typed } when it is where a setting's name is
-// written (the start of a binding, after `{` or `;`), path being the names of the sets around
-// it from the expression's own value down, and typed what is written of the name so far; null
-// anywhere else (a value, a list, a string, a comment).
+// Where in the sets the end of `text` is. { path, typed } where a setting's name is written
+// (the start of a binding, after `{` or `;`): path the names of the sets around it from the
+// expression's own value down, typed what is written of the name so far. { value, path, typed,
+// quoted } where a value is written: path that of the setting it is the value of (a list's own
+// for an entry of it, [] for the expression itself), typed what is written of it, quoted when
+// inside a string just opened. null in a comment, a string with `${` or anywhere else.
 function _exprBindingAt(text) {
   const frames = [{ open: '', path: [] }];
   let stmt = '';
   const bound = () => {
     const m = stmt.match(/^\s*((?:[\w'-]+|"[^"]*")(?:\s*\.\s*(?:[\w'-]+|"[^"]*"))*)\s*=(?!=)/);
     return m ? _pathParts(m[1].replace(/\s+/g, '')) : null;
+  };
+  // Whose value is written here: in a set the binding's, in a list the list's, at the top the
+  // expression's own unless it binds something (`let`, say).
+  const owner = () => {
+    const top = frames[frames.length - 1];
+    if (top.open === '[') return top.path;
+    const name = bound();
+    if (top.open === '{') return name ? [...top.path, ...name] : null;
+    return name ? null : top.path;
   };
   for (let i = 0; i < text.length;) {
     const c = text[i], top = frames[frames.length - 1];
@@ -38,7 +51,10 @@ function _exprBindingAt(text) {
     if (c === '"') {
       let j = i + 1;
       while (j < text.length && text[j] !== '"') j += text[j] === '\\' ? 2 : 1;
-      if (j >= text.length) return null;
+      if (j >= text.length) {
+        const typed = text.slice(i + 1), path = owner();
+        return path && !/[\\$]/.test(typed) ? { value: true, path, typed, quoted: true } : null;
+      }
       stmt += text.slice(i, j + 1); i = j + 1; continue;
     }
     if (c === "'" && text[i + 1] === "'") { const j = text.indexOf("''", i + 2); if (j < 0) return null; stmt += "''"; i = j + 2; continue; }
@@ -55,7 +71,23 @@ function _exprBindingAt(text) {
   }
   const top = frames[frames.length - 1];
   const m = stmt.match(/^\s*((?:[\w'-]+\.)*[\w'-]*)$/);
-  return top.open === '{' && m ? { path: top.path, typed: m[1] } : null;
+  if (top.open === '{' && m) return { path: top.path, typed: m[1] };
+  const path = owner();
+  return path ? { value: true, path, typed: stmt.match(/[\w'.-]*$/)[0], quoted: false } : null;
+}
+// What a value can be chosen from: the option's values in choices.json (what the generator's
+// plugins make: Homebrew's names, the kernels) or the ones its type lists ("one of ..."), as
+// the page's dropdowns and chips offer them. The option is the value's path with the entry of a
+// list taken off (a list's values are its entries').
+function _exprValuesFor(path) {
+  const p = path.map(String);
+  while (p.length && (p[p.length - 1] === '*' || /^\d+$/.test(p[p.length - 1]))) p.pop();
+  if (!p.length) return null;
+  const c = choicesFor(p);
+  if (c) return { expr: !!c.expr, items: c._items.map(i => ({ value: i.value, desc: i.description })) };
+  const opt = findOption(p);
+  const en = opt && parseEnumOptions(opt.type);
+  return en ? { expr: false, items: en.values.map(v => ({ value: v })) } : null;
 }
 // Only once something of the name's last part is typed (the user, 2026-10-27: nothing shows
 // unless typed), or when asked for with Ctrl+Space.
@@ -63,12 +95,24 @@ function _exprCompletions(field, asked) {
   const before = field.value.slice(0, field.selectionStart);
   const lastPart = t => t.slice(t.lastIndexOf('.') + 1);
   const m = before.match(/(?:^|[^\w'.-])([A-Za-z_][\w'-]*)\.([\w'.-]*)$/);
-  if (m && Object.hasOwn(_EXPR_NAMES, m[1])) {
+  const at = field._exprPath ? _exprBindingAt(before) : null;
+  // A value the option has choices for takes them, also where they are `pkgs.` expressions (the
+  // kernels); anywhere else a `pkgs.` or `config.` outside a string is the whole list.
+  const vals = at && at.value ? _exprValuesFor([...field._exprPath, ...at.path]) : null;
+  if (m && Object.hasOwn(_EXPR_NAMES, m[1]) && !(at && at.quoted) && !vals) {
     if (!asked && !lastPart(m[2])) return null;
     return { start: before.length - m[2].length, items: _EXPR_NAMES[m[1]](m[2]).filter(i => i.name !== m[2]) };
   }
-  const at = field._exprPath && _exprBindingAt(before);
   if (!at || (!asked && !lastPart(at.typed))) return null;
+  if (at.value) {
+    // A value: one of the option's, in quotes unless they are expressions, the closing quote
+    // put in when it is not there (_exprACTake()).
+    if (!vals || (at.quoted && vals.expr)) return null;
+    const t = at.typed.toLowerCase();
+    const items = vals.items.filter(i => i.value.toLowerCase().startsWith(t) && i.value !== at.typed).slice(0, 50)
+      .map(i => ({ name: i.value, label: i.value, desc: i.desc, quote: !vals.expr && !at.quoted, close: at.quoted }));
+    return { start: before.length - at.typed.length, items };
+  }
   const q = p => p === '' || /[."]/.test(p) ? '"' + p + '"' : p;
   const prefix = [...field._exprPath, ...at.path].map(String);
   const head = prefix.join('.') + '.';
@@ -148,7 +192,9 @@ function _exprACTake(i) {
   const { field, start, items } = _exprAC;
   if (!field || !items[i]) return;
   const it = items[i], end = field.selectionStart;
-  let text = it.name, cursor = text.length;
+  let text = it.quote ? '"' + it.name + '"' : it.name, cursor = text.length;
+  if (it.close && field.value[end] !== '"') text += '"';
+  if (it.close) cursor = text.length;
   // A setting's name written in a set is written out up to its value, which is left to type:
   // ` = "|";` for a text, ` = [ | ];` a list, a set opened on a line of its own, ` = |;` the rest,
   // by the kind the option's type is (typeFromNix(), as Add option reads it). Not when a `=`

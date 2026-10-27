@@ -756,6 +756,10 @@ since 2026-10-27, the user's wish ("package names etc"): in any field with `.exp
 and where a setting's name is written in a set, the options under the field's own path
 (`_exprPath`) and the sets and lists around the cursor (`_exprBindingAt()`, `a = [ {` being
 `a.*`), so a section converted to Nix completes at every depth (the user's wish the same hour).
+A value is completed from what the option can be chosen from (`_exprValuesFor()`: `choicesFor()`,
+then the type's "one of"), the same day, the user asking why Homebrew's casks were not: the
+scanner also says whose value the cursor is in (a binding's, a list's, the field's own), and
+whether inside an open string; an option's own choices win over the plain `pkgs.` list.
 Nothing else of Nix is read (no `with`, `let` or arguments: an editor that knows Nix was built
 and dropped, see the files plugin). A new source is an entry in `_EXPR_NAMES` (`lib.` and
 `builtins.` would need the generator to list them). The keys are taken in the capture phase,

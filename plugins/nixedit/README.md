@@ -10,6 +10,11 @@ an expression is a plain text field.
 - **Settings inside a set**: a section turned into an expression (right-click, Convert to Nix)
   completes the options under it by name, and so does every set in it, at any depth:
   `openPorts = [ { por` offers what an entry of `openPorts` has
+- **Values**: where an option's value is written, in a set, in a list or as the whole
+  expression, what it can be chosen from: the names **Autocomplete** collects for it (Homebrew's
+  casks and brews, the kernels) and the values its type lists (`"tcp"`, `"udp"`). Inside quotes
+  the closing quote is put in; outside, the value comes in quotes, or bare where the values are
+  expressions (`pkgs.linuxPackages_6_6`)
 - **Written out to the value**: a setting taken from the list is written up to its value, by its
   type, the cursor where the value goes: `port = "|";`, `interfaces = [ | ];`, a set opened on a
   line of its own, `enable = |;`
