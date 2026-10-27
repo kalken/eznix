@@ -21,7 +21,7 @@
   --purple: #8c66f0;
 
   /* ── Typography & shape ── */
-  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, monospace;
+  --font: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', ui-monospace, Menlo, Consolas, 'DejaVu Sans Mono', monospace;
   --radius:       8px;
   --radius-sm:    5px;
   --input-radius: 6px;

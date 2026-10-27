@@ -35,7 +35,7 @@
   --purple: #8e44ad;
 
   /* ── Typography & shape ── */
-  --font: Hack, 'Noto Sans Mono', ui-monospace, Menlo, monospace;
+  --font: 'Noto Sans Mono', Hack, ui-monospace, Menlo, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
   --radius:       8px;
   --radius-sm:    5px;
   --input-radius: 6px;

@@ -41,7 +41,7 @@
   --purple: #bf5af2;
 
   /* ── Typography & shape ── */
-  --font: ui-monospace, 'SF Mono', Menlo, Monaco, monospace;
+  --font: ui-monospace, 'SF Mono', Menlo, Monaco, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
   --radius:       8px;
   --radius-sm:    5px;
   --input-radius: 6px;

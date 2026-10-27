@@ -36,7 +36,7 @@
   --purple: #9141ac;
 
   /* ── Typography & shape ── */
-  --font: 'Adwaita Mono', 'Source Code Pro', ui-monospace, Menlo, monospace;
+  --font: 'Adwaita Mono', 'Source Code Pro', ui-monospace, Menlo, 'Cascadia Mono', Consolas, 'DejaVu Sans Mono', monospace;
   --radius:       8px;
   --radius-sm:    5px;
   --input-radius: 6px;
