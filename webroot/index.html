@@ -2952,7 +2952,19 @@ function reorderKey(parentPath, fromKey, toKey) {
 const _DRAG_EXCLUDE_SELECTOR =
   'input, textarea, select, button, a, [contenteditable], .toggle, .custom-select-btn, .custom-select-dropdown, .autocomplete-wrap';
 
-// `handle` restricts where a drag can start (the key label/header — so clicking or selecting
+// An option is dragged by the text of its name, as its own menu is the one for that text
+// (_onRowItself()): a press beside it goes to what it lies in, the object of a list or the
+// section, which is then dragged whole (the user's wish, 2026-10-27; the whole name column
+// dragged the option). A list's object is its own handle all over; a section takes such presses
+// through _besideNameIn().
+function _nameText(keyEl) { return keyEl.querySelector('.tt-anchor') || keyEl; }
+// Whether a press is in the name column of one of the section's own options, beside the text.
+function _besideNameIn(section, target) {
+  const k = target.closest('.field-key');
+  return !!k && !target.closest('.tt-anchor') && k.closest('.section, .array-obj-item') === section;
+}
+
+// `handle` restricts where a drag can start (an element, or a test of the pressed element) (the key label/header — so clicking or selecting
 // text in the row's *value* doesn't also start a reorder); defaults to the whole row `el` for
 // callers with no distinct key element (e.g. an anonymous array item).
 function makeDraggable(el, key, parentPath, handle) {
@@ -2964,8 +2976,9 @@ function makeDraggable(el, key, parentPath, handle) {
   // file tab to move them there.
   const canMoveToFile = !/^\d+$/.test(key);
 
-  (handle || el).addEventListener('mousedown', e => {
+  (typeof handle === 'function' ? el : handle || el).addEventListener('mousedown', e => {
     if (e.button !== 0) return;
+    if (typeof handle === 'function' && !handle(e.target)) return;
     if (e.target.closest(_DRAG_EXCLUDE_SELECTOR)) return;
     e.preventDefault();
     e.stopPropagation();
@@ -3783,9 +3796,10 @@ function renderSection(container, key, obj, path) {
   renderObj(body, obj, path);
   if (_freeEntryType(path)) _makeTable(body, obj, path);
   section.appendChild(body);
-  // The whole heading line is the drag handle; a drag only starts once the pointer has moved
-  // (see makeDraggable()), so a plain click on it is still just a click.
-  makeDraggable(section, outerKey, outer.slice(0, -1), header);
+  // The whole heading line is the drag handle, and the name column of its options beside their
+  // names (_nameText()); a drag only starts once the pointer has moved (see makeDraggable()), so
+  // a plain click on it is still just a click.
+  makeDraggable(section, outerKey, outer.slice(0, -1), t => header.contains(t) || _besideNameIn(section, t));
   container.appendChild(section);
 }
 
@@ -3938,7 +3952,7 @@ function renderArrayField(container, key, arr, path) {
 
   row.appendChild(keyEl);
   row.appendChild(valEl);
-  makeDraggable(row, path[path.length - 1], path.slice(0, -1), keyEl);
+  makeDraggable(row, path[path.length - 1], path.slice(0, -1), _nameText(keyEl));
   container.appendChild(row);
 }
 
@@ -4352,7 +4366,7 @@ function renderField(container, key, val, path) {
 
   row.appendChild(keyEl);
   row.appendChild(valEl);
-  makeDraggable(row, path[path.length - 1], path.slice(0, -1), keyEl);
+  makeDraggable(row, path[path.length - 1], path.slice(0, -1), _nameText(keyEl));
   container.appendChild(row);
 }
 

@@ -947,6 +947,11 @@ room beside a short name still brought up the option's menu. Tried by the user i
 server that day ("i think this works for everything. hard to test everything though"); not
 in a browser by me.
 
+**A drag goes by the same rule** (`_nameText()`, `_besideNameIn()`, 2026-10-27, the user's
+wish): an option is dragged by the text of its name, and a press beside it in the name column
+drags what it lies in, the section or the object of a list, whole. A section's heading line is
+its handle as before. Not tried in a browser by me.
+
 **Copy and Cut also put the thing on the computer's clipboard** (`copyPath()`,
 `_asImportText()`, `_toSystemClipboard()`): as JSON, wrapped in the sections it lies in, which
 is what Import takes, so a section goes to another computer by Copy there and paste into
