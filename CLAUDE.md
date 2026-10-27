@@ -775,6 +775,26 @@ once and Up and Down were the list's); moving the cursor closes it. A setting ta
 after `_insertInField()`, the same day). `_exprBindingAt()` was run on made-up text (nesting, lists,
 `lib.mkIf`, strings, comments); not in a browser.
 
+**Something switched off goes into a Nix expression as comments** (`jsonToNix()`, 2026-10-27):
+Convert to Nix writes a disabled entry as its setting commented out, line by line, and the parser
+reads a run of comment lines that are settings once the `#` is taken off back as those settings,
+switched off (`_nixParseAttrs()`); other comments are skipped everywhere (`_nixSkipComment()` in
+every scanner) and lost when converting to native, as JSON has none. Import reads `#` comments
+the same way through the same parser (`nixImportParse()` takes out only `/* */` ones now, and a
+commented-out `imports` and the like is left out rather than refused); `# a.b.c = 1;` switches
+off `c` alone, `a` and `b` being ordinary sections (it switched off all of `a` for a few
+minutes, found on a sample `configuration.nix`). Before, the wrapper was
+written out as a set, `{ _disabled = true; _value = …; }`, which Nix took as two settings of
+those names (the user's catch). The user's rule: what is off stays off, and the expression is
+valid Nix. Checked by running the functions, lifted out of the page, on made-up data (a round
+trip at two depths came back identical; prose, trailing and in-list comments; a commented
+`configuration.nix` imported, and one of the user's, with a commented `imports` followed by
+prose comments, which is why a run is read as the longest stretch that parses from each line;
+and ezbox's last `configuration.nix` from git, 522 lines: 188 values on and 21 switched off,
+where a set commented out and also partly set is merged setting by setting, `_nixAddOff()`, the
+set one winning, none of its 40 commented settings lost; comments at the top of bare settings are
+settings, at the top of a module a header); not in a browser.
+
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 

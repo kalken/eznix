@@ -213,7 +213,9 @@ module is given: `pkgs`, `lib`, `config`, `options`, and what your flake passes 
 `config.networking.hostName`. As in any Nix module, an expression cannot read the setting it
 is itself part of. While you type one, the [`nixedit`](plugins/nixedit/README.md) plugin
 completes package names, options and settings, and indents as a text editor does. Anything can be switched
-off without deleting it (right-click, Disable). Nothing is written until you press Save, and
+off without deleting it (right-click, Disable); converted to a Nix expression it is written as
+commented-out lines, and converted back it is switched off again (other comments are dropped then).
+Import reads comments the same way: a commented-out setting comes in switched off. Nothing is written until you press Save, and
 every save keeps the previous version of the file (right-click a tab, Restore; Backup there
 keeps a copy of the file as it is on disk right now).
 
