@@ -258,10 +258,11 @@ document.addEventListener('focusout', e => { if (e.target === _exprAC.field) _ex
 document.addEventListener('mousedown', e => { if (e.target === _exprAC.field) _exprACHide(); }, true);
 
 // Help on hovering a name in an expression (the user's wish, 2026-10-27): after the pause the
-// page's own tooltips have, the tooltip of what the name under the pointer is, up to the part
-// pointed at: an option (`config.a.b`, or a setting written in a set, by the same reading as
+// page's own tooltips have, the tooltip of the whole name under the pointer, wherever on it
+// (the user's wish: it was the part pointed at, and only the last part of a name is ever an
+// option): an option (`config.a.b`, or a setting written in a set, by the same reading as
 // the completion) or a package (`pkgs.x`). Nothing for anything else. Through the page's
-// _showFieldTooltip(), anchored to the part's box.
+// _showFieldTooltip(), anchored to the name's box.
 function _nameAt(field, x, y) {
   const m = _mirrorOf(field);
   const v = field.value, re = /[A-Za-z_][\w'-]*(?:\.[A-Za-z_][\w'-]*)*/g;
@@ -269,15 +270,10 @@ function _nameAt(field, x, y) {
   let last = 0, t;
   while ((t = re.exec(v))) {
     m.appendChild(document.createTextNode(v.slice(last, t.index)));
-    let at = t.index;
-    t[0].split('.').forEach((part, i) => {
-      if (i) { m.appendChild(document.createTextNode('.')); at++; }
-      const sp = document.createElement('span');
-      sp.textContent = part;
-      m.appendChild(sp);
-      spans.push({ sp, start: t.index, word: t[0], upto: at + part.length - t.index });
-      at += part.length;
-    });
+    const sp = document.createElement('span');
+    sp.textContent = t[0];
+    m.appendChild(sp);
+    spans.push({ sp, start: t.index, word: t[0] });
     last = t.index + t[0].length;
   }
   m.appendChild(document.createTextNode(v.slice(last)));
@@ -291,7 +287,7 @@ function _nameAt(field, x, y) {
   return hit;
 }
 function _helpFor(field, hit) {
-  const parts = hit.word.slice(0, hit.upto).split('.');
+  const parts = hit.word.split('.');
   if (parts[0] === 'pkgs' && parts.length === 2) {
     const p = packages.find(p => p.name === parts[1]);
     return p ? { description: p.description, type: 'package' } : null;

@@ -762,7 +762,8 @@ scanner also says whose value the cursor is in (a binding's, a list's, the field
 whether inside an open string; an option's own choices win over the plain `pkgs.` list.
 A name under the pointer shows its help after a second (`_nameAt()`, `_helpFor()`, the same day):
 the field's text laid out again in a copy over it (`_mirrorOf()`, shared with the list's placing),
-a span per part of each dotted name, the one under the pointer read by the completion's rules and
+a span per name (per part of one for an hour: only a last part is ever an option, the user
+asked for the whole name), the one under the pointer read by the completion's rules and
 shown through the page's `_showFieldTooltip()`. Not in a browser.
 Nothing else of Nix is read (no `with`, `let` or arguments: an editor that knows Nix was built
 and dropped, see the files plugin). A new source is an entry in `_EXPR_NAMES` (`lib.` and
