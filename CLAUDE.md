@@ -896,7 +896,7 @@ works!"): the type chosen from the bar, and Add pressed with no type chosen.
 **A set of plain entries adds and renames in its rows** (`_makeTable()`, `.kv-add` in
 `style.css`), since 2026-10-27, the user asking how to make `networking.hosts` easier to edit:
 a set whose entries hold no further names (`_freeEntryType()`, read off its type) has a last row
-with an empty name, "Add entry…" (the user's wording for the field; the menus keep "Add option…"), where a name typed and Enter (or leaving the field) adds an
+with an empty name, "Add entry…" (the user's wording, on its right-click menu too; everywhere else it is "Add option…"), where a name typed and Enter (or leaving the field) adds an
 entry of the type the set holds and puts the cursor in its value; a click on an entry's name
 renames it in place (`_startKeyRename()`). Nothing else differs from any set. A table was built
 first, names in filled cells and lines between the rows, a list of texts as chips on one line;
