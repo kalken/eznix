@@ -318,7 +318,7 @@ function showSystemCards(source) {
   overlay.className = 'modal-overlay';
   overlay.innerHTML =
     '<div class="modal system-cards-modal">' +
-      '<input type="text" class="modal-input" placeholder="Search" spellcheck="false" autocomplete="off" aria-label="Search the systems">' +
+      '<input type="text" class="modal-input" placeholder="Search…" spellcheck="false" autocomplete="off" aria-label="Search systems">' +
       '<div class="system-cards"></div>' +
       '<div class="modal-actions"><button class="btn">Cancel</button></div></div>';
   const [search, body, actions] = overlay.firstChild.children;
@@ -415,7 +415,7 @@ async function renderSystemMenu(anchor, btn, reopen) {
       if (res.ok) systemBackups = (await res.json()).backups || [];
     } catch (e) { /* falls through to the empty-state item below */ }
   }
-  items.push({ label: 'Import', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
+  items.push({ label: 'Import…', title: 'Replace ' + NIXOS_TARGET + ' with the contents of a zip', onclick: () => importSystem() });
   items.push({ label: 'Export', title: NIXOS_TARGET + ', as a zip', onclick: () => exportSystem() });
   if (SYSTEM_BACKUP_ENABLED) items.push({ label: 'Backup', title: 'Back up the whole system now, as it is on disk', onclick: backupSystem });
   if (SYSTEM_BACKUP_ENABLED) {

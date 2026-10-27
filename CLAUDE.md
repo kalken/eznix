@@ -869,8 +869,8 @@ in `style.css`, was pushed, and was then papered over with workarounds for an ho
 cause was found. Edit that file by exact strings.
 
 **Adding**: there is no button for it in the page (2026-10-23, the user's wish: "the + button removed
-on all the fields and a right click menu option for it instead"). A list has "Add item" on its
-menu and on its items' (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list says "Add item…" in the placeholder's tone, a click adding the first (`.list-add`); an object in a list also has "Add item like this", a copy put after it with every value emptied (`_blankLike()`, 2026-10-25, the user's idea for lists like `services.eznix.buttons`; checked by running it, lifted out of the page, not in a browser); a section and
+on all the fields and a right click menu option for it instead"). A list has "Add item…" on its
+menu and on its items' (both menu entries end in "…" since 2026-10-27, "Add item" and "Add item like this" before, the user's wish for one way of writing them) (`_addListItem()`, `renderArrayField()`, `renderArray()`), and an empty list says "Add item…" in the placeholder's tone, a click adding the first (`.list-add`); an object in a list also has "Add item like…", a copy put after it with every value emptied (`_blankLike()`, 2026-10-25, the user's idea for lists like `services.eznix.buttons`; checked by running it, lifted out of the page, not in a browser); a section and
 an object in a list have "Add option…" (`_addMenuItems()`), and the editor's blank space has "Add
 option…" for the file. What it adds goes where the menu was opened, by one rule for a section, an object in a list and the file: after the last of its options (rows and sub-sections) that starts above the pointer, or first when the pointer was above them all (a heading, the room over the first key), so the empty part of a row adds after it and below the last row at the end (`_rowUnder()`, `_newKeyPlace()`, `_putNewKey()`, 2026-10-26, the user's idea; for some hours a heading meant first, a row after it and anywhere else the end, until the user found the room above a first key adding at the end and asked for one rule). `_newKeyPlace()` and `_putNewKey()` were run, lifted out of the page, on made-up data; the positions not in a browser. One rule says whether it is there (`_addLineFor()`): always, except where
 every option the suggestions list is already set *and* the object certainly takes no others
@@ -896,7 +896,7 @@ works!"): the type chosen from the bar, and Add pressed with no type chosen.
 **A set of plain entries adds and renames in its rows** (`_makeTable()`, `.kv-add` in
 `style.css`), since 2026-10-27, the user asking how to make `networking.hosts` easier to edit:
 a set whose entries hold no further names (`_freeEntryType()`, read off its type) has a last row
-with an empty name, "Add entry…" (the user's wording, on its right-click menu too; everywhere else it is "Add option…"), where a name typed and Enter (or leaving the field) adds an
+with an empty name, "Add item…" as on a list (on its right-click menu too; "Add entry…" for an hour that day), where a name typed and Enter (or leaving the field) adds an
 entry of the type the set holds and puts the cursor in its value; a click on an entry's name
 renames it in place (`_startKeyRename()`). Nothing else differs from any set. A table was built
 first, names in filled cells and lines between the rows, a list of texts as chips on one line;
@@ -1046,6 +1046,12 @@ user's first try had `user` for a folder `users` and seemed to do nothing. Folde
 working by the user that day on a real flake ("that works perfectly"). The version by path
 was checked by running the functions, lifted out of the page, on made-up files; not in a
 browser, and `options.nix` was only parsed.
+
+**A menu entry or a field ends in "…" when something more is asked for** (a dialog, a name
+to type, the cursor put in a new field): Add option…, Add item…, Add item like…, New file…,
+New folder…, Rename…, Import…; Delete, Copy, Export, Backup and the like have none. And no
+"a" or "the" in a placeholder ("Type value…", "Search…"). The user's wish for one way of
+writing them, 2026-10-27; until then each was written as it came.
 
 **Every right-click menu is laid out by one rule** (`_menu()`, `_MENU_GROUPS` in
 `index.html`): a menu says what it offers in named groups and the groups come out in one

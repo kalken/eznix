@@ -201,11 +201,11 @@ first when you click above the first one (on a section's heading, say), and last
 last one.
 
 A set whose entries are plain values or lists, such as `networking.hosts` (an address and
-its names), has a last row of its own: type a new entry's name where it says **Add entry…**
+its names), has a last row of its own: type a new entry's name where it says **Add item…**
 and press Enter. A click on an entry's name there renames it.
 
 In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
-item like this** for a new one with the same settings, all of them empty.
+item like…** for a new one with the same settings, all of them empty.
 
 A value can also be a raw Nix expression (right-click a value), which can use what a Nix
 module is given: `pkgs`, `lib`, `config`, `options`, and what your flake passes in
@@ -296,7 +296,7 @@ sops-nix or agenix works too (`config.sops.secrets.NAME.path`).
 After the Quick Start, or after adding eznix to your own flake, your old configuration is
 still in `configuration.nix`, used beside what you set in eznix. To move it into the editor:
 
-1. Right-click the empty part of the tab bar and choose **Import**. Press **Load file** and
+1. Right-click the empty part of the tab bar and choose **Import…**. Press **Load file** and
    pick your `configuration.nix`, or paste its contents.
 2. Take the `imports = [ … ];` line out of the text: eznix refuses it, because a JSON file
    cannot import other files. Remember what it listed.

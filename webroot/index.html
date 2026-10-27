@@ -200,7 +200,7 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
       <label for="import-target-file">Import into</label>
       <input type="text" class="modal-input" id="import-target-file" placeholder="e.g. services/nginx.json" autocomplete="off">
     </div>
-    <textarea id="import-textarea" placeholder="Paste a Nix expression or JSON object…" oninput="_validateImportInput(this)"></textarea>
+    <textarea id="import-textarea" placeholder="Paste Nix expression or JSON object…" oninput="_validateImportInput(this)"></textarea>
     <p class="modal-hint">Try pasting the contents of your <code>configuration.nix</code> — options will be merged into the target file above (defaults to the current one; a name that doesn't exist yet, e.g. <code>services/nginx.json</code>, is created).</p>
     <div class="import-examples">
       <div class="import-example-label">Nix</div>
@@ -1218,7 +1218,7 @@ function _commonMenuItems(path, { skipDisable = false } = {}) {
   const parent = path.length ? _contentAt(path.slice(0, -1)) : null;
   const isArrayItem = Array.isArray(parent);
   const item = [];
-  if (!isArrayItem) item.push({ label: 'Rename', onclick: () => _startKeyRename(path) });
+  if (!isArrayItem) item.push({ label: 'Rename…', onclick: () => _startKeyRename(path) });
   // Disabling a single array item isn't supported end-to-end (json2nix.nix's resolveExprs only
   // filters _disabled out of attrsets, not array elements), so skip that option whenever the
   // path's last segment names an index into an array rather than a real object key — determined
@@ -2797,7 +2797,7 @@ function toggleSearchPanel() {
   wrap.className = 'autocomplete-wrap search-panel-wrap';
   const inp = document.createElement('input');
   inp.type = 'text';
-  inp.placeholder = 'Search: words from a path, a value or a file…';
+  inp.placeholder = 'Search: words from path, value or file…';
   inp.autocomplete = 'off';
   const list = document.createElement('div');
   list.className = 'autocomplete-list search-results-list hidden';
@@ -3087,11 +3087,11 @@ function renderEditor() {
     area.oncontextmenu = e => {
       showContextMenu(e, _menu({
         add: [
-          { label: 'New file', onclick: () => createFile() },
-          { label: 'New folder', onclick: () => createFolder() },
+          { label: 'New file…', onclick: () => createFile() },
+          { label: 'New folder…', onclick: () => createFolder() },
         ],
         transfer: [
-          { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
+          { label: 'Import…', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() },
         ],
       }));
     };
@@ -3231,7 +3231,7 @@ function _setNestDepths(root) {
 // fills in inputs that don't already carry a more specific placeholder of their own.
 function _setValuePlaceholders(root) {
   for (const el of root.querySelectorAll('input[type=text], input[type=number], textarea')) {
-    if (!el.placeholder) el.placeholder = 'Type a value…';
+    if (!el.placeholder) el.placeholder = 'Type value…';
   }
 }
 
@@ -3519,8 +3519,8 @@ function _addMenuItems(event, path) {
   const obj = _enabledValue(getAtPath(config, path));
   let label = obj !== null && typeof obj === 'object' ? _addLineFor(path, obj) : null;
   if (!label) return [];
-  // A set of plain entries says "Add entry…", as its last row does (_makeTable()).
-  if (_freeEntryType(path)) label = 'Add entry…';
+  // A set of plain entries says "Add item…", as a list and its own last row do (_makeTable()).
+  if (_freeEntryType(path)) label = 'Add item…';
   const after = _rowUnder(event, path);
   return [{ label, onclick: () => showAddOptionMenu(event, path, after) }];
 }
@@ -3756,7 +3756,7 @@ function renderSection(container, key, obj, path) {
     // but only reaching this section and what's below it -- the blank-space one does the file.
     const common = _commonMenuItems(outer);
     if (chain.length > 1) {
-      const rename = common.item.find(i => i.label === 'Rename');
+      const rename = common.item.find(i => i.label === 'Rename…');
       if (rename) rename.onclick = () => _startKeyRename(path, outer);
     }
     showContextMenu(e, _menu({
@@ -3786,8 +3786,8 @@ function renderSection(container, key, obj, path) {
 // A set whose entries hold no further names (_freeEntryType(): networking.hosts, a set of
 // texts, of numbers, of lists of texts) takes two things more than other sets: a click on an
 // entry's name renames it in place, and a last row with an empty name adds an entry of the type
-// the set holds, the cursor then in its value. Its field and its menu say "Add entry…", the
-// user's choice (everywhere else the menus say "Add option…"). It looks and edits as any other set (renderObj());
+// the set holds, the cursor then in its value. Its field and its menu say "Add item…", as a
+// list's do, the user's choice (2026-10-27; "Add entry…" for an hour before). It looks and edits as any other set (renderObj());
 // a table with filled name cells and the lists as chips was tried first and turned down the
 // same day (the user: no change to the edit fields, no background behind the names). Read off
 // the set's type alone, as every rule here is. (2026-10-27, the user's wish for networking.hosts.)
@@ -3814,7 +3814,7 @@ function _makeTable(body, obj, path) {
   const inp = document.createElement('input');
   inp.type = 'text';
   inp.className = 'kv-add-input';
-  inp.placeholder = 'Add entry…';
+  inp.placeholder = 'Add item…';
   keyInner.appendChild(inp);
   keyEl.appendChild(keyInner);
   const valEl = document.createElement('div');
@@ -3923,7 +3923,7 @@ function renderArrayField(container, key, arr, path) {
     if (!_onRowItself(e)) return;
     const disabled = isDisabled(getAtPath(config, path));
     showContextMenu(e, _menu({
-      add: canAddItem && !disabled ? [{ label: 'Add item', onclick: () => _addListItem(arr, path) }] : [],
+      add: canAddItem && !disabled ? [{ label: 'Add item…', onclick: () => _addListItem(arr, path) }] : [],
       convert: disabled ? [] : [
         { label: 'Convert to Nix', onclick: () => { setAtPath(config, path, { _expr: jsonToNix(getAtPath(config, path)) }); renderAll(); } },
       ],
@@ -4303,7 +4303,7 @@ function renderField(container, key, val, path) {
       const wrap = document.createElement('div');
       wrap.className = 'nullable-string-wrap';
       const inp = document.createElement('input');
-      inp.type = 'text'; inp.value = ''; inp.placeholder = 'null — type to set a value';
+      inp.type = 'text'; inp.value = ''; inp.placeholder = 'null — type to set value';
       // Same split as the plain nullable-string case above: the value tracks live via 'input',
       // but swapping the widget's own styling/placeholder is a full re-render, deferred to blur.
       inp.addEventListener('input', () => {
@@ -4395,7 +4395,8 @@ function _isBlankItem(v) {
   return false;
 }
 
-// What an object of a list becomes as the template of a new one ("Add item like this"): the
+// What an object of a list becomes as the template of a new one ("Add item like…", "Add item
+// like this" until 2026-10-27, when the user had both menu entries end in "…"): the
 // same options, nested ones too, with every value emptied, a value being of the kind it was:
 // text "", a list [], true/false false, a number 0 (JSON has no empty number), a Nix
 // expression empty. Something switched off stays off. The user's idea (2026-10-25), for
@@ -4427,8 +4428,8 @@ function renderArray(container, arr, path) {
       wrap.appendChild(fields);
       wrap.oncontextmenu = e => {
         // _commonMenuItems already omits Disable for array-indexed paths like this one.
-        showContextMenu(e, _menu({ add: [..._addMenuItems(e, itemPath), { label: 'Add item', onclick: () => _addListItem(arr, path) },
-          { label: 'Add item like this', onclick: () => {
+        showContextMenu(e, _menu({ add: [..._addMenuItems(e, itemPath), { label: 'Add item…', onclick: () => _addListItem(arr, path) },
+          { label: 'Add item like…', onclick: () => {
             arr.splice(i + 1, 0, _blankLike(arr[i]));
             renderAll();
             const added = document.querySelectorAll('.field-row[data-path="' + CSS.escape(path.join('.')) + '"] > .field-value > :is(.array-obj-item, .array-item)')[i + 1];
@@ -4497,7 +4498,7 @@ function renderArray(container, arr, path) {
     if (isExpr) editor.classList.add('expr-value');
     item.oncontextmenu = e => {
       showContextMenu(e, _menu({
-        add: [{ label: 'Add item', onclick: () => _addListItem(arr, path) }],
+        add: [{ label: 'Add item…', onclick: () => _addListItem(arr, path) }],
         item: [{ label: 'Delete', danger: true, onclick: () => { deleteAtPath(config, itemPath); renderAll(); } }],
         convert: [isExpr
           ? { label: 'Convert to native', onclick: () => { setAtPath(config, itemPath, editor.value); renderAll(); } }
@@ -5766,7 +5767,7 @@ function _endPeekFolder() {
 function _folderMenuItems(folder) {
   const folderDisabled = _isDisabledFolderSegment(folder);
   return _menu({
-    add: [{ label: 'New file', onclick: () => createFile(folder) }],
+    add: [{ label: 'New file…', onclick: () => createFile(folder) }],
     // With Delete, as Disable file is with Clear and Delete on a file's menu.
     item: [
       { label: folderDisabled ? 'Enable folder' : 'Disable folder', onclick: () => _toggleFolderDisabled(folder, !folderDisabled) },
@@ -5884,7 +5885,7 @@ async function _fileMenuItems(name) {
   const disabled = _isFileDisabled(name);
   const ownDisabled = name.endsWith('.json.disabled');
   const transfer = [
-    { label: 'Import', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) },
+    { label: 'Import…', title: 'Merge pasted or loaded Nix/JSON into this file', onclick: () => showImportModal(name) },
     { label: 'Export', onclick: () => exportFile(name) },
   ];
   const disk = [];
@@ -6209,11 +6210,11 @@ function renderFileSelector() {
   bar.oncontextmenu = e => {
     showContextMenu(e, _menu({
       add: hasFlake ? [
-        { label: 'New file', onclick: () => createFile() },
-        { label: 'New folder', onclick: () => createFolder() },
+        { label: 'New file…', onclick: () => createFile() },
+        { label: 'New folder…', onclick: () => createFolder() },
       ] : [],
       transfer: [
-        ...(hasFlake ? [{ label: 'Import', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() }] : []),
+        ...(hasFlake ? [{ label: 'Import…', title: 'Merge pasted or loaded Nix/JSON into a file', onclick: () => showImportModal() }] : []),
         ...(files.length ? [{ label: 'Export all', title: 'Every file, as a zip', onclick: () => exportAll() }] : []),
       ],
     }));

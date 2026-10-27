@@ -5,7 +5,7 @@ The **System** button: the whole flake as a zip, out and back in, and backups of
 ## ✨ What it does
 
 - **Export** the flake as a zip: all its files and folders, but what `protect` and `exclude` name
-- **Import** a zip over the flake: the files and folders end up exactly as in the zip, and
+- **Import…** a zip over the flake: the files and folders end up exactly as in the zip, and
   only what `protect` names is left as it is: no old files stay. The question
   before it lists what is left alone and what is removed
 - **Backup** the flake now, and **restore** any backup from the list
