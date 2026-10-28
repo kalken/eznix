@@ -801,6 +801,22 @@ settings, at the top of a module a header); not in a browser.
 **Nothing touches disk until Save**, including deletes, renames and moves (`pendingFsOps`,
 replayed in order). Undo is one global stack of full-state snapshots and survives a reload.
 
+**What changes on disk shows in the page** (`_followDisk()`, `_files_stamps()`), since
+2026-10-28, the user's idea after a file removed in the terminal left its delete queued in the
+page and every Save refused: the ping carries one checksum of the files folder (each file's size
+and modification time, and the folders), the page then asks `/api/v1/files` for each file's stamp
+and reads only those it does not have, and compares what it read with `fileSaved`, so its own
+saves come to nothing. The disk's version counts like a Save (`fileSaved`,
+`_rebaseHistoryOnDisk()`): a file with no unsaved changes shows it, a new one gets a tab, a
+deleted one goes; one with unsaved changes keeps them and is marked (`.needs-attention` on its
+tab and its folder's, `diskConflicts`) until Save writes it or Reload takes the disk's: menu
+entries "Use disk version" and "Keep mine" were taken out the same day, the user pointing out
+that Reload and Save are those.
+A Save sends the stamp it expects (`expect`, 409 when another), for a change between two pings.
+Nothing is followed while a fs op waits for Save (the page's names are not the disk's then).
+The server half in `test_server.py`; `_followDisk()` run, lifted out of the page, on made-up
+disks (clean, unsaved, new, deleted, a touch, folders, a queued op); not in a browser.
+
 **Going back past a Save** (`_rebaseHistoryOnDisk()`, run after every Save): each other point
 in the undo stack is told what is on disk now, its `fileSaved`, `folderExists` and
 `pendingFsOps` worked out again against it. Before, a point kept what was true when it was

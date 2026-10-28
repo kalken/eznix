@@ -887,6 +887,34 @@ def main():
             check('one that is not on disk is not', b.json('/api/v1/file/backup?file=nope.json', b'', 'POST')[0] == 400
                   and kept() == 2)
 
+            # What is on disk is followed by the page: a checksum in the ping, each file's stamp in
+            # the listing, and a save refused when the file is not the one the page last saw.
+            # On a file of its own, b.json: a.json's backups are counted further down.
+            with open(f'{tmp}/flake/eznix/b.json', 'w') as f:
+                f.write('{"b": 1}')
+            listing = b.json('/api/v1/files')[1]
+            before, stamp_b = b.json('/api/v1/ping')[1]['files'], listing['stamps']['b.json']
+            check('the ping carries the checksum of the files, the listing it and every stamp',
+                  before == listing['stamp'] and set(listing['stamps']) == {'a.json', 'b.json'} and stamp_b)
+            with open(f'{tmp}/flake/eznix/b.json', 'w') as f:
+                f.write('{"b": 30}')
+            after = b.json('/api/v1/files')[1]
+            check('a file written outside changes both', after['stamp'] != before
+                  and after['stamps']['b.json'] != stamp_b and b.json('/api/v1/ping')[1]['files'] == after['stamp'])
+            stale = b.request('/api/v1/file/save?file=b.json&expect=' + urllib.parse.quote(stamp_b), b'{"b": 4}')
+            check('a save that expects another stamp is refused and writes nothing',
+                  stale[0] == 409 and json.loads(stale[1]).get('changed') is True
+                  and json.load(open(f'{tmp}/flake/eznix/b.json')) == {'b': 30})
+            ok = b.json('/api/v1/file/save?file=b.json&expect=' + urllib.parse.quote(after['stamps']['b.json']), b'{"b": 2}')
+            check('one that expects the stamp on disk saves and gives the new stamp',
+                  ok[0] == 200 and ok[1]['stamp'] == b.json('/api/v1/files')[1]['stamps']['b.json']
+                  and json.load(open(f'{tmp}/flake/eznix/b.json')) == {'b': 2})
+            check('a new file expected not there is refused when it is, saved when not',
+                  b.request('/api/v1/file/save?file=b.json&expect=', b'{}')[0] == 409
+                  and b.request('/api/v1/file/save?file=n.json&expect=', b'{}')[0] == 200
+                  and b.request('/api/v1/file/delete', json.dumps({'file': 'n.json'}).encode())[0] == 200)
+            os.remove(f'{tmp}/flake/eznix/b.json')
+
             # A delete of something already gone is done (it was removed outside the page while
             # its delete waited for Save); one of the wrong kind is still refused.
             os.makedirs(f'{tmp}/flake/eznix/sub')

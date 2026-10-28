@@ -127,6 +127,9 @@ body {
 /* A tab's fill and line are the theme's (--tab-bg, --tab-border; a button's in most). On
    .tab alone, so that the rules below, of more than one class, still decide. */
 .tab { white-space: nowrap; background: var(--tab-bg); border-color: var(--tab-border); }
+/* A marked tab is a tab with a dot (below), not a button's accent colour and line: the user
+   found the dot enough (2026-10-28). Before the open tab's rule, which wins on the open tab. */
+.btn.tab.needs-attention { color: var(--text); border-color: var(--tab-border); }
 /* A tab (a file's or a folder's) under the pointer or focused looks as it does at rest, in every
    theme, until it is the open one: a button's hover gave it a fill and line of its own (the
    user's wish, 2026-10-14; for some hours that day it looked like the open one instead). The
@@ -135,6 +138,10 @@ body {
 /* The open tab looks like any selected button (.btn.active), in every theme (the user's wish,
    2026-10-14; it had a fill and a name's colour of the theme's own, --tab-active-*). */
 .btn.tab.active { background: var(--bg4); border-color: var(--border2); color: var(--text); }
+/* A marked tab (changed on disk with unsaved changes here) has the dot alone, inside its corner:
+   a tab row scrolls sideways, so it cuts off whatever stands out over its tabs, as the dot of a
+   button does. */
+.btn.tab.needs-attention::after { top: 2px; right: 2px; width: 6px; height: 6px; }
 /* Dropping a dragged file tab here moves it into this folder (or to the root) */
 .tab-move-target { outline: 2px dashed var(--accent2); background: var(--selected-bg); }
 .tab-rename-input {

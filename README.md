@@ -9,6 +9,7 @@ framework: just Python and a browser.
 - Edit a NixOS, nix-darwin or home-manager configuration in a web page, with suggestions for options and packages taken from your own flake
 - The configuration is split over files and folders of your choosing, each a tab, merged by Nix when you rebuild
 - Nothing is written until you save; undo and redo, and the earlier versions of every file kept to go back to
+- Files changed on disk while the page is open show in it by themselves
 - Search (Ctrl+F) across all files: type words from an option, a value or a file name, in any order; each result says which file it is in
 - A terminal in the page, with buttons and menus of your own for rebuilding and anything else; drag its edge, or a side panel's, to size it
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
@@ -160,6 +161,12 @@ first in its row and 200 last.
 ```json
 { "services": { "eznix": { "paths": { "network": { "order": 1 }, "network/wan": { "order": 1 } } } } }
 ```
+
+A file changed outside the page while it is open (in the terminal, by `git pull`, from another
+browser) shows within a few seconds: a new file gets a tab, a deleted one loses it, and a
+changed one shows what is on disk. One you have unsaved changes in keeps them, and its tab is
+marked: Save writes yours over the disk's, Reload on its menu takes the disk's. Save never
+writes over such a change unseen.
 
 Import the folder once from your
 configuration, through the function eznix's flake provides:

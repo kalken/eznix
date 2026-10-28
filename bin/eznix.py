@@ -1506,11 +1506,32 @@ def _flake_there():
     return os.path.isfile(os.path.join(FLAKE_DIR, 'flake.nix'))
 
 
+def _file_stamp(target):
+    """One file's stamp, its size and modification time: what the page compares to learn
+    whether the file is still the one it has. '' for a file that is not there."""
+    try:
+        st = os.stat(target)
+    except OSError:
+        return ''
+    return f'{st.st_size}:{st.st_mtime_ns}'
+
+
+def _files_stamps():
+    """The stamp of every tab's file (_file_stamp()), and one checksum of them all and of the
+    folders. The ping carries the checksum; the page asks for the stamps (/api/v1/files) only
+    when it changes, and reads again only the files whose stamp it does not have, so that what
+    changes on disk while a page is open shows in it (initRestartWatcher(), _followDisk() in
+    the page). No file is read here, only looked at."""
+    stamps = {name: _file_stamp(resolve_config_path(name)) for name in list_config_files()}
+    whole = json.dumps([stamps, list_config_folders()], sort_keys=True)
+    return stamps, hashlib.sha1(whole.encode()).hexdigest()[:16]
+
+
 def _ping_payload(user=None):
     """GET /api/v1/ping's whole response, polled by initRestartWatcher() (index.html): the
     page checksum (see _compute_page_hash()), the autocomplete stamp, whether the suggestions
-    are being generated just now, what the terminal restart notice compares, and whether there
-    is a flake.nix (_flake_there())."""
+    are being generated just now, what the terminal restart notice compares, whether there
+    is a flake.nix (_flake_there()), and the checksum of the files on disk (_files_stamps())."""
     return {
         'page': PAGE_HASH,
         'theme': THEME,
@@ -1518,6 +1539,7 @@ def _ping_payload(user=None):
         'autocomplete_running': _autocomplete_running(),
         'terminal_stale': _terminal_stale(_terminal_for(user)),
         'flake': _flake_there(),
+        'files': _files_stamps()[1],
     }
 
 
@@ -1783,14 +1805,29 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     return
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
+                # `expect`: the stamp of the file as the page last saw it on disk ('' for none).
+                # Another one means the file was changed outside the page since, which the page
+                # has not shown yet: refused, so that the change is not written over unseen.
+                # The page then shows it and a second Save writes (_followDisk()).
+                expect = parse_qs(parsed.query, keep_blank_values=True).get('expect', [None])[0]
+                if expect is not None and expect != _file_stamp(target):
+                    resp = b'{"error":"changed on disk","changed":true}'
+                    self.send_response(409)
+                    self.send_header('Content-Type', 'application/json')
+                    self.send_header('Content-Length', str(len(resp)))
+                    self.end_headers()
+                    self.wfile.write(resp)
+                    return
                 backup_config(target)
                 os.makedirs(os.path.dirname(target), exist_ok=True)
                 with open(target, 'w') as f:
                     json.dump(body, f, indent=2)
+                resp = json.dumps({'ok': True, 'stamp': _file_stamp(target)}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(resp)))
                 self.end_headers()
-                self.wfile.write(b'{"ok":true}')
+                self.wfile.write(resp)
             except Exception as e:
                 self.send_error(500, str(e))
         elif parsed.path == '/api/v1/file/backup':
@@ -2134,11 +2171,14 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self._plugin_route('GET', parsed); return
         if parsed.path == '/api/v1/files':
             try:
+                stamps, stamp = _files_stamps()
                 listing = {
                     'files': list_config_files(),
                     'folders': list_config_folders(),
                     'default': DEFAULT_FILE,
                     'flake': _flake_there(),
+                    'stamps': stamps,
+                    'stamp': stamp,
                 }
                 # With ?content=1, what is in each file too, as the text on disk: the page loads
                 # every tab at start, and asked for them one by one, each its own connection (and

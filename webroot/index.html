@@ -5060,6 +5060,132 @@ function _rebaseHistoryOnDisk() {
 function isAnyDirty() {
   return pendingFsOps.length > 0 || Object.keys(fileConfigs).some(f => JSON.stringify(fileConfigs[f]) !== fileSaved[f]);
 }
+function _fileDirty(f) { return JSON.stringify(fileConfigs[f]) !== fileSaved[f]; }
+
+// What changes on disk while the page is open shows in it (2026-10-28, the user's wish, after a
+// file removed in the terminal had its delete still queued here and every Save refused). The
+// ping carries one checksum of the files on disk (_files_stamps() in the server); when it is not
+// the one the page has, the page asks for each file's stamp, its size and modification time, and
+// reads again only the files whose stamp it does not have. What it read is compared with what
+// the page has as on disk (`fileSaved`), so its own saves, a touch, or a rename that moved a file
+// with its stamp come to nothing. Otherwise the disk's version is what is on disk now, as after a
+// Save (`fileSaved`, and every point of the undo stack told so, _rebaseHistoryOnDisk()): a file
+// without unsaved changes here shows it at once, a new file gets a tab, a deleted one loses it.
+// One with unsaved changes keeps them, and its tab (and its folder's) is marked until it is
+// saved (yours written over the disk's) or reloaded (the disk's taken; for one deleted on disk,
+// Delete file). "Use disk version" and "Keep mine" on its menu were built and taken out the
+// same day: the user pointed out that Reload and Save are those already. A Save also sends the stamp it expects, and the server refuses a
+// file that changed after the last ping (`expect` in /api/v1/file/save), which is then shown
+// here the same way. Nothing is followed while a rename, delete or the like waits for Save,
+// since the page's names are then not the disk's; it is, the first ping after.
+let diskStamps = {};      // file -> its stamp on disk, as the page last learned it
+let diskStamp = null;     // the checksum of them all, as the ping has it
+const diskConflicts = new Map(); // file -> 'changed' or 'deleted' on disk while it had unsaved changes
+let _saving = false, _following = false;
+function _learnStamps(data) {
+  diskStamps = { ...(data.stamps || {}) };
+  diskStamp = data.stamp || null;
+  diskConflicts.clear();
+}
+// A mark lasts while the file has unsaved changes: back to what is on disk, by an undo or a
+// Save, it goes.
+function _diskConflict(f) {
+  if (!diskConflicts.has(f)) return null;
+  if (files.includes(f) && _fileDirty(f)) return diskConflicts.get(f);
+  diskConflicts.delete(f);
+  return null;
+}
+async function _followDisk() {
+  if (_following || _saving || pendingFsOps.length) return;
+  _following = true;
+  try {
+    const res = await apiFetch('/files');
+    if (!res.ok) return;
+    const data = await res.json();
+    const stamps = data.stamps || {}, onDisk = new Set(data.files || []);
+    const read = async f => {
+      const r = await fetch(_cfgPathFor(f), { cache: 'no-cache' });
+      if (!r.ok) throw r.status;
+      return normalizeConfig(await r.json());
+    };
+    const fresh = {};
+    for (const f of onDisk) {
+      if (diskStamps[f] === stamps[f]) continue;
+      // One that is not JSON (half written, say) is read again at the next change.
+      try { fresh[f] = await read(f); } catch (e) { continue; }
+    }
+    // Edited, saved or renamed here while that was read: the next ping tries again.
+    if (_saving || pendingFsOps.length) return;
+    const shown = [], marked = [];
+    let activeChanged = false;
+    for (const [f, cfg] of Object.entries(fresh)) {
+      diskStamps[f] = stamps[f];
+      const text = JSON.stringify(cfg);
+      if (text === fileSaved[f]) continue;
+      shown.push(f);
+      if (!files.includes(f)) {
+        files.push(f);
+        fileConfigs[f] = cfg;
+      } else if (!_fileDirty(f)) {
+        fileConfigs[f] = cfg;
+        if (f === activeFile) { config = cfg; activeChanged = true; }
+      } else {
+        diskConflicts.set(f, 'changed');
+        marked.push(f);
+      }
+      fileSaved[f] = text;
+      _syncFileSavedToHistory(f, text);
+    }
+    for (const f of Object.keys(diskStamps)) if (!onDisk.has(f)) delete diskStamps[f];
+    // Gone from disk: only what the page has as on disk, not a file made here and not saved yet.
+    for (const f of files.slice()) {
+      if (onDisk.has(f) || !Object.prototype.hasOwnProperty.call(fileSaved, f)) continue;
+      shown.push(f);
+      const dirty = _fileDirty(f);
+      delete fileSaved[f];
+      if (dirty) { diskConflicts.set(f, 'deleted'); marked.push(f); continue; }
+      files = files.filter(x => x !== f);
+      delete fileConfigs[f];
+      if (f === activeFile) activeChanged = true;
+    }
+    const diskFolders = data.folders || [];
+    let foldersChanged = false;
+    for (const d of diskFolders) {
+      if (folderExists.has(d)) continue;
+      folderExists.add(d);
+      if (!folders.includes(d)) folders.push(d);
+      foldersChanged = true;
+    }
+    for (const d of Array.from(folderExists)) {
+      if (diskFolders.includes(d)) continue;
+      folderExists.delete(d);
+      if (!files.some(f => f.startsWith(d + '/'))) folders = folders.filter(x => x !== d);
+      foldersChanged = true;
+    }
+    folders.sort();
+    diskStamp = data.stamp || null;
+    if (!shown.length && !foldersChanged) return;
+    if (activeFile && !files.includes(activeFile)) {
+      activeFile = files.includes(data.default) ? data.default : (files[0] || null);
+      config = activeFile ? fileConfigs[activeFile] : {};
+      if (activeFile) localStorage.setItem('eznix-active-file', activeFile);
+      else localStorage.removeItem('eznix-active-file');
+    }
+    renderFileSelector();
+    // The editor is drawn again only when the open file is another: one with unsaved changes
+    // keeps them, and a field being typed in keeps the cursor.
+    if (activeChanged) renderAll();
+    else { _pushHistory(); _updateDirty(); eznix.emit('render'); }
+    _rebaseHistoryOnDisk();
+    eznix.debug('changed on disk:', shown.join(', ') || '(folders)', marked.length ? '; kept unsaved: ' + marked.join(', ') : '');
+    if (marked.length) setStatus('Changed on disk, with unsaved changes here: ' + marked.join(', ') + ' — Save keeps yours, Reload takes the disk\'s', 10000, 'err');
+    else if (shown.length) setStatus('Changed on disk: ' + shown.join(', '), 4000, 'ok');
+  } catch (e) {
+    eznix.debug('following the disk failed:', String(e));
+  } finally {
+    _following = false;
+  }
+}
 
 // True once the server has reported a different page checksum than this page was built with
 // (see initRestartWatcher()). _updateDirty() checks it to reload the moment nothing is unsaved.
@@ -5100,6 +5226,7 @@ function initRestartWatcher() {
       _updateNoFlakeNotice();
     }
     _noSuggestionsLine(data);
+    if (typeof data.files === 'string' && diskStamp && data.files !== diskStamp) _followDisk();
     eznix.emit('ping', data);
 
     if (!data.page || data.page === PAGE_HASH) return;
@@ -5209,7 +5336,9 @@ async function reloadFile(name) {
     fileConfigs[file] = fresh;
     fileSaved[file] = JSON.stringify(fresh);
     _syncFileSavedToHistory(file, fileSaved[file]);
+    diskConflicts.delete(file);
     if (file === activeFile) config = fresh;
+    renderFileSelector();
     renderAll();
     setStatus('Reloaded ' + file, 2000, 'ok');
   } catch (e) {
@@ -5235,6 +5364,7 @@ async function reloadAllFiles() {
     folders = data.folders || [];
     folderExists = new Set(folders);
     hasFlake = data.flake !== false;
+    _learnStamps(data);
     pendingFsOps = [];
     fileConfigs = {};
     fileSaved = {};
@@ -5983,9 +6113,14 @@ function _makeFolderTab(folder, inside) {
   const tab = document.createElement('div');
   tab.className = 'btn tab tab-folder' + (folder === viewFolder ? ' active' : '')
     + (_isDisabledFolderSegment(folder) ? ' is-disabled' : '');
+  // Marked as a file in it is that changed on disk with unsaved changes here, so it is seen
+  // from another folder too.
+  const onDisk = inside.some(f => _diskConflict(f));
+  if (onDisk) tab.classList.add('needs-attention');
   tab.tabIndex = 0;
   tab.dataset.folder = folder;
-  _wireHoverTooltip(tab, 'Click for its files, drop a file here to move it in, right-click for options');
+  _wireHoverTooltip(tab, onDisk ? 'A file in it changed on disk while it had unsaved changes here: see its tab'
+    : 'Click for its files, drop a file here to move it in, right-click for options');
   tab.innerHTML = '<svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
   const label = document.createElement('span');
   label.textContent = _folderLabel(folder);
@@ -6090,10 +6225,14 @@ async function _fileMenuItems(name) {
 function _makeTab(name) {
   const tab = document.createElement('div');
   const disabled = _isFileDisabled(name);
-  tab.className = 'btn tab' + (name === activeFile ? ' active' : '') + (disabled ? ' is-disabled' : '');
+  const onDisk = _diskConflict(name);
+  tab.className = 'btn tab' + (name === activeFile ? ' active' : '') + (disabled ? ' is-disabled' : '')
+    + (onDisk ? ' needs-attention' : '');
   tab.tabIndex = 0;
   tab.dataset.file = name;
-  _wireHoverTooltip(tab, 'Double-click to rename, drag between folders, right-click for options');
+  _wireHoverTooltip(tab, onDisk === 'deleted' ? 'Deleted on disk while it had unsaved changes here: Save writes it back, Delete file drops it'
+    : onDisk ? 'Changed on disk while it had unsaved changes here: Save writes yours over it, Reload takes what is on disk'
+    : 'Double-click to rename, drag between folders, right-click for options');
   const label = document.createElement('span');
   label.textContent = _tabLabel(name);
   tab.appendChild(label);
@@ -6724,10 +6863,19 @@ function _fsOpLabel(op) {
 // rather than risk saving file content against a filesystem layout that didn't end up matching
 // what the client thinks it looks like.
 async function saveToServer() {
+  if (_saving) return;
+  _saving = true;
+  let changedOnDisk = false;
+  try { changedOnDisk = await _saveToServer(); }
+  finally { _saving = false; }
+  // A file refused for having changed on disk is shown with its mark now, not at the next ping.
+  if (changedOnDisk) { diskStamp = null; await _followDisk(); }
+}
+async function _saveToServer() {
   const dirty = Object.keys(fileConfigs).filter(f => JSON.stringify(fileConfigs[f]) !== fileSaved[f]);
   if (!dirty.length && !pendingFsOps.length) { setStatus('Nothing to save', 2000, 'ok'); return; }
 
-  let opsApplied = 0;
+  let opsApplied = 0, changedOnDisk = false;
   while (pendingFsOps.length) {
     const op = pendingFsOps[0];
     try {
@@ -6745,14 +6893,27 @@ async function saveToServer() {
     opsApplied++;
   }
 
+  // The stamp each file had on disk when the page last looked (none for one not on disk yet),
+  // so that one changed outside the page since is refused rather than written over unseen; one
+  // whose stamp the page does not know (renamed here just now) is written as before.
+  const expect = f => !Object.prototype.hasOwnProperty.call(fileSaved, f) ? ''
+    : (f in diskStamps ? diskStamps[f] : null);
   const results = await Promise.allSettled(dirty.map(async f => {
-    const res = await apiFetch('/file/save?file=' + encodeURIComponent(f), {
+    const e = expect(f);
+    const res = await apiFetch('/file/save?file=' + encodeURIComponent(f) + (e === null ? '' : '&expect=' + encodeURIComponent(e)), {
       method: 'POST',
       body: JSON.stringify(fileConfigs[f]),
     });
     // With the server's own reason where it gives one (a save refused for the address the
     // page was opened by says which name to list).
-    if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || String(res.status));
+    if (!res.ok) {
+      const why = await res.json().catch(() => ({}));
+      if (why.changed) changedOnDisk = true;
+      throw new Error(why.error || String(res.status));
+    }
+    const saved = await res.json().catch(() => ({}));
+    if (saved.stamp) diskStamps[f] = saved.stamp;
+    diskConflicts.delete(f);
     const fresh = normalizeConfig(await fetch(_cfgPathFor(f) + '&_=' + Date.now()).then(r => r.json()));
     fileConfigs[f] = fresh;
     fileSaved[f] = JSON.stringify(fresh);
@@ -6762,9 +6923,12 @@ async function saveToServer() {
     if (slash !== -1) folderExists.add(f.slice(0, slash));
   }));
   const failed = dirty.filter((f, i) => results[i].status === 'rejected');
+  renderFileSelector();
   renderAll();
   _rebaseHistoryOnDisk();
-  if (failed.length) {
+  if (changedOnDisk) {
+    // Said by _followDisk(), right after, with the files and what to do.
+  } else if (failed.length) {
     const why = results.find(r => r.status === 'rejected' && r.reason && !/^\d+$/.test(r.reason.message));
     setStatus('Save failed for: ' + failed.join(', ') + (why ? ' — ' + why.reason.message : ''), why ? 15000 : 6000, 'err');
   } else {
@@ -6773,6 +6937,7 @@ async function saveToServer() {
     if (opsApplied) parts.push(`${opsApplied} change${opsApplied !== 1 ? 's' : ''}`);
     setStatus('Saved ' + parts.join(' and '), 2000, 'ok');
   }
+  return changedOnDisk;
 }
 
 // ── Backups ───────────────────────────────────────────────────────────────────
@@ -6900,6 +7065,7 @@ async function _start() {
       folders = data.folders || [];
       folderExists = new Set(folders);
       hasFlake = data.flake !== false;
+      _learnStamps(data);
       if (files.length) {
         const stored = localStorage.getItem('eznix-active-file');
         activeFile = files.includes(stored) ? stored : (files.includes(data.default) ? data.default : files[0]);
