@@ -1818,7 +1818,10 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 length = int(self.headers.get('Content-Length', 0))
                 body = json.loads(self.rfile.read(length))
                 target = resolve_config_path(body.get('file', ''))
-                if not target or not os.path.isfile(target):
+                # A file that is not there is deleted already: removed outside the page while
+                # its delete waited for Save. It was refused until 2026-10-28, and the refusal
+                # stopped every Save after it, the delete staying queued, until a reload.
+                if not target or (os.path.lexists(target) and not os.path.isfile(target)):
                     resp = b'{"error":"invalid file name"}'
                     self.send_response(400)
                     self.send_header('Content-Type', 'application/json')
@@ -1826,7 +1829,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(resp)
                     return
-                os.remove(target)
+                if os.path.lexists(target):
+                    os.remove(target)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()
@@ -1897,7 +1901,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 body = json.loads(self.rfile.read(length))
                 folder = body.get('folder', '')
                 target = resolve_folder_path(folder)
-                if not target or not os.path.isdir(target):
+                # Gone already counts as done, as for a file.
+                if not target or (os.path.lexists(target) and not os.path.isdir(target)):
                     resp = b'{"error":"invalid folder name"}'
                     self.send_response(400)
                     self.send_header('Content-Type', 'application/json')
@@ -1905,7 +1910,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(resp)
                     return
-                shutil.rmtree(target)
+                if os.path.lexists(target):
+                    shutil.rmtree(target)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.end_headers()

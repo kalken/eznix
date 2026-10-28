@@ -887,6 +887,20 @@ def main():
             check('one that is not on disk is not', b.json('/api/v1/file/backup?file=nope.json', b'', 'POST')[0] == 400
                   and kept() == 2)
 
+            # A delete of something already gone is done (it was removed outside the page while
+            # its delete waited for Save); one of the wrong kind is still refused.
+            os.makedirs(f'{tmp}/flake/eznix/sub')
+            open(f'{tmp}/flake/eznix/sub/x.json', 'w').write('{}')
+            delete = lambda what, name: b.request(f'/api/v1/{what}/delete', json.dumps({what: name}).encode())[0]
+            check('a file or folder already gone deletes without an error, the wrong kind does not',
+                  delete('file', 'sub/x.json') == 200 and delete('file', 'sub/x.json') == 200
+                  and delete('file', 'nope.json') == 200
+                  and delete('folder', 'gone') == 200
+                  and delete('file', 'sub.json') == 200 and delete('folder', 'a.json') == 400
+                  and delete('file', '../flake.nix') == 400
+                  and delete('folder', 'sub') == 200 and not os.path.exists(f'{tmp}/flake/eznix/sub')
+                  and os.path.isfile(f'{tmp}/flake/eznix/a.json'))
+
             # Disabling is a rename on disk; the backups are the file's all the same.
             rename = lambda a, z: b.json('/api/v1/file/rename', json.dumps({'from': a, 'to': z}).encode(), 'POST')[0]
             check('a disabled file keeps its backups', rename('a.json', 'a.json.disabled') == 200
