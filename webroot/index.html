@@ -4093,11 +4093,17 @@ function choicesFor(path) {
 // An entry can also be written as an attribute set ({ name, args, ... }), which a chip has no
 // way to show or edit — a list holding one of those stays an ordinary list. So does a list of
 // expressions: a chip is a text.
+// `descriptions` is name -> what choices.json says of it, where it says anything (Homebrew's
+// formulas and casks), shown beside a suggestion and on a chip under the pointer.
 function nameListFor(path, arr) {
   const c = choicesFor(path);
   if (!c || c.expr) return null;
   if (!Array.isArray(arr) || !arr.every(v => typeof v === 'string')) return null;
-  return { values: c._items.map(i => i.value), freeText: !!c.free };
+  if (!c._descriptions) {
+    c._descriptions = new Map();
+    c._items.forEach(i => { if (i.description) c._descriptions.set(i.value, String(i.description)); });
+  }
+  return { values: c._items.map(i => i.value), freeText: !!c.free, descriptions: c._descriptions };
 }
 
 // Parse enum values from NixOS type strings like:
@@ -4751,6 +4757,8 @@ function renderEnumArray(container, arr, path, enumOpts) {
     const label = document.createElement('span');
     label.className = 'pkg-label';
     label.textContent = isExprPkg(v) ? v._expr : v;
+    const desc = enumOpts.descriptions && enumOpts.descriptions.get(v);
+    if (desc) _wireHoverTooltip(label, desc);
     const del = document.createElement('button');
     del.className = 'icon-btn del'; del.textContent = '✕';
     del.onclick = () => {
@@ -4801,6 +4809,12 @@ function renderEnumArray(container, arr, path, enumOpts) {
       const name = document.createElement('span');
       name.className = 'ac-name'; name.textContent = v;
       it.appendChild(name);
+      const desc = enumOpts.descriptions && enumOpts.descriptions.get(v);
+      if (desc) {
+        const d = document.createElement('span');
+        d.className = 'ac-desc'; d.textContent = desc;
+        it.appendChild(d);
+      }
       it.addEventListener('mousedown', e => { e.preventDefault(); addValue(v); });
       acList.appendChild(it);
     });

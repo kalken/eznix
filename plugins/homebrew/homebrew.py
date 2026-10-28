@@ -2,11 +2,13 @@
 
 Run by eznix-autocomplete (see "Plugins" in bin/eznix-autocomplete.py): generate(ctx) returns
 what to add to the suggestions. nix-darwin only, and only with a working brew."""
+import glob
 import json
 import os
 import pwd
 import shutil
 import subprocess
+import sys
 
 SYSTEMS = ("darwin",)
 
@@ -55,6 +57,50 @@ def _brew(ctx, brew, args):
     return r.stdout
 
 
+def _jws(path):
+    """The data of one of brew's signed API files: a JSON object whose `payload` is the JSON
+    text of the data itself. None when it can't be read."""
+    try:
+        with open(path) as f:
+            return json.loads(json.load(f)["payload"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def _descriptions(ctx, brew):
+    """Each formula's and cask's one-line description, {name: desc} for each, from what brew has
+    downloaded into its cache: brew itself lists no descriptions short of `brew info --json=v2
+    --eval-all`, which reads every package and takes minutes. These files are brew's own and
+    not a documented interface: api/internal/packages.TAG.jws.json (both kinds in one, per
+    bottle tag; brew 5 and later), else api/formula.jws.json and api/cask.jws.json (a list
+    each, before). Whatever cannot be read leaves names without descriptions, nothing worse.
+    Only the core formulas and casks are there: a tap's have none."""
+    cache = (_brew(ctx, brew, ["--cache"]) or "").strip()
+    if not cache:
+        return {}, {}
+    api = os.path.join(cache, "api")
+    newest = sorted(glob.glob(os.path.join(api, "internal", "packages.*.jws.json")),
+                    key=lambda p: os.path.getmtime(p) if os.path.exists(p) else 0)
+    data = _jws(newest[-1]) if newest else None
+    if isinstance(data, dict):
+        def descs(d):
+            return {n: v["desc"] for n, v in (d or {}).items()
+                    if isinstance(v, dict) and isinstance(v.get("desc"), str) and v["desc"]}
+        return descs(data.get("formulae")), descs(data.get("casks"))
+
+    def listed(name, key):
+        items = _jws(os.path.join(api, name))
+        return {v[key]: v["desc"] for v in items or []
+                if isinstance(v, dict) and isinstance(v.get(key), str)
+                and isinstance(v.get("desc"), str) and v["desc"]}
+    return listed("formula.jws.json", "name"), listed("cask.jws.json", "token")
+
+
+def _values(names, descs):
+    """choices.json's values: a name, or {value, description} where there is one."""
+    return [{"value": n, "description": descs[n]} if n in descs else n for n in sorted(names)]
+
+
 def generate(ctx):
     """The names homebrew.brews and homebrew.casks can be filled in from, in choices.json.
     Everything comes from the local brew -- its own lists for the core formulas and casks, plus
@@ -62,6 +108,7 @@ def generate(ctx):
     brew leaves a tap it doesn't consider trusted out of its combined list). A tap's entries are
     written as tap/name, the form that's unambiguous in a Brewfile. Only an installed tap can be
     listed, so one that was just added to the configuration shows up after the next rebuild.
+    A name has its description with it where brew's cache has one (_descriptions()).
 
     Returns nothing at all without a working brew, leaving whatever was generated before."""
     brew = _brew_command()
@@ -95,6 +142,8 @@ def generate(ctx):
             brews.update(t.get("formula_names") or [])
             casks.update(t.get("cask_tokens") or [])
 
-    ctx.info(f"  {len(brews)} formulas, {len(casks)} casks")
-    return {"choices": {"homebrew.brews": {"free": True, "values": sorted(brews)},
-                        "homebrew.casks": {"free": True, "values": sorted(casks)}}}
+    brew_descs, cask_descs = _descriptions(ctx, brew)
+    ctx.info(f"  {len(brews)} formulas, {len(casks)} casks "
+             f"({len(brew_descs)} and {len(cask_descs)} with a description)")
+    return {"choices": {"homebrew.brews": {"free": True, "values": _values(brews, brew_descs)},
+                        "homebrew.casks": {"free": True, "values": _values(casks, cask_descs)}}}

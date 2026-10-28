@@ -6,6 +6,8 @@ editor.
 ## ✨ What it is for
 
 - Picking formulas and casks that exist instead of typing them from memory
+- Each with its description from Homebrew, beside it in the list and on a chip under the
+  pointer (the formulas and casks of Homebrew itself; a tap's come without)
 - Also what the taps in `homebrew.taps` provide, written as `tap/name`
 - nix-darwin only, and only where `brew` is installed: without it nothing is written and
   whatever was generated before is left alone

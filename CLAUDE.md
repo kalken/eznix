@@ -1378,7 +1378,11 @@ Homebrew (a Mac, 8,652 formulas and 7,804 casks) and the two lookups on what it 
 user then ran Autocomplete in the test server on a NixOS flake and reported "it works",
 without saying what was looked at. On the user's Mac, updated to that commit, `homebrew.casks`
 was a plain list until Autocomplete was pressed once, and had its chips again after ("it
-works!").
+works!"). Since 2026-10-28 Homebrew's names carry their descriptions (`_descriptions()` in the
+plugin, read from brew's API cache, an undocumented file of brew's, since brew lists none in
+less than minutes), shown in the chip list's suggestions and as a chip's tooltip
+(`nameListFor()`'s `descriptions`). Read on a Mac: 8,680 of 8,680 formulas and 5,169 of
+7,812 casks; seen by the user in the test server ("it works").
 
 Suggestions are never generated automatically: it is the `eznix-autocomplete` command, run by
 the user. When there are none yet (no `.json` file in their folder, as on a machine just installed or after a system import,
