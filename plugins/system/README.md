@@ -95,7 +95,7 @@ The question then says "Start from …" in place of "Import …".
 What is imported is built as root at the next rebuild, so a source is only ever named in
 the configuration, never typed into the page, and plain `http` is refused (an index on the
 web can only lead to `https`). A download is kept for ten minutes, and used again when the
-place cannot be reached; the ↻ at the end of a source's heading downloads that source anew.
+place cannot be reached; the ↻ at the end of a source's heading downloads that source anew, and each of its systems again at its next import.
 At most 256 MiB is downloaded.
 
 ## 🔧 Files to make

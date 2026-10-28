@@ -509,6 +509,9 @@ def setup(api):
             raise ValueError('a path has to start at /')
         return os.path.normpath(os.path.join(os.path.dirname(base), ref))
 
+    def kept_for(loc):
+        return os.path.join(source_dir, hashlib.sha256(loc.encode()).hexdigest()[:32])
+
     def fetch(loc, refresh=False):
         """What is at a location: a file read, or a download kept in the state folder."""
         if not is_web(loc):
@@ -516,7 +519,7 @@ def setup(api):
                 raise ValueError(f'more than {MAX_DOWNLOAD >> 20} MiB')
             with open(loc, 'rb') as f:
                 return f.read()
-        kept = os.path.join(source_dir, hashlib.sha256(loc.encode()).hexdigest()[:32])
+        kept = kept_for(loc)
         if not refresh and os.path.isfile(kept) and time.time() - os.path.getmtime(kept) < SOURCE_TTL:
             with open(kept, 'rb') as f:
                 return f.read()
@@ -692,6 +695,11 @@ def setup(api):
                 # An entry that says which folder is the system is taken as it says: nothing is
                 # downloaded until it is chosen, so a menu of many costs one request, the index.
                 # Where it is wrong, the import says so (import_source()).
+                # A refresh downloads nothing here, so the copy kept from an earlier
+                # import is made out of date: the next import downloads it again (and
+                # still falls back on it when the place cannot be reached).
+                if refresh and is_web(loc) and os.path.isfile(kept_for(loc)):
+                    os.utime(kept_for(loc), (0, 0))
                 reached.add(loc)
                 return {'name': name or os.path.splitext(os.path.basename(loc.rstrip('/')))[0] or loc,
                         'url': loc, 'path': item['path'].strip('/'),

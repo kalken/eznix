@@ -683,7 +683,10 @@ the import question; a bad file is ignored. In `test_server.py` with `info` on i
 GitHub listing's part (`github_items()`) was not run by the tests, which have no network; run by hand
 the same day against `ezinstall/templates`, which listed correctly.
 An index entry with a `path` is listed without fetching its zip (`node()`), so a long index is one
-request; a wrong path or a missing zip then shows only at the import. Whether a missing one should
+request; a wrong path or a missing zip then shows only at the import. A refresh (↻) makes such
+a zip's kept copy out of date (`os.utime` to 0, not removed, so it is still the fallback), or the
+import after it took a copy up to ten minutes old (2026-10-28, the user's catch). Not in the tests,
+which have no web source. Whether a missing one should
 be left out of the list the user asked ("if it doesnt exist it shouldnt show each system") and it
 was not settled what was meant. An https zip was listed for real too; an index over https was not.
 
