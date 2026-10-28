@@ -154,11 +154,11 @@ over a folder, the drag brings up that folder's files to drop on.
 
 Tabs stand by name, the folders first. To move one, give it an `order` under
 `services.eznix.paths`, by its path as the tabs show it: a folder's name, or a file's path
-without `.json`. A number, lowest first, where a tab without one counts as 0. So -10 puts it
-first in its row and 10 last.
+without `.json`. A number, lowest first, where a tab without one counts as 100. So 1 puts it
+first in its row and 200 last.
 
 ```json
-{ "services": { "eznix": { "paths": { "network": { "order": -10 }, "network/wan": { "order": -10 } } } } }
+{ "services": { "eznix": { "paths": { "network": { "order": 1 }, "network/wan": { "order": 1 } } } } }
 ```
 
 Import the folder once from your
@@ -336,12 +336,12 @@ Save icon on it is greyed until there is something to save. Buttons with the sam
 Buttons stand in the order they are found: file by file, by path, and each list as written.
 A menu stands where its first button is found. To move a menu, give it an `order` under
 `services.eznix.menus`, by its name: a number, lowest first, where plain buttons and menus
-without one count as 0. So 10 puts the menu after everything else, wherever its buttons are
-defined, and -10 before. `separator` draws a dividing line beside it: `"before"`, `"after"`
+without one count as 100. So 200 puts the menu after everything else, wherever its buttons are
+defined, and 1 before. `separator` draws a dividing line beside it: `"before"`, `"after"`
 or `"both"`.
 
 ```json
-{ "services": { "eznix": { "menus": { "Flake": { "order": 10, "separator": "before" } } } } }
+{ "services": { "eznix": { "menus": { "Flake": { "order": 200, "separator": "before" } } } } }
 ```
 
 A button can have a `separator` too: a line beside it in the bar, or across the list when it

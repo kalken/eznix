@@ -573,15 +573,20 @@ function getMenus() {
 }
 // Where a button stands: in the order it is found (the buttons set where eznix is deployed,
 // then each file's by its path, each list as written), except that a menu with an `order`
-// takes all its buttons along: lowest first, where everything else counts as 0. So a menu
-// given 10 stands after the plain buttons and -10 before them, and one without a number where
-// the first of its buttons is found, as it always did. sort() keeps equals in place.
+// takes all its buttons along: lowest first, where everything else counts as 100. So a menu
+// given 1 stands before the plain buttons and 200 after them, and one without a number where
+// the first of its buttons is found, as it always did. sort() keeps equals in place. (Everything
+// else counted as 0 until 2026-10-28, when the user wanted 1 to mean first, as for the tabs.)
 function getAllButtons() {
   const perFile = files.flatMap(f => fileConfigs[f]?.services?.eznix?.buttons || [])
     .map(_normalizeButton);
   const staticSurviving = STATIC_BUTTONS.filter(b => b.static === true);
   const menus = getMenus();
-  const order = b => (b.menu && Number(menus[b.menu.split('/')[0]]?.order)) || 0;
+  const order = b => {
+    const o = b.menu ? menus[b.menu.split('/')[0]]?.order : null;
+    const n = Number(o);
+    return o != null && o !== '' && Number.isFinite(n) ? n : 100;
+  };
   return [...staticSurviving, ...perFile].sort((a, b) => order(a) - order(b));
 }
 

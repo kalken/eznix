@@ -5938,8 +5938,9 @@ function _folderMenuItems(folder) {
 // moment it was disabled) and a disabled file "name.json.disabled".
 const _byFolderLabel = (a, b) => _folderLabel(a).localeCompare(_folderLabel(b)) || a.localeCompare(b);
 // ...except that a tab with an `order` stands by it: services.eznix.paths.PATH = { order },
-// lowest first, where a tab without one counts as 0 and tabs that come out equal are by
-// name as before. So 10 puts one after the rest of its row and -10 before them. PATH is the
+// lowest first, where a tab without one counts as 100 and tabs that come out equal are by
+// name as before. So 1 puts one before the rest of its row and 200 after them (a tab without
+// one counted as 0 until 2026-10-28, when the user wanted 1 to mean first). PATH is the
 // tab's place in the folder of files as the tabs show it, so without ".json" and without
 // what marks something as switched off: a folder's name ("system") or a file's path
 // ("software", "system/boot"). A folder is placed among the folders and a file among the
@@ -5967,7 +5968,7 @@ function _tabOrders() {
 // names. Whatever puts tabs in a row, or asks which one comes first or next, sorts by these.
 function _tabSort() {
   const orders = _tabOrders();
-  const by = (key, byName) => (a, b) => (orders[key(a)] || 0) - (orders[key(b)] || 0) || byName(a, b);
+  const by = (key, byName) => (a, b) => (orders[key(a)] ?? 100) - (orders[key(b)] ?? 100) || byName(a, b);
   return { orders, folders: by(_folderLabel, _byFolderLabel), files: by(_filePathLabel, _byTabLabel) };
 }
 // The tabs follow an order as it is typed: the bar is drawn again when what the files say

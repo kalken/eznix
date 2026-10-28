@@ -1102,7 +1102,8 @@ the command, in the bar and in a menu alike, and above the "Saves your changes f
 save mark's, lifted out of the page; not in a browser.
 
 **A tab can be given a place** (`_tabOrders()`, `_tabSort()`, `services.eznix.paths.PATH = {
-order }`, the option in `options.nix`): lowest first, a tab without a number counting as 0,
+order }`, the option in `options.nix`): lowest first, a tab without a number counting as 100 (0 until 2026-10-28,
+when the user wanted 1 to mean first, and the same for a menu of buttons),
 equals by name as before; a folder among the folders, a file among the files of its row.
 PATH is the tab's path as the tabs show it, a folder's name or a file's path without
 `.json` (`_folderLabel()`, `_filePathLabel()`). Made the way a menu's `order` is: read by the

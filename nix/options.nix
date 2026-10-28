@@ -407,10 +407,10 @@ in
     menus = mkOption {
       default     = { };
       description = "Settings of a menu of buttons, by the name the buttons give as their menu. Like the buttons, read by the editor straight from the *.json files.";
-      example     = lib.literalExpression ''{ Network = { order = 10; separator = "before"; }; }'';
+      example     = lib.literalExpression ''{ Network = { order = 200; separator = "before"; }; }'';
       type        = types.attrsOf (types.submodule {
         options = {
-          order     = mkOption { type = types.int; default = 0; description = "Where the menu stands in the bar: lowest first, where plain buttons and menus without a number count as 0. So 10 puts it after them and -10 before them."; };
+          order     = mkOption { type = types.int; default = 100; description = "Where the menu stands in the bar: lowest first, where plain buttons and menus without a number count as 100. So 1 puts it before them and 200 after them."; };
           separator = mkOption { type = types.nullOr (types.enum [ "before" "after" "both" ]); default = null; description = "A dividing line beside the menu, on the side named."; };
           static    = mkOption { type = types.bool; default = false; description = "Set in Nix, for a menu of buttons that are static too: these settings are then built into eznix's configuration. Without it they count only when they are in the editor's *.json files."; };
         };
@@ -419,10 +419,10 @@ in
     paths = mkOption {
       default     = { };
       description = "Settings of a tab, by its path in the folder of configuration files as the tabs show it: a folder's name, or a file's path without .json (system, software, system/boot). Like the buttons, read by the editor straight from the *.json files.";
-      example     = lib.literalExpression ''{ system = { order = -10; }; "system/boot" = { order = -10; }; }'';
+      example     = lib.literalExpression ''{ system = { order = 1; }; "system/boot" = { order = 1; }; }'';
       type        = types.attrsOf (types.submodule {
         options = {
-          order = mkOption { type = types.int; default = 0; description = "Where the tab stands in its row, a folder among the folders and a file among the files: lowest first, where a tab without a number counts as 0, and tabs with the same number are by name. So 10 puts it after the others and -10 before them."; };
+          order = mkOption { type = types.int; default = 100; description = "Where the tab stands in its row, a folder among the folders and a file among the files: lowest first, where a tab without a number counts as 100, and tabs with the same number are by name. So 1 puts it before the others and 200 after them."; };
         };
       });
     };

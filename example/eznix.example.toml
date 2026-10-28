@@ -160,6 +160,6 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 #
 # A menu itself, by its name: where it stands, and a line beside it.
 # [menus.System]
-# order     = 10                      # lowest first; plain buttons and other menus count as 0
+# order     = 200                     # lowest first; plain buttons and other menus count as 100
 # separator = "before"
 # static      = true
