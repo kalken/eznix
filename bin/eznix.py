@@ -1797,6 +1797,21 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(data)
             return
+        if parsed.path == '/logout':
+            # The shell belongs to the login, not to the machine: once the last session of the
+            # person who was using it is gone, so is it (where that's switched on). A POST from
+            # the page since 2026-10-29: it was a GET, which any page on another port of the
+            # host could send with the cookie, logging the user out and ending their shell.
+            # Before the login check, so that a login already over still gets its cookie cleared.
+            _gone = _end_session(self.headers)
+            if _gone is not None and TERMINAL_END_ON_LOGOUT:
+                _terminal_end(_gone)
+            self.send_response(303)
+            self.send_header('Location', '/')
+            self.send_header('Set-Cookie', 'eznix_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
+            self.send_header('Content-Length', '0')
+            self.end_headers()
+            return
         if not check_auth(self.headers):
             self.send_response(401)
             self.send_header('Content-Type', 'application/json')
@@ -2118,17 +2133,6 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
     def do_GET(self):
         parsed = urlparse(self.path)
         if self._wrong_host():
-            return
-        if parsed.path == '/logout':
-            # The shell belongs to the login, not to the machine: once the last session of the
-            # person who was using it is gone, so is it (where that's switched on).
-            _gone = _end_session(self.headers)
-            if _gone is not None and TERMINAL_END_ON_LOGOUT:
-                _terminal_end(_gone)
-            self.send_response(303)
-            self.send_header('Location', '/')
-            self.send_header('Set-Cookie', 'eznix_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0')
-            self.end_headers()
             return
         if parsed.path == '/download-ca':
             if CA_FILE and os.path.exists(CA_FILE):

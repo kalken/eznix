@@ -126,7 +126,9 @@ setTimeout(() => document.documentElement.classList.remove('booting'), 3000);
     <div class="header-sep header-sep-mid"></div>
     <div class="header-group" data-group="files"></div>
     <div class="header-sep header-sep-end"></div>
-    <button class="btn" onclick="location.href='/logout'" data-tooltip="Log out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button>
+    <!-- A POST, so that only this page can log out: a link (a GET) could be followed by any
+         page on another port of the host, and logging out ends the shell (2026-10-29). -->
+    <form method="post" action="/logout" style="display: contents"><button class="btn" type="submit" data-tooltip="Log out"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></button></form>
   </div>
 </div>
 

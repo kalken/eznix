@@ -435,9 +435,10 @@ except on the installer, which had `hosts = [ "*" ]` with its public one (`nixos
 and passwordless sudo; the installer dropped `"*"` the same day, an address being let
 through anyway and the machine's name being listed by the module. Found in a review the
 user asked for; in `test_server.py`. Not tried in a browser or on the installer.
-The terminal program compares its key in constant time everywhere, as of the same day. `/logout` is a GET and is not
-checked: a page on another port of the host could log the user out, which also ends their
-shell (`terminal_end_on_logout`). Any other GET that changes something would need the check.
+The terminal program compares its key in constant time everywhere, as of the same day. `/logout` is a POST
+since 2026-10-29 (a form round the header's button), under the same Origin check: as a GET a
+page on another port of the host could log the user out, which also ends their shell
+(`terminal_end_on_logout`). No GET changes anything; one that did would need the check.
 
 **Where eznix is reached is dnsmasq's and Samba's model**: `interfaces`, a list of network
 interfaces, and optionally `listenAddresses` (`listen_addresses`), a list of addresses that

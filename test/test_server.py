@@ -969,6 +969,14 @@ def main():
             check('a login from the login page itself is taken, and not from another page',
                   sign_in(BASE) == 200
                   and [sign_in(o) for o in (f'http://127.0.0.1:{PORT + 1}', 'https://evil.example', 'null')] == [403] * 3)
+            out = Browser()
+            login(out)
+            logged_in = lambda: out.request('/api/v1/ping')[0] == 200
+            out.request('/logout')
+            out.request('/logout', b'', headers={'Origin': f'http://127.0.0.1:{PORT + 1}'})
+            check('logging out takes a POST from the page: a link, or another page, leaves the login', logged_in())
+            out.request('/logout', b'', headers={'Origin': BASE})
+            check('and the page itself logs out', not logged_in())
 
             check('documents: lists', b.json('/api/v1/plugin/documents/files')[1] == {'files': ['README.md']})
             check('documents: reads', b.json('/api/v1/plugin/documents/content?name=README.md')[1] == {'content': '# Hi'})
