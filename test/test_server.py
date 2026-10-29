@@ -964,6 +964,11 @@ def main():
                   and named('ezvm.local:9690')[0] == 403 and b'ezvm.local' in named('ezvm.local:9690')[1])
             check('one from another page is not: another port of this host, another site, none',
                   [save(o) for o in (f'http://127.0.0.1:{PORT + 1}', 'http://127.0.0.1', 'https://evil.example', 'null')] == [403] * 4)
+            form = urllib.parse.urlencode({'username': os.environ.get('USER') or os.getlogin(), 'password': 'pw'}).encode()
+            sign_in = lambda origin: Browser().request('/login', form, headers={'Origin': origin})[0]
+            check('a login from the login page itself is taken, and not from another page',
+                  sign_in(BASE) == 200
+                  and [sign_in(o) for o in (f'http://127.0.0.1:{PORT + 1}', 'https://evil.example', 'null')] == [403] * 3)
 
             check('documents: lists', b.json('/api/v1/plugin/documents/files')[1] == {'files': ['README.md']})
             check('documents: reads', b.json('/api/v1/plugin/documents/content?name=README.md')[1] == {'content': '# Hi'})

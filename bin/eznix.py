@@ -1755,6 +1755,18 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         if self._body_too_big(parsed) or self._wrong_host():
             return
         if parsed.path == '/login':
+            # From the login page and nowhere else, as every other POST (_valid_origin()). A page
+            # on another port of this host could otherwise log the browser in to an account
+            # whose password it knows, the cookie being the same site's (found in review,
+            # 2026-10-29). Asked before the try is counted, so such a page uses up none.
+            if not _valid_origin(self.headers):
+                data = b"the login did not come from eznix's own page\n"
+                self.send_response(403)
+                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+                self.send_header('Content-Length', str(len(data)))
+                self.end_headers()
+                self.wfile.write(data)
+                return
             ip = _client_ip(self.client_address[0], self.headers)
             retry_after, count = _login_begin(ip)
             if retry_after:

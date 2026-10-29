@@ -411,9 +411,11 @@ session tokens, terminal keys, a file's content): the user's condition. Without 
 has no line per request, only starts, logins and errors. The terminal program has no part in
 it: any change to that file makes every installed terminal offer a restart.
 
-**Requests must come from the page** (`_valid_origin()`): every POST but the login itself and the
+**Requests must come from the page** (`_valid_origin()`): every POST and the
 `/terminal` handshake are refused when the `Origin` header names another address than the `Host` the
-request was sent to, port included. The cookie's `SameSite=Strict` does not cover this, since
+request was sent to, port included. The login too since 2026-10-29 (found in review: a page on
+another port could log the browser in to an account it knew the password of), asked before the
+try is counted. The cookie's `SameSite=Strict` does not cover this, since
 a page on another port of the same host counts as the same site. `hosts` is deliberately not
 used for it, except for an entry that is a whole origin (`"https://name"`, for a proxy that
 changes `Host`): the modules put the certificate's names in `hosts`, so matching host names
