@@ -189,7 +189,10 @@ keeps each line that scrolls off the top of its record of the screen (`_VirtualS
 itself. The user needed it for rebuilds: one that updates eznix restarts the editor, the page
 reloads, and the rebuild's earlier output was out of reach. It is not the replay of raw output
 that was given up before (the comment above the class says why); nothing in those lines is
-interpreted again. Not kept: what a full-screen program showed.
+interpreted again. Not kept: what a full-screen program showed. Kept since 2026-10-29: the
+mouse and bracketed-paste modes a program switched on (`_KEPT_MODES`), sent again after the
+screen; before, vim with `mouse=a` had no mouse after a reload. Tried by the user in the test
+server with vim ("that seems to work").
 
 **The terminal program holds more than one shell**, each under a name (`_SESSIONS`,
 `/terminal?session=NAME`, at most eight), since 2026-10-12; the one without a name is the

@@ -231,6 +231,11 @@ def _render_row(row):
     return ''.join(out).rstrip() + ('' if prev_sgr == _BLANK_SGR else '\x1b[0m')
 
 
+# Private modes snapshot() sets again: mouse reporting (1000 clicks, 1002 drags, 1003 any
+# motion; 1005, 1006 and 1015 the encodings) and bracketed paste (2004).
+_KEPT_MODES = (1000, 1002, 1003, 1005, 1006, 1015, 2004)
+
+
 class _VirtualScreen:
     def __init__(self, rows, cols):
         self.rows = rows
@@ -257,6 +262,11 @@ class _VirtualScreen:
         # comment above this class): finished lines, with nothing in them to interpret twice.
         self._scrollback = collections.deque(maxlen=SCROLLBACK_LINES)
         self._alt = False   # the alternate screen is showing: a full-screen program's, no history
+        # The modes a program switched on that a page reconnecting has to be told again: mouse
+        # reporting (vim's `mouse=a`, htop, tmux) and bracketed paste. Without them a program left
+        # open had no mouse after a reload, and a paste into vim came in as typed. Not cleared by
+        # reset(), which entering the alternate screen calls; only by a full reset (ESC c).
+        self._modes = set()
 
     def _blank_row(self):
         return [(' ', _BLANK_SGR) for _ in range(self.cols)]
@@ -405,6 +415,13 @@ class _VirtualScreen:
                 # diff against what used to be there.
                 self.reset()
                 self._alt = final == 'h'
+            if final in ('h', 'l'):
+                for p in params:
+                    if p in _KEPT_MODES:
+                        if final == 'h':
+                            self._modes.add(p)
+                        else:
+                            self._modes.discard(p)
             return
         if final == 'm':
             self._apply_sgr(params)
@@ -518,6 +535,7 @@ class _VirtualScreen:
                 if nxt == 'c':
                     self.reset()
                     self._scrollback.clear()
+                    self._modes.clear()
                     i += 2
                     continue
                 if nxt == 'D':
@@ -605,6 +623,7 @@ class _VirtualScreen:
             out.append('\x1b[0m' + (f'\x1b[{up}A' if up else '') + f'\x1b[{self.cur_col + 1}G')
         else:
             out.append(f'\x1b[0m\x1b[{self.cur_row + 1};{self.cur_col + 1}H')
+        out.extend(f'\x1b[?{m}h' for m in sorted(self._modes))
         return ''.join(out).encode('utf-8')
 
 
