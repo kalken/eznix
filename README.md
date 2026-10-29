@@ -79,7 +79,7 @@ Then, in the page:
    suggest settings and programs as you type.
 2. Change what you want. To add a setting, right-click in the page, choose **Add option…**
    and type its name.
-3. Press **Create Generation** at the bottom. It saves your changes and asks for your password
+3. Press **Activate** at the bottom. It saves your changes and asks for your password
    in the terminal there; they are in effect when it finishes.
 
 Nothing on your computer changes until that last step. The button at the top left saves
@@ -314,7 +314,7 @@ still in `configuration.nix`, used beside what you set in eznix. To move it into
    press **Import**. Settings that are not plain values are kept as Nix expressions.
 4. In `flake.nix`, take `./configuration.nix` out of the list of modules, and put what the
    `imports` line listed there in its place (usually `./hardware-configuration.nix`).
-5. Press **Create Generation**.
+5. Press **Activate**.
 
 Do steps 1 to 4 before rebuilding: with the same setting in both places Nix reports a
 conflict. Afterwards you can spread the settings over more files by dragging them onto
@@ -717,10 +717,10 @@ settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
   installed it. Determinate Nix requires that (nix-darwin refuses to activate otherwise), and
   it works with the official installer too. Set it to `true` there if you want nix-darwin to
   manage Nix and its settings.
-- **Each template comes with** these buttons: List Generations (the earlier versions of the
-  system you can go back to), Create Generation (rebuilds and switches to what you saved),
-  Clear Generations (deletes the earlier ones and frees the disk space; there is no going
-  back to them afterwards) and Update Flake.
+- **Each template comes with** these buttons: List (the earlier versions of the system you
+  can go back to), Activate (rebuilds and switches to what you saved), Update (fetches newer
+  versions of your programs; press Activate after it) and Cleanup (deletes the earlier
+  versions and frees the disk space; there is no going back to them afterwards).
 
 ## 🛠 Development
 

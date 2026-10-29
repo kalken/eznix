@@ -23,21 +23,26 @@
       },
       "buttons": [
         {
-          "label": "List Generations",
-          "command": "sudo darwin-rebuild --list-generations"
+          "label": "List",
+          "description": "Shows the earlier versions of your system",
+          "command": "sudo darwin-rebuild --list-generations",
+          "separator": "after"
         },
         {
-          "label": "Create Generation",
+          "label": "Activate",
+          "description": "Puts your changes to use on this computer",
           "command": "sudo darwin-rebuild switch --flake \"$HOME/.config/nix-darwin#default\"",
           "save_first": true
         },
         {
-          "label": "Clear Generations",
-          "command": "sudo nix-collect-garbage -d"
+          "label": "Update",
+          "description": "Fetches newer versions of your programs. Press Activate after it",
+          "command": "nix flake update --flake ~/.config/nix-darwin"
         },
         {
-          "label": "Update Flake",
-          "command": "nix flake update --flake ~/.config/nix-darwin"
+          "label": "Cleanup",
+          "description": "Removes the earlier versions of your system to free disk space",
+          "command": "sudo nix-collect-garbage -d"
         }
       ]
     }

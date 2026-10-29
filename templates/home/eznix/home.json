@@ -23,21 +23,26 @@
       },
       "buttons": [
         {
-          "label": "List Generations",
-          "command": "home-manager generations"
+          "label": "List",
+          "description": "Shows the earlier versions of your setup",
+          "command": "home-manager generations",
+          "separator": "after"
         },
         {
-          "label": "Create Generation",
+          "label": "Activate",
+          "description": "Puts your changes to use on this computer",
           "command": "home-manager switch --flake \"$HOME/.config/home-manager#default\"",
           "save_first": true
         },
         {
-          "label": "Clear Generations",
-          "command": "nix-collect-garbage -d"
+          "label": "Update",
+          "description": "Fetches newer versions of your programs. Press Activate after it",
+          "command": "nix flake update --flake ~/.config/home-manager"
         },
         {
-          "label": "Update Flake",
-          "command": "nix flake update --flake ~/.config/home-manager"
+          "label": "Cleanup",
+          "description": "Removes the earlier versions of your setup to free disk space",
+          "command": "nix-collect-garbage -d"
         }
       ]
     }

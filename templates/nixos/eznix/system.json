@@ -23,21 +23,26 @@
       },
       "buttons": [
         {
-          "label": "List Generations",
-          "command": "nixos-rebuild list-generations"
+          "label": "List",
+          "description": "Shows the earlier versions of your system",
+          "command": "nixos-rebuild list-generations",
+          "separator": "after"
         },
         {
-          "label": "Create Generation",
+          "label": "Activate",
+          "description": "Puts your changes to use on this computer",
           "command": "sudo nixos-rebuild switch --flake \"/etc/nixos#default\"",
           "save_first": true
         },
         {
-          "label": "Clear Generations",
-          "command": "sudo nix-collect-garbage -d"
+          "label": "Update",
+          "description": "Fetches newer versions of your programs. Press Activate after it",
+          "command": "sudo nix flake update --flake /etc/nixos"
         },
         {
-          "label": "Update Flake",
-          "command": "sudo nix flake update --flake /etc/nixos"
+          "label": "Cleanup",
+          "description": "Removes the earlier versions of your system to free disk space",
+          "command": "sudo nix-collect-garbage -d && sudo /run/current-system/bin/switch-to-configuration boot"
         }
       ],
       "plugins": {
