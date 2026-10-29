@@ -929,6 +929,37 @@ def main():
                   and delete('folder', 'sub') == 200 and not os.path.exists(f'{tmp}/flake/eznix/sub')
                   and os.path.isfile(f'{tmp}/flake/eznix/a.json'))
 
+            # A link is deleted and renamed as itself; what it points to is left as it is.
+            eznix_dir = f'{tmp}/flake/eznix'
+            rename = lambda a, z: b.json('/api/v1/file/rename', json.dumps({'from': a, 'to': z}).encode(), 'POST')[0]
+            folder = lambda what, name: b.json(f'/api/v1/folder/{what}', json.dumps({'folder': name}).encode(), 'POST')[0]
+            os.makedirs(f'{eznix_dir}/real')
+            open(f'{eznix_dir}/real/t.json', 'w').write('{}')
+            os.symlink('real/t.json', f'{eznix_dir}/l.json')
+            os.symlink('real', f'{eznix_dir}/lf')
+            check('a link to a file is deleted as the link, the file stays',
+                  delete('file', 'l.json') == 200 and not os.path.lexists(f'{eznix_dir}/l.json')
+                  and os.path.isfile(f'{eznix_dir}/real/t.json'))
+            os.symlink('real/t.json', f'{eznix_dir}/l.json')
+            check('and renamed as the link', rename('l.json', 'm.json') == 200
+                  and os.path.islink(f'{eznix_dir}/m.json') and os.path.isfile(f'{eznix_dir}/real/t.json'))
+            os.remove(f'{eznix_dir}/m.json')
+            check('a link to a folder is deleted as the link, the folder stays',
+                  delete('folder', 'lf') == 200 and not os.path.lexists(f'{eznix_dir}/lf')
+                  and os.path.isfile(f'{eznix_dir}/real/t.json'))
+            shutil.rmtree(f'{eznix_dir}/real')
+
+            # A dot-folder has no tab, so nothing reaches it: not a save, a delete or a new folder.
+            os.makedirs(f'{eznix_dir}/.hidden')
+            open(f'{eznix_dir}/.hidden/h.json', 'w').write('{}')
+            check('nothing in a dot-folder is saved, deleted, renamed or made',
+                  b.request('/api/v1/file/save?file=.hidden/n.json', b'{}')[0] == 400
+                  and delete('file', '.hidden/h.json') == 400 and delete('folder', '.hidden') == 400
+                  and rename('a.json', '.hidden/a.json') == 400
+                  and folder('create', '.hidden/x') == 400 and folder('create', '.y') == 400
+                  and os.path.isfile(f'{eznix_dir}/.hidden/h.json') and not os.path.exists(f'{eznix_dir}/.y'))
+            shutil.rmtree(f'{eznix_dir}/.hidden')
+
             # Disabling is a rename on disk; the backups are the file's all the same.
             rename = lambda a, z: b.json('/api/v1/file/rename', json.dumps({'from': a, 'to': z}).encode(), 'POST')[0]
             check('a disabled file keeps its backups', rename('a.json', 'a.json.disabled') == 200

@@ -1062,7 +1062,10 @@ were served when asked for in other letters (`system.PY`), on a disk that does n
 them apart; the test of the name is now made in lower case. A system import was already
 closed (`prepare()` in the system plugin skips an entry with `..`, an empty or a dot part,
 and refuses the whole zip when a path resolves outside the flake, as through a link in it);
-`test_server.py` now imports zips made to get out, both ways. Not looked at in that pass:
+`test_server.py` now imports zips made to get out, both ways. Since 2026-10-29 the file and
+folder calls (`_config_path()`) refuse a dot-folder, as the tabs skip them (`.git` with
+`config_dir` at the flake's root could be removed), and act on a link as the link: Delete and
+Rename went to the file or folder at its end. Both in `test_server.py`. Not looked at in that pass:
 what a zip can do other than by its paths (its size, say).
 
 **Nothing from a file or a module goes into the page as markup** (2026-10-16, the user asked

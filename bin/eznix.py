@@ -878,13 +878,28 @@ def resolve_config_path(name):
         return None
     if not (name.endswith('.json') or name.endswith('.json.disabled')):
         return None
+    return _config_path(name, name.replace('\\', '/').split('/')[:-1])
+
+
+def _config_path(name, folders):
+    """The path `name` has inside CONFIG_DIR, or None (see resolve_config_path()). `folders`
+    are the parts that have to be folders the tabs show: none of them a dot-folder, as the
+    listing skips them (but a disabled folder's old form), so nothing eznix shows no tab for
+    (.git, with config_dir at the flake's root) is written, renamed or removed through it.
+
+    What is returned is the name itself, its folders resolved and its last part not: a link
+    there stays the link, so Delete and Rename act on it and not on what it points to (they
+    acted on the file at its end until 2026-10-29). Where it leads still has to lie inside."""
     parts = name.replace('\\', '/').split('/')
-    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts) or _excluded(name):
+    if (os.path.isabs(name) or any(p in ('', '.', '..') for p in parts) or _excluded(name)
+            or any(p.startswith('.') and not _is_disabled_folder_name(p) for p in folders)):
         return None
     base = os.path.realpath(CONFIG_DIR)
-    full = os.path.realpath(os.path.join(base, name))
-    if os.path.commonpath([base, full]) != base:
-        return None
+    joined = os.path.join(base, name)
+    full = os.path.join(os.path.realpath(os.path.dirname(joined)), os.path.basename(joined))
+    for path in (full, os.path.realpath(joined)):
+        if os.path.commonpath([base, path]) != base:
+            return None
     return full
 
 
@@ -937,14 +952,10 @@ def resolve_folder_path(name):
     requirement, and the directory need not already exist."""
     if not name:
         return None
-    parts = name.replace('\\', '/').split('/')
-    if os.path.isabs(name) or any(p in ('', '.', '..') for p in parts) or _excluded(name):
-        return None
-    base = os.path.realpath(CONFIG_DIR)
-    full = os.path.realpath(os.path.join(base, name))
+    full = _config_path(name, name.replace('\\', '/').split('/'))
     # Not the folder itself: a link in it that points back at it resolves to it, and a folder
     # delete would then remove the whole configuration.
-    if full == base or os.path.commonpath([base, full]) != base:
+    if not full or os.path.realpath(full) == os.path.realpath(CONFIG_DIR):
         return None
     return full
 
@@ -1885,7 +1896,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                 # A file that is not there is deleted already: removed outside the page while
                 # its delete waited for Save. It was refused until 2026-10-28, and the refusal
                 # stopped every Save after it, the delete staying queued, until a reload.
-                if not target or (os.path.lexists(target) and not os.path.isfile(target)):
+                if not target or (os.path.lexists(target) and not os.path.isfile(target)
+                                  and not os.path.islink(target)):
                     resp = b'{"error":"invalid file name"}'
                     self.send_response(400)
                     self.send_header('Content-Type', 'application/json')
@@ -1974,7 +1986,10 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(resp)
                     return
-                if os.path.lexists(target):
+                # A link is removed as a link (rmtree refuses one): what it points to stays.
+                if os.path.islink(target):
+                    os.remove(target)
+                elif os.path.lexists(target):
                     shutil.rmtree(target)
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
