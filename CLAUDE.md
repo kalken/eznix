@@ -223,7 +223,9 @@ that), the shell's end closing the tab. The session is named by a hash of label
 and command, so a second press fronts the tab; the open tabs are this browser's
 (`eznix-terminal-tabs`) and come back on a reload with nothing run; one whose shell is gone
 is started on `exit` and so closes (it came back as a plain shell until the user's NixOS rebuild
-with `auto_close` ended during the reload that restarting eznix brings, and the tab stayed). Commands typed into the
+with `auto_close` ended during the reload that restarting eznix brings, and the tab stayed;
+with the fix, the user's Mac rebuilt from such a tab and it closed: "it seems like it closed",
+and then NixOS: "it works there too"). Commands typed into the
 terminal (`_runInTerminal()`) bring the panel's own tab to the front. No server change. Seen by
 the user in the test server with ping and htop ("that works perfectly"); not by me in a browser.
 
