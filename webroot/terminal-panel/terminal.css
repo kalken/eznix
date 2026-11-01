@@ -115,6 +115,8 @@
    .context-menu-item, so a button's own dropdown lines up with the button that opened it) can
    drift by a few pixels depending on the browser's font metrics. */
 .term-run-btn { white-space: nowrap; height: 26px; }
+/* The panel's tabs (_renderTermTabs() in terminal.js) are the side panels' (.side-tabs in
+   style.css), along the top of the terminal: nothing of their own here. */
 /* The line a button's `separator` puts in front of it (_renderButtonRow() in terminal.js). */
 .term-btn-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border2); flex-shrink: 0; }
 /* On a save_first button, always: greyed until there is something to save (.will-save). See
@@ -143,14 +145,14 @@
 .terminal-panel.install-mode .terminal-body { padding-bottom: calc(2 * var(--term-bar)); }
 .terminal-panel.collapsed .terminal-body { display: none; }
 
-#term-output {
+#term-output, .term-tab-output {
   flex: 1;
   overflow: hidden;
   position: relative;
   background: var(--term-bg);
   padding: var(--term-padding);
 }
-#term-output .terminal.xterm {
+#term-output .terminal.xterm, .term-tab-output .terminal.xterm {
   padding: 0;
 }
 

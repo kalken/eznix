@@ -340,6 +340,13 @@ A button with `save_first` saves any unsaved changes before it runs its command;
 Save icon on it is greyed until there is something to save. Buttons with the same
 `menu` become one dropdown.
 
+A button with `separate` runs its command in a terminal of its own instead, a tab in the
+terminal panel beside your shell, so a long run doesn't take that shell over. The panel shows
+and hides as always, with the tab in front. When the command ends the tab keeps a shell, so the
+output can be read; its × closes it. With `"auto_close": true` the tab closes by itself when
+the command succeeds, and stays open on a failure so the error can be read. Pressing the button
+again brings its tab to the front.
+
 Buttons stand in the order they are found: file by file, by path, and each list as written.
 A menu stands where its first button is found. To move a menu, give it an `order` under
 `services.eznix.menus`, by its name: a number, lowest first, where plain buttons and menus

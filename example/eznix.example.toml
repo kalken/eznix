@@ -155,6 +155,8 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # description = "Builds and switches"  # shown when the pointer rests on the button, above the command
 # save_first  = true                  # saves unsaved changes before it runs
 # clear_first = true
+# separate    = true                  # runs in a terminal of its own, a tab in the terminal panel
+# auto_close  = true                  # with separate: its tab closes when the command succeeds
 # menu        = "System"              # buttons sharing a menu name become one dropdown; "A/B" nests
 # separator   = "before"              # a dividing line beside it: "before", "after" or "both"
 #

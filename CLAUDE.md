@@ -209,6 +209,22 @@ message), never the panel's. Tried with a small WebSocket client through the tes
 are two shells, coming back to a name is the same shell, `end` ends a named one and leaves
 the panel's alone. The terminal in the page was not looked at.
 
+**A button can run in a tab of the panel** (`separate`, `auto_close` on a button;
+`_runInTab()`, `_openTermTab()` in `terminal-panel/terminal.js`), since 2026-11-01, the user's
+idea: "stacking terminals as we do with documents". Each is a named shell (`_extraTerminal()`,
+`panelLook`) in the panel's body beside `#term-output`, so showing and hiding are the panel's
+own and the hidden lines (`_placeTermPeek()`, `_activeTerm()`) are the tab in front's. The tabs
+are a strip along the top of the terminal in the side panels' look (`.side-tabs`), only while
+there is more than the panel's own shell; in the row of buttons for an hour first, which the
+user did not like. The command is started directly (`run`), not typed at a prompt, so there is
+none in front of it; then `; exec "$SHELL"`, or `|| exec "$SHELL"` with `auto_close` (true:
+closes on success only; `"success"` and `"always"` for an hour, then the user wanted only
+that), the shell's end closing the tab. The session is named by a hash of label
+and command, so a second press fronts the tab; the open tabs are this browser's
+(`eznix-terminal-tabs`) and come back on a reload with nothing run. Commands typed into the
+terminal (`_runInTerminal()`) bring the panel's own tab to the front. No server change. Seen by
+the user in the test server with ping and htop ("that works perfectly"); not by me in a browser.
+
 **The terminal panel comes up in front of the editor and takes no room from it**
 (`.terminal-slot` in `terminal-panel/`, `--covered-below` in `style.css`), since 2026-10-13:
 its place in the page is its row of buttons and the panel grows upwards out of that. Before,

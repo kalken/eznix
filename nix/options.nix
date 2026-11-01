@@ -397,6 +397,8 @@ in
           description = mkOption { type = types.nullOr types.str; default = null; description = "What the button does, in your own words: shown when the pointer rests on it, above the command."; };
           save_first  = mkOption { type = types.bool; default = false; description = "Saves any unsaved changes before running the command."; };
           clear_first = mkOption { type = types.bool; default = true;  description = "Clear the terminal before running."; };
+          separate    = mkOption { type = types.bool; default = false; description = "Run the command in a terminal of its own, a tab in the terminal panel beside the panel's own shell. When the command ends the tab keeps a shell, for its output to be read; its cross closes it. Pressing the button again brings the tab to the front."; };
+          auto_close  = mkOption { type = types.bool; default = false; description = "With separate: close the tab by itself when the command succeeds. A failure stays open, to be read."; };
           menu        = mkOption { type = types.nullOr types.str; default = null; description = "Group buttons of the same menu name into one dropdown; \"A/B\" nests."; };
           mode        = mkOption { type = types.nullOr (types.enum [ "install" ]); default = null; description = "\"install\": shown in the install-mode row."; };
           static      = mkOption { type = types.bool; default = false; description = "Show this button although it is declared in Nix and not in a *.json file."; };

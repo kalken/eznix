@@ -26,6 +26,7 @@ const _RELOAD_ICON = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none
 document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
 <div class="terminal-slot"><div class="terminal-panel collapsed" id="terminal-panel">
   <div class="terminal-body">
+    <div class="side-tabs term-tabs hidden" id="term-tabs"></div>
     <div id="term-output"></div>
     <div class="term-status-banner hidden" id="term-status-banner"></div>
   </div>
@@ -412,7 +413,7 @@ function toggleTerminal(all = false) {
     initTerminal().then(() => {
       if (_term) {
         if (!_termWs || _termWs.readyState === WebSocket.CLOSED) connectTerminalWs();
-        _term.focus();
+        _focusActiveTerm();
       }
     });
   } else {
@@ -489,7 +490,7 @@ function setTerminalSize(size) {
   initTerminal().then(() => {
     if (_term) {
       if (!_termWs || _termWs.readyState === WebSocket.CLOSED) connectTerminalWs();
-      _term.focus();
+      _focusActiveTerm();
     }
   });
 }
@@ -547,6 +548,8 @@ function _normalizeButton(b) {
     menu: _unwrapButtonField(b.menu),
     mode: _unwrapButtonField(b.mode),
     separator: _unwrapButtonField(b.separator),
+    separate: _unwrapButtonField(b.separate),
+    auto_close: _unwrapButtonField(b.auto_close),
   };
 }
 // What is set about a menu itself, by its name (the first part of a button's `menu`):
@@ -784,10 +787,13 @@ async function runButton(idx) {
     await saveToServer();
     if (isAnyDirty()) return;
   }
-  _runInTerminal(btn);
+  if (btn.separate) _runInTab(btn);
+  else _runInTerminal(btn);
 }
-// Type a command into the terminal and run it, opening the panel first if it's closed.
+// Type a command into the terminal and run it, opening the panel first if it's closed. Into
+// the panel's own shell, whose tab is brought to the front.
 function _runInTerminal(btn) {
+  if (_termTabActive) _frontTermTab(null);
   const panel = document.getElementById('terminal-panel');
   if (panel.classList.contains('collapsed')) toggleTerminal();
   initTerminal().then(() => {
@@ -929,7 +935,9 @@ function _extraTerminal(opts) {
   // and a program that draws frames (an editor's popups) then has each upright stroke stop
   // short of the next row, a border of dashes. Seen by the user in a picture, 2026-10-12,
   // with the drawing below already in, which was meant to cure it and did not by itself.
-  const term = new Terminal({ ..._termOptions(), lineHeight: 1 });
+  // `panelLook`: as the panel's own, for a tab beside it (_openTermTab()).
+  const term = new Terminal(opts.panelLook ? _termOptions() : { ..._termOptions(), lineHeight: 1 });
+  opts.term = term;
   const fit = new FitAddon.FitAddon();
   term.loadAddon(fit);
   // Drawn as the panel's terminal is (initTerminal()): with it, the lines a program draws its
@@ -962,8 +970,9 @@ function _extraTerminal(opts) {
       + (run ? '&run=' + encodeURIComponent(run) : '')
       + (term.cols > 1 && term.rows > 1 ? '&rows=' + term.rows + '&cols=' + term.cols : ''));
     ws.binaryType = 'arraybuffer';
-    // The size is sent once the place has its own (see the same wait in connectTerminalWs()).
-    ws.onopen = () => { tries = 0; setTimeout(() => { if (!closed) { refit(); sendSize(); } }, 200); };
+    // The size is sent once the place has its own (see the same wait in connectTerminalWs()),
+    // and not while it has none (a tab not in front): the resize when it shows sends it then.
+    ws.onopen = () => { tries = 0; setTimeout(() => { if (!closed && el.clientHeight) { refit(); sendSize(); } }, 200); };
     ws.onmessage = e => {
       if (e.data instanceof ArrayBuffer) { if (!closed) term.write(new Uint8Array(e.data)); return; }
       try {
@@ -987,10 +996,114 @@ function _extraTerminal(opts) {
   _extraTerminals.add(term);
   refit();
   connect();
-  term.focus();
+  // `quiet`: not taking the keys (a tab brought back as the page loads).
+  if (!opts.quiet) term.focus();
 }
 eznix.on('terminal', _extraTerminal);
 eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme = _buildTermTheme(); });
+
+// ── Tabs in the panel ──────────────────────────────────────────────────────────
+// A button with `separate` runs its command in a terminal of its own, a tab in the panel beside
+// the panel's own shell (the user, 2026-11-01: stacked as the documents are, and shown and
+// hidden exactly as the panel is). Each is a named shell (_extraTerminal()) in the panel's
+// body, at its size, so the hidden lines (_placeTermPeek()) are the newest of the one in front
+// and nothing is resized by switching. When the command ends the shell stays, for its output to
+// be read; the tab's cross ends it, unless the button has `auto_close`: then the tab closes when
+// the command succeeds, and a failure stays to be read (the user's wish, 2026-11-01; "always",
+// closing it either way, was there for an hour). That is the shell exiting with the command,
+// which closes the tab as it does any (onExit). A
+// second press of the button brings its tab to the front.
+// The tabs are a strip along the top of the terminal, in the look of the side panels' tabs
+// (.side-tabs: the same stacking, as the user asked), there only while there is more than the
+// panel's own; hidden, the panel shows none of it. They were in the row of buttons for an hour,
+// which the user did not like. Which tabs are open
+// is this browser's (eznix-terminal-tabs); the shells are the server's, so a reload comes back
+// to them, and one that is gone (the terminal restarted) comes back as a plain shell.
+const _termTabs = new Map();   // session name -> { label, out, asked }
+let _termTabActive = null;     // the session in front; null: the panel's own shell
+function _activeTerm() {
+  const t = _termTabActive && _termTabs.get(_termTabActive);
+  return t ? t.asked.term : _term;
+}
+function _focusActiveTerm() { const t = _activeTerm(); if (t) t.focus(); }
+function _saveTermTabs() {
+  const tabs = [..._termTabs].map(([session, t]) => ({ session, label: t.label }));
+  try { localStorage.setItem('eznix-terminal-tabs', JSON.stringify({ tabs, active: _termTabActive })); } catch (e) {}
+}
+function _renderTermTabs() {
+  const bar = document.getElementById('term-tabs');
+  bar.innerHTML = '';
+  bar.classList.toggle('hidden', !_termTabs.size);
+  const add = (session, label) => {
+    const b = document.createElement('div');
+    b.className = 'btn tab side-tab' + (session === _termTabActive ? ' active' : '');
+    b.appendChild(document.createElement('span')).textContent = label;
+    b.onclick = () => _showTermTab(session);
+    if (session) {
+      const x = document.createElement('span');
+      x.className = 'side-tab-close';
+      x.textContent = '✕';
+      x.dataset.tooltip = 'Close: ends what runs in it';
+      x.onclick = e => { e.stopPropagation(); _closeTermTab(session, true); };
+      b.appendChild(x);
+    }
+    bar.appendChild(b);
+  };
+  add(null, 'Terminal');
+  for (const [session, t] of _termTabs) add(session, t.label);
+}
+// Puts a tab in front, leaving the panel as it is (shown, or hidden with its lines).
+function _frontTermTab(session) {
+  if (session && !_termTabs.has(session)) session = null;
+  _termTabActive = session;
+  document.getElementById('term-output').classList.toggle('hidden', !!session);
+  for (const [s, t] of _termTabs) t.out.classList.toggle('hidden', s !== session);
+  _renderTermTabs();
+  _saveTermTabs();
+  _scheduleTermPeek();
+}
+// A click on a tab: in front, and the panel shown.
+function _showTermTab(session) {
+  _frontTermTab(session);
+  if (document.getElementById('terminal-panel').classList.contains('collapsed')) toggleTerminal();
+  else _focusActiveTerm();
+}
+function _openTermTab(session, label, run, quiet) {
+  const out = document.createElement('div');
+  out.className = 'term-tab-output';
+  document.querySelector('#terminal-panel .terminal-body').insertBefore(out, document.getElementById('term-status-banner'));
+  const asked = { el: out, session, run, quiet, panelLook: true, onExit: () => _closeTermTab(session, false) };
+  _termTabs.set(session, { label, out, asked });
+  _frontTermTab(session);   // shown before it starts, so that it starts at its size
+  eznix.emit('terminal', asked);
+  asked.term.onWriteParsed(_scheduleTermPeek);
+  asked.term.onResize(_scheduleTermPeek);
+}
+// `end`: the cross, which ends the shell; without it the shell is gone already.
+function _closeTermTab(session, end) {
+  const t = _termTabs.get(session);
+  if (!t) return;
+  _termTabs.delete(session);
+  if (end) t.asked.close();
+  t.out.remove();
+  if (_termTabActive === session) _frontTermTab(null);
+  else { _renderTermTabs(); _saveTermTabs(); }
+  if (_termTabActive === null) _focusActiveTerm();
+}
+// The session is named after the button, so that it is the same tab after a reload.
+function _runInTab(btn) {
+  let hash = 5381;
+  for (const ch of (btn.label || '') + '\n' + btn.command) hash = ((hash * 33) ^ ch.codePointAt(0)) >>> 0;
+  const session = 'tab-' + hash.toString(36);
+  if (_termTabs.has(session)) { _showTermTab(session); return; }
+  const panel = document.getElementById('terminal-panel');
+  const hidden = panel.classList.contains('collapsed');
+  if (hidden) toggleTerminal();
+  // Once the panel has its open height (it grows for .18s), so the command starts at that size.
+  // `||` and `;` read the same in sh, bash, zsh and fish, whichever the user's shell is.
+  const run = btn.command + (btn.auto_close === true ? ' || exec "$SHELL"' : '; exec "$SHELL"');
+  setTimeout(() => _openTermTab(session, btn.label || '(no label)', run), hidden ? 200 : 0);
+}
 
 // terminal_hidden_lines (terminalHiddenLines, 1 unless set): the hidden panel keeps that many
 // lines of the latest output in view above its buttons, so that a rebuild started there can be
@@ -1018,14 +1131,15 @@ function _scheduleTermPeek() {
 }
 function _placeTermPeek() {
   const panel = document.getElementById('terminal-panel');
-  const screen = _term && _term.element && _term.element.querySelector('.xterm-screen');
-  if (!screen || !_term.rows || !screen.offsetHeight) return;
-  const rowH = screen.offsetHeight / _term.rows;
+  const term = _activeTerm();   // the tab in front (_frontTermTab())
+  const screen = term && term.element && term.element.querySelector('.xterm-screen');
+  if (!screen || !term.rows || !screen.offsetHeight) return;
+  const rowH = screen.offsetHeight / term.rows;
   const frame = 3;   // the window's frame above and below the lines (.term-peek)
   panel.style.setProperty('--term-peek', Math.round(TERMINAL_HIDDEN_LINES * rowH + 2 * frame) + 'px');
   if (!panel.classList.contains('collapsed')) return;
-  const buf = _term.buffer.active;
-  if (buf.viewportY !== buf.baseY) _term.scrollToBottom();
+  const buf = term.buffer.active;
+  if (buf.viewportY !== buf.baseY) term.scrollToBottom();
   const empty = y => { const line = buf.getLine(y); return !line || line.translateToString(true) === ''; };
   let end = buf.baseY + buf.cursorY;
   while (end > buf.baseY && empty(end)) end--;
@@ -1107,6 +1221,16 @@ if (TERMINAL_HIDDEN_LINES) {
     .addEventListener('pointerup', () => _persistTerminalSize('custom'));
 }
 eznix.on('ready', () => {
+  // The tabs this browser had open, on their shells; nothing is run again.
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('eznix-terminal-tabs') || 'null'); } catch (e) {}
+  if (saved && Array.isArray(saved.tabs)) {
+    for (const t of saved.tabs) {
+      if (t && typeof t.session === 'string' && /^tab-[0-9a-z]+$/.test(t.session) && !_termTabs.has(t.session))
+        _openTermTab(t.session, String(t.label), null, true);
+    }
+    _frontTermTab(saved.active);
+  }
   if (localStorage.getItem('eznix-terminal-open') === 'true') {
     setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'quarter');
   } else if (TERMINAL_HIDDEN_LINES) {
