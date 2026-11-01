@@ -1018,7 +1018,7 @@ eznix.on('theme', () => { for (const term of _extraTerminals) term.options.theme
 // panel's own; hidden, the panel shows none of it. They were in the row of buttons for an hour,
 // which the user did not like. Which tabs are open
 // is this browser's (eznix-terminal-tabs); the shells are the server's, so a reload comes back
-// to them, and one that is gone (the terminal restarted) comes back as a plain shell.
+// to them, and one whose shell is gone is closed (see the 'ready' handler below).
 const _termTabs = new Map();   // session name -> { label, out, asked }
 let _termTabActive = null;     // the session in front; null: the panel's own shell
 function _activeTerm() {
@@ -1221,13 +1221,18 @@ if (TERMINAL_HIDDEN_LINES) {
     .addEventListener('pointerup', () => _persistTerminalSize('custom'));
 }
 eznix.on('ready', () => {
-  // The tabs this browser had open, on their shells; nothing is run again.
+  // The tabs this browser had open, on their shells; nothing is run again. A shell that is gone
+  // (its command ended while no page was there, the terminal restarted) gets `exit` as its
+  // command, so its tab closes: a `run` is used only to start a shell, and one that is there is
+  // reattached. It came back as a plain shell until 2026-11-01: a NixOS rebuild in a tab with
+  // auto_close restarted eznix, the page reloaded as the rebuild ended, and the tab stayed open
+  // on a new prompt (the user's report; that this was the cause is my reading).
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem('eznix-terminal-tabs') || 'null'); } catch (e) {}
   if (saved && Array.isArray(saved.tabs)) {
     for (const t of saved.tabs) {
       if (t && typeof t.session === 'string' && /^tab-[0-9a-z]+$/.test(t.session) && !_termTabs.has(t.session))
-        _openTermTab(t.session, String(t.label), null, true);
+        _openTermTab(t.session, String(t.label), 'exit', true);
     }
     _frontTermTab(saved.active);
   }
