@@ -115,7 +115,7 @@ runs as root, and there is no compatibility with ezconf's configuration.
 | `webroot/index.html`, `style.css` | the page: one script, no modules |
 | `webroot/theme-*.css` | themes: variables only (see `THEMES.md`) |
 | `webroot/terminal-panel/` | the terminal's part of the page, with xterm.js |
-| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, `nixedit`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12); and `kernels`, `homebrew`, `home-manager`, which hold only a generator file (see "The generator's plugins") |
+| `plugins/NAME/` | the shipped plugins: `documents`, `files`, `system`, `password`, `nixedit`, `uploads`, each with its page files, its server file and a `README.md` (they were in `webroot/plugins/` until 2026-10-12); and `kernels`, `homebrew`, `home-manager`, which hold only a generator file (see "The generator's plugins") |
 | `nix/` | packages, the options shared by the modules, one module per system |
 | `templates/` | a starting flake per system, for `nix flake init -t` (see `templates` in `flake.nix`) |
 | `test/test_server.py` | server tests |

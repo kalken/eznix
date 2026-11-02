@@ -117,6 +117,14 @@ backups  = 5                          # earlier versions kept of each file; 0: n
 # extensions = [".nix"]               # the files it lists, by how their names end
 # command    = "code --wait"          # opened with this in place of `editor`
 
+# Upload a file to a folder, a button per target. eznix has to be able to write in the folder.
+# [[plugin.uploads.targets]]
+# name       = "WireGuard keys"       # what the button says
+# dir        = "/var/lib/ezwgen"      # the folder, as a full path
+# mode       = "0600"                 # the file mode of what is kept
+# extensions = [".zip"]               # how a file's name may end
+# max_size   = 16                     # megabytes
+
 # The flake's Markdown files, to read beside the configuration.
 # [plugin.documents]
 # auto_hide = true                    # an open document goes out of the way on a click outside it

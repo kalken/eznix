@@ -452,13 +452,14 @@ outright, so they suit a machine only you can reach.
 
 Some features are plugins: a folder of page files, and optionally server code, that eznix
 loads when it starts. A plugin is something that needs nothing from the system eznix runs on,
-so it works the same everywhere and can be left out. Eight ship with it:
+so it works the same everywhere and can be left out. Nine ship with it:
 
 | Plugin | |
 |---|---|
 | [`system`](plugins/system/README.md) | the System button: back the whole flake up, restore a backup, import a zip over it, or a system from a list of places on the web, export it as one |
 | [`documents`](plugins/documents/README.md) | the Documents button: read the flake's Markdown files beside the editor |
 | [`files`](plugins/files/README.md) | the Nix files button, and others you set up: open the flake's files of a kind in your own editor, in a terminal beside the configuration |
+| [`uploads`](plugins/uploads/README.md) | buttons you set up: upload a file, such as a zip of WireGuard keys, to a folder of your choosing, closed to everyone else |
 | [`nixedit`](plugins/nixedit/README.md) | Nix expressions in the editor completed and indented as in a text editor |
 | [`password`](plugins/password/README.md) | log in with one configured password |
 | [`kernels`](plugins/kernels/README.md) | suggestions: the kernels `boot.kernelPackages` can be set to (NixOS) |

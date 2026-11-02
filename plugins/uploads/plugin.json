@@ -1,0 +1,8 @@
+{
+  "name": "uploads",
+  "description": "Upload files, such as a zip of WireGuard keys, to folders of your choosing on the machine.",
+  "server": "uploads.py",
+  "scripts": [
+    "uploads.js"
+  ]
+}
