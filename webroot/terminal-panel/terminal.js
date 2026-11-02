@@ -153,6 +153,25 @@ const _TERM_WS_BASE = (() => {
   return `${proto}//${location.host}/terminal`;
 })();
 
+// OSC 52: a program in the terminal (Claude Code, tmux, vim, ...) puts text on the clipboard with
+// ESC ] 52 ; TARGETS ; BASE64 BEL, which xterm.js ignores unless something handles it. Writes
+// only: a "?" (a request to read the clipboard) is dropped, so a program cannot read it. Live
+// output only: a reattaching client is sent a painted snapshot (_VirtualScreen in
+// eznix-terminal.py), never the escape sequences, so an old copy is not made again. Over plain
+// http from another machine there is no key press behind it, and the copy out of a field that
+// _toSystemClipboard() falls back to can fail there, silently.
+function _termOsc52(term) {
+  term.parser.registerOscHandler(52, (data) => {
+    const i = data.indexOf(';');
+    const b64 = i < 0 ? '' : data.slice(i + 1);
+    if (!b64 || b64 === '?') return true;
+    try {
+      _toSystemClipboard(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+    } catch (e) {}
+    return true;
+  });
+}
+
 // How a terminal looks here: the panel's own, and any other the page opens (_extraTerminal()).
 function _termOptions() {
     const _termTheme = _buildTermTheme();
@@ -198,6 +217,7 @@ async function initTerminal() {
       _term.loadAddon(webgl);
     } catch (_) {}
     _term.open(container);
+    _termOsc52(_term);
     _termFit.fit();
     _term.onWriteParsed(_scheduleTermPeek);
     _term.onResize(_scheduleTermPeek);
@@ -222,7 +242,9 @@ async function initTerminal() {
       // in the first place, so it already works with no help needed here.
       if (e.ctrlKey && !e.metaKey && (e.key === 'c' || e.key === 'C') && _term.hasSelection()) {
         e.preventDefault();
-        navigator.clipboard?.writeText(_term.getSelection()).catch(() => {});
+        // Not navigator.clipboard alone: it is not there over plain http from another machine,
+        // and the key was then swallowed with nothing copied.
+        _toSystemClipboard(_term.getSelection());
         return false;
       }
       return true;
@@ -950,6 +972,7 @@ function _extraTerminal(opts) {
     term.loadAddon(webgl);
   } catch (_) {}
   term.open(el);
+  _termOsc52(term);
   let ws = null, exited = false, closed = false, tries = 0, fitTimer = null;
   const sendSize = () => { if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows })); };
   const refit = () => { try { fit.fit(); } catch (e) { /* not laid out yet */ } };
