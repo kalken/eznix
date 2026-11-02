@@ -815,7 +815,7 @@ def _session_reader(session):
                 del _SESSIONS[session['name']]
 
 
-def _terminal_ws(handler, name='', command=None, size=(24, 80)):
+def _terminal_ws(handler, name='', command=None, size=(24, 80), label=''):
     if not _PTY:
         handler.send_error(501, 'PTY not available on this platform')
         return
@@ -853,6 +853,9 @@ def _terminal_ws(handler, name='', command=None, size=(24, 80)):
                     pass
                 return
             session['name'] = name
+            # What the tab of this shell says, kept so that another browser can open the same
+            # tab (/terminal/hash lists them).
+            session['label'] = label
             _SESSIONS[name] = session
 
     with session['lock']:
@@ -996,14 +999,20 @@ class TerminalHandler(http.server.BaseHTTPRequestHandler):
             else:
                 query = parse_qs(parsed.query)
                 number = lambda key, default: max(2, min(500, int(query[key][0]))) if query.get(key, [''])[0].isdigit() else default
-                _terminal_ws(self, name, (query.get('run', [''])[0] or None), (number('rows', 24), number('cols', 80)))
+                _terminal_ws(self, name, (query.get('run', [''])[0] or None), (number('rows', 24), number('cols', 80)),
+                             query.get('label', [''])[0][:80])
         elif parsed.path == '/terminal/hash':
             # A plain status check -- no PTY session, no WebSocket upgrade -- so eznix.py's
             # /api/v1/ping can learn this running process's STAMP whether or not anyone has the
             # terminal panel open. (It used to travel in the WebSocket's 'ready' message as
             # well; a page with the panel closed then never learned it.)
+            # It also lists the shells of the panel's tabs (a button's `separate`, named tab-*) that
+            # are alive, so that a page in another browser shows the same tabs.
             if secrets.compare_digest(_session_from_cookie(self.headers).encode(), SESSION_KEY.encode()):
-                data = json.dumps({'hash': STAMP}).encode()
+                with _SESSION_LOCK:
+                    tabs = [{'session': n, 'label': s.get('label', '')} for n, s in _SESSIONS.items()
+                            if n.startswith('tab-') and not s.get('done')]
+                data = json.dumps({'hash': STAMP, 'tabs': tabs}).encode()
                 self.send_response(200)
                 self.send_header('Content-Type', 'application/json')
                 self.send_header('Content-Length', str(len(data)))

@@ -703,6 +703,14 @@ settings go in an `eznix.toml` (`example/eznix.example.toml` shows all of them).
 
 ## 📝 Notes
 
+- **Terminal tabs are shared.** A button with `separate` opens a tab in the terminal; the same
+  tab shows in every browser logged in as that user, and closing it in one closes it in all.
+- **Copying from the terminal.** Select text and press Ctrl+C (Ctrl+Shift+C also works); with
+  nothing selected, Ctrl+C interrupts as usual. A program that turns on the mouse (Claude Code,
+  vim with `mouse=a`, htop) gets the drag itself: hold Option on a Mac, Shift elsewhere, to select
+  in the terminal instead. A program that copies for you (Claude Code, tmux, vim) reaches the
+  clipboard too. It works over plain `http://` from another machine, not only on `localhost` and
+  HTTPS.
 - **Do not expose eznix's port to the internet.** Whoever logs in gets a shell and can change
   the configuration of the whole system. Keep it to the machine itself and a network you
   trust.

@@ -52,9 +52,10 @@ class Browser:
         status, body = self.request(path, data, method)
         return status, json.loads(body or b'null')
 
-    def terminal(self, origin=None, host=None):
+    def terminal(self, origin=None, host=None, query=''):
         """The status of a WebSocket handshake for the terminal, as a page at `origin` would
-        send it with this browser's cookies (to `host`, as the Host header). 101 is a connection."""
+        send it with this browser's cookies (to `host`, as the Host header). 101 is a connection.
+        `query` is the address's, such as '?session=tab-x'."""
         headers = {**({'Host': host} if host else {}),
                    'Connection': 'Upgrade', 'Upgrade': 'websocket', 'Sec-WebSocket-Version': '13',
                    'Sec-WebSocket-Key': 'dGhlIHNhbXBsZSBub25jZQ==',
@@ -63,7 +64,7 @@ class Browser:
             headers['Origin'] = origin
         conn = http.client.HTTPConnection('127.0.0.1', PORT, timeout=10)
         try:
-            conn.request('GET', '/terminal', headers=headers)
+            conn.request('GET', '/terminal' + query, headers=headers)
             return conn.getresponse().status
         finally:
             conn.close()
@@ -1248,6 +1249,17 @@ def main():
             check('the terminal panel is loaded when there is a terminal', 'terminal-panel/terminal.js' in page
                   and b.request('/terminal-panel/terminal.js')[0] == 200)
             check('the terminal runs, and is the one the editor expects', ping['terminal_stale'] is False, ping)
+
+            # The panel's tabs are the terminal's shells (a name of tab-*), listed in the ping with
+            # their labels, so that a page in another browser shows the same tabs. A shell outlives
+            # its connection, so the page that opened it having hung up changes nothing.
+            check('no tab is listed at first', ping['terminal_tabs'] == [], ping)
+            check('a tab and another named shell connect',
+                  b.terminal(query='?session=tab-t1&label=Build') == 101 and b.terminal(query='?session=other') == 101)
+            time.sleep(1)
+            check("the tab is listed with its label, the other shell and the panel's own are not",
+                  b.json('/api/v1/ping')[1]['terminal_tabs'] == [{'session': 'tab-t1', 'label': 'Build'}],
+                  b.json('/api/v1/ping')[1])
 
             # What eznix-autocomplete leaves while it runs: a file holding its process number.
             running = lambda: b.json('/api/v1/ping')[1]['autocomplete_running']

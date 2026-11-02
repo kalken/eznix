@@ -1453,17 +1453,22 @@ def _compute_file_hash(path):
         return ''
 
 
-def _terminal_stale(term):
-    """Is the terminal that is running for this login another one than is installed and
-    configured now: does the STAMP it reports (/terminal/hash, loopback only) differ from the
-    one worked out here (_terminal_for())? Asked on every ping, so the page's restart notice is
-    right whether or not the terminal panel is open.
+def _terminal_status(term):
+    """What the terminal that is running for this login says about itself (/terminal/hash,
+    loopback only), as (stale, tabs).
 
-    False whenever that can't be told -- no terminal, not up yet, a slow answer -- so a
-    passing miss never raises the notice. A terminal from before there was one stamp answers
-    with its old program hash, which differs, and so is offered the restart it needs."""
+    stale: is it another one than is installed and configured now: does the STAMP it reports
+    differ from the one worked out here (_terminal_for())? Asked on every ping, so the page's
+    restart notice is right whether or not the terminal panel is open. False whenever that
+    can't be told -- no terminal, not up yet, a slow answer -- so a passing miss never raises
+    the notice. A terminal from before there was one stamp answers with its old program hash,
+    which differs, and so is offered the restart it needs.
+
+    tabs: the shells of the panel's tabs that are alive, [{session, label}], so that a page in
+    another browser shows the same tabs. None when that can't be told (also from a terminal
+    that does not list them yet), which a page takes for no change."""
     if not term:
-        return False
+        return False, None
     try:
         conn = http.client.HTTPConnection('127.0.0.1', term['port'], timeout=2)
         try:
@@ -1471,13 +1476,17 @@ def _terminal_stale(term):
             resp = conn.getresponse()
             data = resp.read()
             if resp.status != 200:
-                return False
-            running = json.loads(data).get('hash')
-            return isinstance(running, str) and running != term['stamp']
+                return False, None
+            said = json.loads(data)
+            running = said.get('hash')
+            tabs = said.get('tabs')
+            if not isinstance(tabs, list):
+                tabs = None
+            return isinstance(running, str) and running != term['stamp'], tabs
         finally:
             conn.close()
     except Exception:
-        return False
+        return False, None
 
 
 def _autocomplete_stamp():
@@ -1543,12 +1552,14 @@ def _ping_payload(user=None):
     page checksum (see _compute_page_hash()), the autocomplete stamp, whether the suggestions
     are being generated just now, what the terminal restart notice compares, whether there
     is a flake.nix (_flake_there()), and the checksum of the files on disk (_files_stamps())."""
+    stale, tabs = _terminal_status(_terminal_for(user))
     return {
         'page': PAGE_HASH,
         'theme': THEME,
         'autocomplete_stamp': _autocomplete_stamp(),
         'autocomplete_running': _autocomplete_running(),
-        'terminal_stale': _terminal_stale(_terminal_for(user)),
+        'terminal_stale': stale,
+        'terminal_tabs': tabs,
         'flake': _flake_there(),
         'files': _files_stamps()[1],
     }

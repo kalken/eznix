@@ -94,7 +94,7 @@ let _termReadyWaiters = [];
 let _termExited = false;
 
 // Is the terminal that is running another one than is installed and configured now? The server
-// works that out (_terminal_stale() in eznix.py) and says so in every /api/v1/ping, so this is
+// works that out (_terminal_status() in eznix.py) and says so in every /api/v1/ping, so this is
 // right whether or not the panel is open, and after a reload. It drives #term-restart-popup, see
 // _updateTermRestartPopup(), and is not sticky: it clears itself with the first ping after the
 // two agree again, however that came about (this button, a restart from a shell over SSH).
@@ -952,7 +952,7 @@ eznix.on('init', () => {
 // eznix.listens('terminal') whether there is a terminal to ask.
 const _extraTerminals = new Set();
 function _extraTerminal(opts) {
-  const { el, session, run, onExit } = opts;
+  const { el, session, run, onExit, label } = opts;
   // Rows that touch: the panel's terminal has a fifth more room per line, for reading output,
   // and a program that draws frames (an editor's popups) then has each upright stroke stop
   // short of the next row, a border of dashes. Seen by the user in a picture, 2026-10-12,
@@ -991,6 +991,7 @@ function _extraTerminal(opts) {
     // With the size the place has now, where it has one: the program is then started in it.
     ws = new WebSocket(_TERM_WS_BASE + '?session=' + encodeURIComponent(session)
       + (run ? '&run=' + encodeURIComponent(run) : '')
+      + (label ? '&label=' + encodeURIComponent(label) : '')
       + (term.cols > 1 && term.rows > 1 ? '&rows=' + term.rows + '&cols=' + term.cols : ''));
     ws.binaryType = 'arraybuffer';
     // The size is sent once the place has its own (see the same wait in connectTerminalWs()),
@@ -1095,18 +1096,44 @@ function _openTermTab(session, label, run, quiet) {
   const out = document.createElement('div');
   out.className = 'term-tab-output';
   document.querySelector('#terminal-panel .terminal-body').insertBefore(out, document.getElementById('term-status-banner'));
-  const asked = { el: out, session, run, quiet, panelLook: true, onExit: () => _closeTermTab(session, false) };
+  const asked = { el: out, session, run, quiet, label, panelLook: true, onExit: () => _closeTermTab(session, false) };
   _termTabs.set(session, { label, out, asked });
   _frontTermTab(session);   // shown before it starts, so that it starts at its size
   eznix.emit('terminal', asked);
   asked.term.onWriteParsed(_scheduleTermPeek);
   asked.term.onResize(_scheduleTermPeek);
 }
+// The tabs follow the terminal's shells, not only this browser's list: the ping carries the
+// panel's tabs that are alive (`terminal_tabs`, from /terminal/hash), so a page opened from
+// another machine shows the same tabs as the one on the box (the user's wish, 2026-11-02), and
+// one closed in either goes from both. A tab opens on the shell that is there (`exit` only if it
+// has just ended, which closes the tab again) and stays behind the one in front. A tab is closed
+// for being unlisted only after the terminal has listed it once: a tab just opened here is not
+// in the list until its shell has been started. One closed here a moment ago is not opened
+// again by a ping that was asked before.
+let _termTabsReady = false;    // the tabs of this browser are back (the 'ready' handler)
+const _termTabsClosed = new Map();   // session -> when this page closed it
+function _syncTermTabs(tabs) {
+  if (!_termTabsReady || !Array.isArray(tabs)) return;
+  const now = Date.now(), alive = new Set(), front = _termTabActive;
+  for (const t of tabs) {
+    if (!t || typeof t.session !== 'string' || !/^tab-[0-9a-z]+$/.test(t.session)) continue;
+    alive.add(t.session);
+    const mine = _termTabs.get(t.session);
+    if (mine) { mine.listed = true; continue; }
+    if (now - (_termTabsClosed.get(t.session) || 0) < 10000) continue;
+    _openTermTab(t.session, String(t.label || '(no label)'), 'exit', true);
+    _termTabs.get(t.session).listed = true;
+  }
+  for (const [s, t] of [..._termTabs]) if (t.listed && !alive.has(s)) _closeTermTab(s, false);
+  if (_termTabActive !== front) _frontTermTab(front);
+}
 // `end`: the cross, which ends the shell; without it the shell is gone already.
 function _closeTermTab(session, end) {
   const t = _termTabs.get(session);
   if (!t) return;
   _termTabs.delete(session);
+  _termTabsClosed.set(session, Date.now());
   if (end) t.asked.close();
   t.out.remove();
   if (_termTabActive === session) _frontTermTab(null);
@@ -1259,6 +1286,7 @@ eznix.on('ready', () => {
     }
     _frontTermTab(saved.active);
   }
+  _termTabsReady = true;
   if (localStorage.getItem('eznix-terminal-open') === 'true') {
     setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'quarter');
   } else if (TERMINAL_HIDDEN_LINES) {
@@ -1289,4 +1317,5 @@ eznix.on('ping', data => {
   _spinAutocomplete(data.autocomplete_running === true, data.autocomplete_stamp);
   _terminalStale = data.terminal_stale === true;
   _updateTermRestartPopup();
+  _syncTermTabs(data.terminal_tabs);
 });

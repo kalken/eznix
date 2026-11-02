@@ -220,14 +220,39 @@ user did not like. The command is started directly (`run`), not typed at a promp
 none in front of it; then `; exec "$SHELL"`, or `|| exec "$SHELL"` with `auto_close` (true:
 closes on success only; `"success"` and `"always"` for an hour, then the user wanted only
 that), the shell's end closing the tab. The session is named by a hash of label
-and command, so a second press fronts the tab; the open tabs are this browser's
-(`eznix-terminal-tabs`) and come back on a reload with nothing run; one whose shell is gone
+and command, so a second press fronts the tab; the open tabs are the terminal's shells, not
+this browser's list, since 2026-11-02 (the user: on a remote connection "i want to see the same
+thing as i'm on the box"): the terminal keeps each tab's label (`label=` in the address) and
+`/terminal/hash` lists the live `tab-*` shells, `_terminal_status()` puts them in the ping
+(`terminal_tabs`), and `_syncTermTabs()` opens and closes tabs to match, so a tab opened or
+closed in one browser is so in the others within a ping. Which tab is in front stays each
+browser's own. A tab is closed for being unlisted only after it was listed once, and one closed
+here is not opened again for ten seconds. `eznix-terminal-tabs` still brings a browser's tabs
+back on a reload with nothing run; one whose shell is gone
 is started on `exit` and so closes (it came back as a plain shell until the user's NixOS rebuild
 with `auto_close` ended during the reload that restarting eznix brings, and the tab stayed;
 with the fix, the user's Mac rebuilt from such a tab and it closed: "it seems like it closed",
 and then NixOS: "it works there too"). Commands typed into the
-terminal (`_runInTerminal()`) bring the panel's own tab to the front. No server change. Seen by
+terminal (`_runInTerminal()`) bring the panel's own tab to the front. Seen by
 the user in the test server with ping and htop ("that works perfectly"); not by me in a browser.
+The shared list, in two browsers on the test server on a Mac: a tab appears in the other and
+closing it closes both ("everything works"). The ping's list is in `test_server.py`; not on NixOS.
+It changes `eznix-terminal.py`, so each terminal offers a restart after the update.
+
+**Copying out of the terminal goes through `_toSystemClipboard()`** (`terminal-panel/terminal.js`,
+`_termOsc52()`), since 2026-11-02, the user's report: nothing could be copied from the terminal,
+mostly with Claude Code in it, and the page is also opened by plain http from another machine.
+Ctrl+C with a selection used `navigator.clipboard` alone, which is not there over plain http, so
+the key was swallowed and nothing copied; it now uses the page's helper, whose hidden-field
+fallback works there. A program's OSC 52 (`ESC ] 52 ; c ; BASE64 BEL`; Claude Code, tmux, vim)
+was ignored by xterm.js and is now handled, in the panel's terminal and in `_extraTerminal()`;
+writes only, a `?` (a read of the clipboard) is dropped on purpose. A reattaching client is sent
+a painted snapshot (`_VirtualScreen`), never the escape sequences, so an old copy is not made
+again. A drag in a program that has the mouse on is that program's: Option+drag on a Mac
+(`macOptionClickForcesSelection`, already set), Shift elsewhere. Seen by the user: Ctrl+C after
+Option+drag in vim in the test server on a Mac; and on NixOS, from another machine over plain
+http, Claude Code's own selection reaching the clipboard ("it works remotely"). Not tried: Linux
+browsers' Shift+drag, https, a reload not changing the clipboard.
 
 **The terminal panel comes up in front of the editor and takes no room from it**
 (`.terminal-slot` in `terminal-panel/`, `--covered-below` in `style.css`), since 2026-10-13:
@@ -285,7 +310,7 @@ that job. The page instead offers a restart when the running terminal differs fr
 current one. A terminal has one checksum (`STAMP`) over its program file and how it was
 started (port/key file/dir/shell); `_terminal_for()` in the server computes the same thing
 from the installed program and `[terminals.NAME]`, so those must be exactly the arguments
-the module passes. The server compares the two (`_terminal_stale()`) and the ping carries
+the module passes. The server compares the two (`_terminal_status()`) and the ping carries
 only the answer, `terminal_stale`; the page compares nothing. It was four values in the ping
 and two ways of learning them until 2026-10; don't grow it back. The terminal's package has
 no version in its name (`packages.nix`), or its store path, and with it the unit NixOS
