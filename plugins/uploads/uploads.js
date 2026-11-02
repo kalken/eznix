@@ -13,7 +13,7 @@ if ((_uploadsConfig.targets || []).length) {
     // button says "Upload", and an arrow up is what that word means to most people.
     html: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>Upload',
     onclick: e => showUploadsMenu(e),
-    group: 'files',
+    group: 'system',    // beside System and Autocomplete: it is about the machine, not the flake's files
   });
 }
 
