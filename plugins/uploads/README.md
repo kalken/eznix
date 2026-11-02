@@ -5,7 +5,7 @@ Send a file from your browser to a folder on the machine. Made for a zip of Wire
 
 ## ✨ What it does
 
-- One **Upload** button in the header, like Documents
+- One **Upload** button in the header, beside System and Autocomplete
 - Its menu has a line per target of your own, with the endings it takes (its folder shows as a tooltip): press it to choose a file to upload. Under it are the files in that folder, each with a ✕ that deletes it
 - A file of the same name is replaced
 - Nothing runs as root: eznix writes the file itself, so the folder has to be one it may write in
