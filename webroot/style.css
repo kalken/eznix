@@ -447,7 +447,7 @@ input[type=text].key-rename-input {
    container and have the spacing on that?") Both are elements: a sub-section is its
    .section, a run of options a .field-group (renderObj() in index.html). */
 .section.nest-card { padding: var(--card-gap) var(--block-pad); border-top: 1px solid var(--card-divider); }
-.section.nest-top > .section-body > .field-group { padding: var(--card-gap) 0 calc(var(--card-gap) + 4px); border-top: 1px solid var(--card-divider); }
+.section.nest-top > .section-body > .field-group { padding: var(--card-gap) 0; border-top: 1px solid var(--card-divider); }
 /* A run of options has 4px below it, wherever it is: its strip of values is filled right down
    to the bottom of its last row, where a line of text has the row's 4px under it. With these
    4px the two are alike, so that what comes next, a divider line, a heading or the card's
