@@ -228,6 +228,8 @@ keeps a copy of the file as it is on disk right now).
 
 To take one section or option to another computer, right-click it and choose Copy: it is
 also put on the clipboard as text, which you paste into Import in the editor there.
+**Copy as Nix** puts the same on the clipboard as a Nix expression instead, and leaves the
+editor's own clipboard (Paste) alone.
 
 Importing and exporting files is on right-click too: a tab for one file, a folder for its
 files, and the empty part of the tab bar for all of them (Import, Export all). The System
