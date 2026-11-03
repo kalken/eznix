@@ -84,6 +84,7 @@ import http.server
 import importlib.util
 import ipaddress
 import json
+import math
 import os
 import base64
 import re
@@ -94,11 +95,13 @@ import signal
 import socket
 import socketserver
 import ssl
+import struct
 import subprocess
 import sys
 import threading
 import time
 import urllib.parse
+import zlib
 from urllib.parse import urlparse, parse_qs
 
 try:
@@ -1140,6 +1143,94 @@ def _favicon_svg(theme, filled=False):
     return _LOGO_SVG % ((css,) + (_LOGO_FILLED if filled else ('', '')))
 
 
+def _css_rgb(colour, default=(128, 128, 128)):
+    """(r, g, b) of a #rgb, #rrggbb or rgb() colour; `default` for anything else."""
+    colour = colour.strip().lower()
+    m = re.fullmatch(r'#([0-9a-f]{3}|[0-9a-f]{6})', colour)
+    if m:
+        h = m.group(1)
+        h = ''.join(c * 2 for c in h) if len(h) == 3 else h
+        return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))
+    m = re.fullmatch(r'rgba?\(\s*(\d+)[ ,]+(\d+)[ ,]+(\d+)[^)]*\)', colour)
+    return tuple(min(int(v), 255) for v in m.groups()) if m else default
+
+
+_LOGO_PNG_CACHE = {}
+
+
+def _logo_png(theme, size, filled=False):
+    """The logo of _LOGO_SVG as a PNG, size x size, in a theme's colours. A picture is what
+    iOS wants for the icon of a page on the home screen (it takes no SVG) and what older
+    Android browsers want in a manifest. Drawn here, without any library: the arms are
+    straight-edged polygons, filled on a grid three times as fine as the picture and averaged.
+    `filled` puts the header's fill behind it, as in _favicon_svg(); without it the
+    background is transparent. An automatic theme comes out as its light half."""
+    if theme in AUTO_THEMES:
+        theme = AUTO_THEMES[theme][0]
+    key = (theme, size, filled, _favicon_svg(theme, filled))
+    if key in _LOGO_PNG_CACHE:
+        return _LOGO_PNG_CACHE[key]
+    col = {i: _css_rgb(c) for i, c in zip('abg', _icon_colours(theme))}
+    nums = [float(n) for n in re.findall(r'-?\d+(?:\.\d+)?', re.search(r'<path id="p" d="([^"]*)"', _LOGO_SVG).group(1))]
+    pts, x, y = [], nums[0], nums[1]
+    pts.append((x, y))
+    for i in range(2, len(nums) - 1, 2):
+        x, y = x + nums[i], y + nums[i + 1]
+        pts.append((x, y))
+    # The transforms of _LOGO_SVG's groups, applied the way the SVG applies them.
+    view = 501.56251
+    scale = size * 3 / view * (.72 if filled else 1)
+    grid = size * 3
+    margin = grid * (1 - .72) / 2 if filled else 0
+    arms =re.findall(r'<use class="(\w)" href="#p"(?: transform="rotate\((-?[\d.]+),([-\d.]+),([-\d.]+)\)")?', _LOGO_SVG)
+    buf = bytearray(grid * grid)
+    for cls, angle, cx, cy in arms:
+        a = math.radians(float(angle or 0))
+        ca, sa = math.cos(a), math.sin(a)
+        poly = []
+        for px, py in pts:
+            if angle:
+                dx, dy = px - float(cx), py - float(cy)
+                px, py = float(cx) + dx * ca - dy * sa, float(cy) + dx * sa + dy * ca
+            px, py = px * 0.99994059 - 0.06321798 - 156.41121, py * 0.99994059 + 33.188377 + 933.30685
+            poly.append((px * scale + margin, py * scale + margin))
+        value = 1 if cls == 'a' else 2
+        edges = list(zip(poly, poly[1:] + poly[:1]))
+        for row in range(max(int(min(p[1] for p in poly)), 0), min(int(max(p[1] for p in poly)) + 1, grid)):
+            yc = row + .5
+            xs = sorted(x0 + (yc - y0) * (x1 - x0) / (y1 - y0) for (x0, y0), (x1, y1) in edges
+                        if (y0 <= yc < y1) or (y1 <= yc < y0))
+            for left, right in zip(xs[0::2], xs[1::2]):
+                l, r = max(int(round(left)), 0), min(int(round(right)), grid)
+                if r > l:
+                    buf[row * grid + l:row * grid + r] = bytes([value]) * (r - l)
+    raw = bytearray()
+    for oy in range(size):
+        rows = [buf[(oy * 3 + k) * grid:(oy * 3 + k + 1) * grid] for k in range(3)]
+        raw.append(0)
+        for ox in range(size):
+            na = nb = 0
+            for r in rows:
+                block = r[ox * 3:ox * 3 + 3]
+                na += block.count(1)
+                nb += block.count(2)
+            if filled:
+                ng = 9 - na - nb
+                raw += bytes((sum(w * col[c][i] for w, c in ((na, 'a'), (nb, 'b'), (ng, 'g'))) // 9 for i in range(3))) + b'\xff'
+            elif na + nb:
+                raw += bytes(((na * col['a'][i] + nb * col['b'][i]) // (na + nb) for i in range(3))) + bytes((255 * (na + nb) // 9,))
+            else:
+                raw += b'\0\0\0\0'
+
+    def chunk(kind, data):
+        body = kind + data
+        return struct.pack('>I', len(data)) + body + struct.pack('>I', zlib.crc32(body))
+    png = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', struct.pack('>IIBBBBB', size, size, 8, 6, 0, 0, 0))
+           + chunk(b'IDAT', zlib.compress(bytes(raw), 9)) + chunk(b'IEND', b''))
+    _LOGO_PNG_CACHE[key] = png
+    return png
+
+
 class PluginError(Exception):
     """Raised by a plugin's handler to answer with an error: PluginError(400, 'why')."""
     def __init__(self, status, message):
@@ -2168,7 +2259,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
     # in -- confirmed by a real report where index.html's manifest link (and the icon it
     # references) silently failed auth right after logging in, even though the tab's own favicon
     # (an ordinary, credentialed fetch) worked fine throughout.
-    _PUBLIC_PATHS = {'/login.html', '/favicon.svg', '/manifest.json'}
+    _PUBLIC_PATHS = {'/login.html', '/favicon.svg', '/icon.png', '/manifest.json'}
 
     def do_GET(self):
         parsed = urlparse(self.path)
@@ -2197,6 +2288,8 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
             self._serve_manifest(); return
         if parsed.path == '/favicon.svg':
             self._serve_favicon(parsed.query); return
+        if parsed.path == '/icon.png':
+            self._serve_icon_png(parsed.query); return
         if parsed.path in self._PUBLIC_PATHS:
             super().do_GET()
             return
@@ -2425,11 +2518,13 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         # installed app keeps the icon it was installed with until the browser sees a change.
         # So is a checksum of the picture, for a theme whose colours were changed. The
         # "maskable" one is the filled icon (see _LOGO_FILLED), the other the bare logo.
+        # The PNGs (icon.png, sizes "192x192") are the same drawing for iOS and older Android.
         for icon in manifest.get('icons') or []:
-            if icon.get('src') == 'favicon.svg':
+            if icon.get('src') in ('favicon.svg', 'icon.png'):
                 filled = icon.get('purpose') == 'maskable'
-                icon['src'] += '?theme=%s%s&v=%s' % (
-                    THEME, '&filled=1' if filled else '',
+                png = icon['src'] == 'icon.png'
+                icon['src'] += '?theme=%s%s%s&v=%s' % (
+                    THEME, '&size=' + icon['sizes'].split('x')[0] if png else '', '&filled=1' if filled else '',
                     hashlib.sha256(_favicon_svg(THEME, filled).encode()).hexdigest()[:8])
         # The window of the page installed as an app: its bar in the header's fill and, until
         # the page is in, the page's own behind it. Without them the browser chooses (Brave took
@@ -2459,6 +2554,23 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         data = _favicon_svg(theme, bool(query.get('filled'))).encode()
         self.send_response(200)
         self.send_header('Content-Type', 'image/svg+xml')
+        self.send_header('Content-Length', str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
+
+    def _serve_icon_png(self, query):
+        """The logo as a PNG (_logo_png()): ?theme=NAME, ?size=N (180, 192 or 512) and ?filled=1,
+        as /favicon.svg takes theme and filled. For the home screen icon of iOS, which takes no
+        SVG, and for a manifest read by an older Android browser."""
+        query = parse_qs(query)
+        theme = (query.get('theme') or [''])[0]
+        if theme not in BUILTIN_THEMES and theme not in AUTO_THEMES and theme not in CUSTOM_THEMES:
+            theme = THEME
+        size = (query.get('size') or ['512'])[0]
+        size = int(size) if size in ('180', '192', '512') else 512
+        data = _logo_png(theme, size, bool(query.get('filled')))
+        self.send_response(200)
+        self.send_header('Content-Type', 'image/png')
         self.send_header('Content-Length', str(len(data)))
         self.end_headers()
         self.wfile.write(data)

@@ -362,6 +362,15 @@ closed and opened again ("it worked if i closed the program"). That was with the
 version of the icon, which has a width and a height; with the first, which had only a
 viewBox, nothing had happened, though whether the size was why is not known.
 
+**The icon is also a PNG** (`_logo_png()`, `/icon.png?theme=&size=&filled=`, 180, 192 or 512; the
+manifest's `icon.png` entries and `apple-touch-icon` in both pages), since 2026-11-03, the user
+asking whether the app works on Apple or Android devices: iOS takes no SVG for a home-screen icon
+(and paints transparency black, so that one is the filled kind) and older Android wants PNGs. The
+six arms are polygons, so the server fills them itself on a grid three times as fine and
+averages, with `zlib` and `struct` and no library, and keeps the result in memory. The geometry is
+now in a third place (it reads `_LOGO_SVG`'s path and transforms). Looked at as pictures; not tried
+on an iPhone or an Android phone.
+
 **eznix in the application menu comes from the configuration** (`programs.eznix`, in
 `options.nix`: `programOptions`, `appEntries`; NixOS and home-manager, not macOS). Since
 2026-10-15 an entry opens its address in the default browser (`xdg-open`), a plain tab,

@@ -524,6 +524,8 @@ kept out.
 The tab's icon is the logo in the theme's colours. So is the icon of the page installed as
 an app, in the colours of the theme set as `theme`; after changing that, the browser
 fetches the new icon by itself, and it shows once the app has been closed and opened again.
+On an iPhone or iPad, "Add to Home Screen" gives the logo on the header's colour, and Android
+gets it as PNGs; both are drawn by eznix in the theme's colours.
 
 ### Your own themes
 

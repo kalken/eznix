@@ -11,6 +11,9 @@
 <!-- The logo in the theme's colours, drawn by the server (_favicon_svg() in eznix.py). This is
      the configured theme's; _loadTheme() asks for the one chosen in this browser. -->
 <link rel="icon" type="image/svg+xml" href="favicon.svg" id="favicon-link">
+<!-- iOS takes no SVG for the icon of a page on the home screen: a PNG, on the header's fill
+     since iOS paints transparency black (_logo_png() in eznix.py). -->
+<link rel="apple-touch-icon" href="icon.png?size=180&amp;filled=1" id="touch-icon-link">
 <!-- The colour a browser gives the window's own bar when the page is installed as an app:
      filled in by _loadWindowColour() with the fill of whatever is at the top of the page.
      With nothing said, the browser picks one itself (Brave: the profile's colour).
@@ -554,6 +557,9 @@ function _loadIcon(name) {
   const link = document.getElementById('favicon-link');
   const href = 'favicon.svg?theme=' + name;
   if (link && link.getAttribute('href') !== href) link.href = href;
+  const touch = document.getElementById('touch-icon-link');
+  const touchHref = 'icon.png?size=180&filled=1&theme=' + name;
+  if (touch && touch.getAttribute('href') !== touchHref) touch.href = touchHref;
 }
 function _markActiveTheme(name) {
   document.querySelectorAll('.theme-swatch').forEach(b =>
