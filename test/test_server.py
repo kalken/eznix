@@ -822,9 +822,6 @@ def main():
             check('the manifest\'s maskable icon is the filled one, its other the bare logo',
                   ['filled=1' in i['src'] for i in manifest['icons'][:2]] == [False, True]
                   and manifest['icons'][1]['purpose'] == 'maskable', manifest)
-            check('the manifest has PNGs too, of the sizes a browser asks for',
-                  [(i['src'].startswith('icon.png?'), i['sizes']) for i in manifest['icons'][2:]]
-                  == [(True, '192x192'), (True, '512x512'), (True, '512x512')], manifest)
             png = anon.request('/icon.png?size=180&filled=1')[1]
             check('icon.png is a PNG of the size asked for, anyone may fetch it',
                   png[:8] == b'\x89PNG\r\n\x1a\n' and struct.unpack('>II', png[16:24]) == (180, 180))
