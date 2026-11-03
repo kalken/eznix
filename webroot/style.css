@@ -456,7 +456,7 @@ input[type=text].key-rename-input {
    sub-section's name as below its values). Not inside a list object, which sets the room
    round its values itself. */
 .field-group { padding-bottom: 4px; }
-.array-obj-fields > .field-group { padding-bottom: 0; }
+.section.nest-card > .section-body > .field-group, .array-obj-fields > .field-group { padding-bottom: 0; }
 /* Every section can be folded away by a click on its name (.foldable; from the third level
    down only until 2026-10-12), and starts out folded or not by the collapseLevel setting
    (.collapsed, see _setNestDepths()). There is no arrow in front of the name, at any level,

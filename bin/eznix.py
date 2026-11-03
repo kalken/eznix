@@ -225,6 +225,8 @@ _LOGIN_LOCK          = threading.Lock()
 
 # Fresh every start: the page reloads itself when it sees a new one.
 PAGE_HASH                = ''  # checksum of everything the page is made of, set in main()
+DEV                      = False  # --dev: the page and its files are read again at each request, see _current_page_hash()
+_PAGE_HASH_AT            = 0.0
 EZNIX_VERSION            = 'dev'
 _STATIC_GZIP_CACHE       = {}
 _AUTOCOMPLETE_GZIP_CACHE = {}  # path -> (mtime, compressed): see _serve_autocomplete()
@@ -1430,6 +1432,18 @@ def _compute_page_hash():
     return h.hexdigest()[:16]
 
 
+def _current_page_hash():
+    """PAGE_HASH, worked out again at most once a second under --dev, so that an edit of a
+    file under WEBROOT or a plugin shows in the ping (and the open page reloads) with no
+    restart; the files themselves are read again too (_dev_forget())."""
+    global PAGE_HASH, _PAGE_HASH_AT
+    if DEV and time.time() - _PAGE_HASH_AT > 1:
+        _STATIC_GZIP_CACHE.clear()
+        PAGE_HASH = _compute_page_hash()
+        _PAGE_HASH_AT = time.time()
+    return PAGE_HASH
+
+
 def _read_version():
     """EZNIX_VERSION — content of WEBROOT/VERSION, written by the Nix derivation (see
     nix/packages.nix). Missing (a plain git checkout, no Nix build) or empty falls back
@@ -1554,7 +1568,7 @@ def _ping_payload(user=None):
     is a flake.nix (_flake_there()), and the checksum of the files on disk (_files_stamps())."""
     stale, tabs = _terminal_status(_terminal_for(user))
     return {
-        'page': PAGE_HASH,
+        'page': _current_page_hash(),
         'theme': THEME,
         'autocomplete_stamp': _autocomplete_stamp(),
         'autocomplete_running': _autocomplete_running(),
@@ -2488,6 +2502,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         request. abs_path serves that file instead of WEBROOT/rel_path — a user theme or a
         plugin's file."""
         path = abs_path or os.path.join(WEBROOT, rel_path)
+        _current_page_hash()
         cached = _STATIC_GZIP_CACHE.get(path)
         if cached is None:
             try:
@@ -2541,6 +2556,7 @@ class StaticHandler(http.server.SimpleHTTPRequestHandler):
         try:
             # Constant for the life of this process, so rendered once. '__index__' is not a
             # real path: this is templated, not read verbatim from disk.
+            _current_page_hash()
             cached = _STATIC_GZIP_CACHE.get('__index__')
             if cached is None:
                 page = _render_index().replace('%%EZNIX_PAGE_HASH%%', PAGE_HASH)
@@ -2851,7 +2867,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, INDENT_LEVEL, ARROW_INLINE, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
+    global DEV, DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, INDENT_LEVEL, ARROW_INLINE, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -2871,6 +2887,7 @@ def main():
     ap.add_argument('--password', metavar='PW', help='log in with this password, as whoever runs eznix')
     ap.add_argument('--no-terminal', action='store_true', help="don't start or offer a terminal")
     ap.add_argument('--debug', action='store_true', help='log what is only worth knowing while looking into something')
+    ap.add_argument('--dev', action='store_true', help='for working on eznix: read the page, themes and plugins again when they change, with no restart')
     ap.add_argument('--https', action='store_true',
                     help='serve HTTPS with a certificate eznix makes itself, kept in the state folder')
     ap.add_argument('--icon', metavar='THEME',
@@ -2904,6 +2921,7 @@ def main():
     path = lambda p: os.path.abspath(os.path.expanduser(p))
 
     DEBUG = bool(args.debug or cfg.get('debug', False))
+    DEV = bool(args.dev)
 
     # Where things are.
     FLAKE_DIR    = path(args.flake or cfg.get('flake') or FLAKE_DIR)

@@ -48,9 +48,13 @@ flake. A save or an import there changes what the machine builds next (the user'
 
 ```sh
 pkill -f "eznix.py --config eznix.toml"; sleep 1
-(cd ../.eznix-test && PYTHONUNBUFFERED=1 nohup python3 ../eznix/bin/eznix.py --config eznix.toml >| server.log 2>&1 &)
+(cd ../.eznix-test && PYTHONUNBUFFERED=1 nohup python3 ../eznix/bin/eznix.py --config eznix.toml --dev >| server.log 2>&1 &)
 sleep 2; curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/ping   # 401 = up
 ```
+
+With `--dev` (since 2026-11-03, the user not wanting to restart by hand) a server started so
+reads the page, themes and plugins again when they change (`_current_page_hash()`, once a
+second) and an open tab reloads by itself; only `bin/eznix.py` still needs a restart.
 
 The `pkill` there only matches a server started with exactly that `--config`. One started
 with another file keeps the port and keeps serving the old page, the new one fails to start,
