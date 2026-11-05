@@ -12,6 +12,7 @@ framework: just Python and a browser.
 - Files changed on disk while the page is open show in it by themselves
 - Search (Ctrl+F) across all files: type words from an option, a value or a file name, in any order; each result says which file it is in
 - A terminal in the page, with buttons and menus of your own for rebuilding and anything else; drag its edge, or a side panel's, to size it
+- Double-click the empty part of any name's row to fit the column of names to the longest name on screen (again to go back to the theme's width); with `keyWidthHandle` on, the line between names and values can also be dragged
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself
 - Back up, restore, export and import the whole flake, and read its `.md` files beside the editor
@@ -696,6 +697,8 @@ The common ones, the same in all three modules:
 | `compactLevel` | `1` | the level from which a section that holds only one sub-section is shown as one with it, under both names (`a.b`), a top-level section being 1 (`0`: never) |
 | `indent` | `2` | how far a section is indented in the editor from the one it is in, in characters; its options start that far in from its name, or under its name when it has an arrow (see `arrowLevel`) |
 | `indentLevel` | `2` | the level from which sections are indented, a top-level section being 1 (`0`: none); above it everything starts in one column |
+| `keyWidth` | the theme's (`300`) | the width of the column of names in the editor, in pixels, for a file that has not been given another by hand (double-click or `keyWidthHandle`) |
+| `keyWidthHandle` | `false` | `true`: the line between the names and the values can be dragged, anywhere down the editor, to set the width of the column of names for that file |
 | `arrowInline` | the theme's, else `false` | `true`: a section's arrow is counted in the line before its name, which moves two characters in; otherwise it hangs to the left and moves nothing |
 | `font` | | the editor's font, a CSS font-family list (`"Hack, monospace"`), the first one installed on the computer you browse from being used; not set, the theme's |
 | `terminalFont` | | the terminal's font, the same way; not set, its own list (JetBrains Mono, Fira Code, Cascadia Code, Hack, the system's monospace) |

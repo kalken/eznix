@@ -67,6 +67,8 @@ let
     font             = cfg.font;
     terminal_font    = cfg.terminalFont;
     arrow_level      = cfg.arrowLevel;
+    key_width_handle = cfg.keyWidthHandle;
+    key_width        = cfg.keyWidth;
     compact_level    = cfg.compactLevel;
     mode             = cfg.mode;
     backups          = cfg.backups;
@@ -455,6 +457,17 @@ in
       default     = 3;
       example     = 1;
       description = "The level from which an open section in the editor has an arrow in front of its name, a top-level section being level 1: 1 gives every section one, 0 none. A folded section always has one.";
+    };
+    keyWidth = mkOption {
+      type        = types.nullOr types.ints.positive;
+      default     = null;
+      example     = 400;
+      description = "The width of the column of names in the editor, in pixels, for a file that has not been given another by hand. Not set, the theme's (300).";
+    };
+    keyWidthHandle = mkOption {
+      type        = types.bool;
+      default     = false;
+      description = "Whether the line between the names and the values in the editor can be dragged to set the width of the names' column for a file. Off, nothing is drawn or changes the pointer; double-clicking the empty part of a name's row fits the column to the longest name either way.";
     };
     compactLevel = mkOption {
       type        = types.ints.unsigned;

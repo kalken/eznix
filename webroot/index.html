@@ -6007,6 +6007,7 @@ function initImportDrop() {
 const API_BASE = '/api/v1';
 const BACKUP_ENABLED    = %%EZNIX_BACKUP%%;
 const ARROW_LEVEL       = %%EZNIX_ARROW_LEVEL%%; // services.eznix.arrowLevel / arrow_level in eznix.toml: the level from which an open section has an arrow; 0 for none -- see _setNestDepths()
+const KEY_WIDTH_HANDLE  = %%EZNIX_KEY_WIDTH_HANDLE%%; // services.eznix.keyWidthHandle / key_width_handle in eznix.toml: the line between names and values can be dragged -- see _keyHandle
 const INDENT_LEVEL      = %%EZNIX_INDENT_LEVEL%%; // services.eznix.indentLevel / indent_level in eznix.toml: the level from which sections are indented; 0 for never -- see _setNestDepths()
 const COMPACT_LEVEL     = %%EZNIX_COMPACT_LEVEL%%; // services.eznix.compactLevel / compact_level in eznix.toml: the level from which a section holding only one section is drawn as one with it; 0 for none -- see renderSection()
 const SECTIONS_LEVEL    = %%EZNIX_SECTIONS_LEVEL%%; // services.eznix.collapseLevel / collapse_level in eznix.toml: the level sections are folded from; 0 when it is not set, for never -- see _sectionStartsOpen()
@@ -6127,6 +6128,110 @@ function _tabSort() {
 // renderFileSelector()), as the bar of buttons follows its settings.
 let _tabOrdersShown = '{}';
 eznix.on('render', () => { if (JSON.stringify(_tabOrders()) !== _tabOrdersShown) renderFileSelector(); });
+
+// ── The width of the names' column ──
+// One handle along the whole height of the editor, on the line between the names and the values, sets
+// --key-width for every row at once (the user's idea, 2026-11-05). Set on <html>, which outweighs
+// the theme's :root. A file has the theme's width until it is dragged, or double-clicked to fit its
+// longest name (a second double-click goes back); either is kept per file in this browser,
+// `eznix-key-widths`. Fitting only on request, not on every render, was the user's choice
+// (2026-11-05), after fitting by itself was built. The handle is in
+// .main and not in the editor, whose content is replaced at every render; where it stands is
+// read off the first name that is on screen. Rows inside a list item keep --list-key-width.
+const _keyHandle = (() => {
+  const KEY = 'eznix-key-widths', root = document.documentElement;
+  const wide = () => parseFloat(getComputedStyle(root).getPropertyValue('--key-width')) || 300;
+  const kept = () => { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } };
+  const keep = (file, px) => {
+    const all = kept();
+    if (px) all[file] = Math.round(px); else delete all[file];
+    try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) { /* not kept */ }
+  };
+  let dragging = false;
+  const main = document.querySelector('.main'), area = document.getElementById('editor-area');
+  const h = document.createElement('div');
+  h.className = 'key-width-handle';
+  h.title = 'Drag to change the width of the names in this file (double-click: fit the longest)';
+  if (KEY_WIDTH_HANDLE) main.appendChild(h); // off (the default): only the double-click remains
+  const place = () => {
+    const k = [...area.querySelectorAll('.field-row.nest > .field-key')].find(e => e.offsetParent);
+    if (!k) { h.style.display = 'none'; return; }
+    h.style.display = '';
+    h.style.left = (k.getBoundingClientRect().right - main.getBoundingClientRect().left - h.offsetWidth / 2) + 'px';
+  };
+  // As wide as the longest name needs, the label's offset from the column's left edge (the
+  // indent) included, at most half the window. Names inside a list item are left out, having a
+  // column of their own. Only the names on screen count (a folded section's do not).
+  const fitting = () => {
+    let need = 0;
+    for (const k of area.querySelectorAll('.field-row.nest > .field-key')) {
+      // The text itself (.tt-anchor): its box is as wide as the name even where the label cuts it
+      // off. The label's own scrollWidth is never less than the label, i.e. the column, so
+      // every double-click found the column too narrow and widened it by the gap.
+      const t = k.querySelector('.tt-anchor');
+      if (!t || !k.offsetParent || k.closest('.array-obj-fields')) continue;
+      need = Math.max(need, t.getBoundingClientRect().right - k.getBoundingClientRect().left);
+    }
+    return Math.ceil(need);
+  };
+  const apply = () => {
+    if (dragging) return;
+    root.style.removeProperty('--key-width');
+    const px = kept()[activeFile];
+    if (px) root.style.setProperty('--key-width', px + 'px');
+    place();
+  };
+  let queued = false;
+  const later = () => { if (!queued) { queued = true; requestAnimationFrame(() => { queued = false; apply(); }); } };
+  h.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    const from = e.clientX, start = wide();
+    let value = null;
+    dragging = true;
+    h.setPointerCapture(e.pointerId);
+    h.classList.add('dragging');
+    root.classList.add('is-resizing-left');
+    const move = ev => {
+      value = Math.max(80, Math.min(window.innerWidth * 0.7, start + ev.clientX - from));
+      root.style.setProperty('--key-width', value + 'px');
+      place();
+    };
+    const end = () => {
+      h.removeEventListener('pointermove', move);
+      h.classList.remove('dragging');
+      root.classList.remove('is-resizing-left');
+      dragging = false;
+      if (value) keep(activeFile, value);
+    };
+    h.addEventListener('pointermove', move);
+    h.addEventListener('pointerup', end, { once: true });
+    h.addEventListener('pointercancel', end, { once: true });
+  });
+  // Double-click: forget what was dragged for this file, so it fits its names again.
+  // The same on the empty part of any option's name column (not on a name's text, whose clicks
+  // are its own: folding, renaming).
+  const refit = () => {
+    if (kept()[activeFile]) keep(activeFile, 0);
+    else {
+      // Nothing to do when the names already fit: the column stays as it is, it does not grow
+      // by the gap left after the longest one.
+      const need = fitting();
+      if (!need || need <= wide()) return;
+      keep(activeFile, Math.min(window.innerWidth * 0.5, need + 12));
+    }
+    apply();
+  };
+  h.addEventListener('dblclick', refit);
+  area.addEventListener('dblclick', e => {
+    if (e.target.closest('.field-key') && !e.target.closest('.tt-anchor, input, textarea, button')) refit();
+  });
+  window.addEventListener('resize', later);
+  area.addEventListener('scroll', place, { passive: true });
+  eznix.on('render', later);
+  eznix.on('theme', later);
+  return h;
+})();
 const _byTabLabel = (a, b) => _tabLabel(a).localeCompare(_tabLabel(b)) || a.localeCompare(b);
 
 // A folder's tab in the first row. `inside` is the files in it.

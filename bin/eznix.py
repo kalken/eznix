@@ -198,6 +198,8 @@ COMPACT_LEVEL    = 1             # the level from which a section holding only o
 INDENT           = 2             # characters of indent per level in the editor (indent)
 INDENT_LEVEL     = 2             # the level from which sections are indented (indent_level); 0: none is
 ARROW_INLINE     = None          # the arrow counted in the line before a name (arrow_inline); None: the theme's, else hanging
+KEY_WIDTH        = None          # the width in pixels of the names' column in the editor (key_width); None: the theme's
+KEY_WIDTH_HANDLE = False         # the draggable line between the names and the values in the editor (key_width_handle)
 FONT             = None          # the editor's font, a CSS font-family list (font); None: the theme's
 TERMINAL_FONT    = None          # the terminal's font (terminal_font); None: its own list
 STATIC_BUTTONS   = []            # [[buttons]]: terminal buttons set where eznix is deployed
@@ -1417,13 +1419,15 @@ def _render_index():
         .replace('%%EZNIX_DEBUG%%', 'true' if DEBUG else 'false')
         .replace('%%EZNIX_SECTIONS_LEVEL%%', str(SECTIONS_LEVEL))
         .replace('%%EZNIX_ARROW_LEVEL%%', str(ARROW_LEVEL))
+        .replace('%%EZNIX_KEY_WIDTH_HANDLE%%', 'true' if KEY_WIDTH_HANDLE else 'false')
         .replace('%%EZNIX_INDENT_LEVEL%%', str(INDENT_LEVEL))
         .replace('%%EZNIX_COMPACT_LEVEL%%', str(COMPACT_LEVEL))
-        # indent, and font when set: put in place of the theme's --indent-step and --font,
+        # indent, and font and key width when set: put in place of the theme's --indent-step, --font and --key-width,
         # whichever theme the browser has. `html:root` outweighs a theme's `:root`, so it holds
         # whatever loads after it.
         .replace('%%EZNIX_INDENT_STYLE%%', f'<style>html:root {{ --indent-step: {INDENT:g}ch;'
                  + (f' --arrow-inline: {int(ARROW_INLINE)};' if ARROW_INLINE is not None else '')
+                 + (f' --key-width: {KEY_WIDTH:g}px;' if KEY_WIDTH else '')
                  + (f' --font: {FONT};' if FONT else '') + ' }</style>')
         .replace('%%EZNIX_FLAKE%%', FLAKE_DIR.replace('\\', '\\\\').replace("'", "\\'"))
         .replace('%%EZNIX_HOSTNAME%%', HOSTNAME.replace('\\', '\\\\').replace("'", "\\'"))
@@ -2979,7 +2983,7 @@ def main():
     global INTERFACES, LISTEN, WEB_PORT, TRUSTED_HOSTS, TRUSTED_PROXIES, CERT_FILE, KEY_FILE, CA_FILE, USE_TLS
     global SYSTEM_LOGIN, ALLOWED_USERS, AUTH_HELPER
     global TERMINAL_RESTART, TERMINAL_END_ON_LOGOUT, TERMINAL_SCRIPT, TERMINAL_PROGRAM
-    global DEV, DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, INDENT_LEVEL, ARROW_INLINE, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL
+    global DEV, DEBUG, TERMINAL_AUTO_HIDE, TERMINAL_HIDDEN_LINES, THEME, THEMES_DIR, CUSTOM_THEMES, EZNIX_MODE, SECTIONS_LEVEL, INDENT, INDENT_LEVEL, ARROW_INLINE, FONT, TERMINAL_FONT, ARROW_LEVEL, COMPACT_LEVEL, KEY_WIDTH, KEY_WIDTH_HANDLE
     global STATIC_BUTTONS, STATIC_MENUS, PAGE_HASH, EZNIX_VERSION, PLUGINS, _SESSIONS_FILE, SESSION_LIFETIME, SESSION_IDLE, SESSION_COOKIE_AGE, SESSION_RENEW
 
     ap = argparse.ArgumentParser(
@@ -3129,6 +3133,12 @@ def main():
     # 0 for none.
     arrows = cfg.get('arrow_level', 3)
     ARROW_LEVEL = arrows if isinstance(arrows, int) and not isinstance(arrows, bool) and arrows > 0 else 0
+    # key_width_handle: the draggable line between the names and the values; off when not set.
+    # Double-clicking the empty part of a name's row fits the column whether it is on or not.
+    KEY_WIDTH_HANDLE = cfg.get('key_width_handle') is True
+    # key_width: the width in pixels of the names' column; not set, the theme's (300).
+    key_width = cfg.get('key_width')
+    KEY_WIDTH = float(key_width) if isinstance(key_width, (int, float)) and not isinstance(key_width, bool) and key_width > 0 else None
     # compact_level: the level from which a section that holds nothing but one sub-section is
     # drawn as that one, under both names ("services.nginx"). 1 when not set; 0 for none.
     compact = cfg.get('compact_level', 1)

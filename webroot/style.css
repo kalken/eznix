@@ -1122,6 +1122,10 @@ input.expr-value, textarea.expr-value { color: var(--green); }
 .resize-handle.resize-left { left: 0; top: 0; bottom: 0; width: 5px; cursor: ew-resize; }
 .resize-handle:hover, .resizing > .resize-handle { background: color-mix(in srgb, var(--accent) 45%, transparent); }
 .resizing { transition: none !important; }
+/* The one handle for the names' column (the script after the tab orders): a strip along the whole
+   height of the editor on the line between names and values. Never drawn, only the pointer
+   changes (the user's wish, 2026-11-05). */
+.key-width-handle { position: absolute; top: 0; bottom: 0; z-index: 40; width: 7px; cursor: ew-resize; touch-action: none; background: transparent; }
 .is-resizing-top, .is-resizing-top * { cursor: ns-resize !important; user-select: none !important; }
 .is-resizing-left, .is-resizing-left * { cursor: ew-resize !important; user-select: none !important; }
 

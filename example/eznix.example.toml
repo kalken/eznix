@@ -70,7 +70,11 @@ theme    = "nixos"                    # nixos, gruvbox, and osx, breeze, gnome, 
                                       # its options from its name, unless it has an arrow)
 # indent_level = 2                    # sections are indented from this level down (a top-
                                       # level one is 1); 0: none
-# arrow_inline = false                # true: the arrow counted before the name, moving it
+# key_width = 300                     # the width of the names' column in the editor, in pixels;
+                                      # not set: the theme's (300)
+# key_width_handle = false           # true: a line between names and values to drag, setting the
+                                      # width of the names' column for a file
+# arrow_inline = false               # true: the arrow counted before the name, moving it
 # font = "Hack, monospace"            # the editor's font, a CSS font-family list; not set: the theme's
 # terminal_font = "Hack, monospace"   # the terminal's font, the same way; not set: its own list
 # debug  = true                       # log what is only worth knowing while looking into
