@@ -1199,8 +1199,9 @@ function _onRowItself(event) {
 // and a kind of entry is in the same place in every menu that has it:
 //   add        Add option…, New file, New folder: always first, where there is one
 //   item       the thing itself: Rename, Disable or Enable, Clear, Delete
-//   clipboard  Copy, Copy as Nix, Cut, Paste (before convert since 2026-11-03)
-//   convert    Convert to Nix, Convert to native
+//   clipboard  Copy, Cut, Paste (before convert since 2026-11-03)
+//   convert    Copy as Nix, Convert to Nix, Convert to native (Copy as Nix beside them and first,
+//              `lead`, since 2026-11-05)
 //   view       Expand all, Collapse all
 //   transfer   Import, Export: by themselves and in that order (the user, 2026-10-13; they
 //              stood with Backup and Reload, Export first, for some hours)
@@ -1217,7 +1218,9 @@ const _MENU_GROUPS = ['add', 'item', 'clipboard', 'convert', 'view', 'transfer',
 function _menu(...sets) {
   const out = [];
   for (const group of _MENU_GROUPS) {
-    const items = sets.flatMap(set => (set && set[group]) || []);
+    const all = sets.flatMap(set => (set && set[group]) || []);
+    // An entry with `lead` stands first in its group whichever set it came from.
+    const items = [...all.filter(i => i.lead), ...all.filter(i => !i.lead)];
     if (!items.length) continue;
     if (out.length) out.push({ separator: true });
     out.push(...items);
@@ -1255,9 +1258,10 @@ function _commonMenuItems(path, { skipDisable = false } = {}) {
     // (A disabled one had neither until 2026-10-13.)
     clipboard: [
       { label: 'Copy', onclick: () => copyPath(path) },
-      { label: 'Copy as Nix', onclick: () => copyPathAsNix(path) },
       { label: 'Cut', onclick: () => cutPath(path) },
     ],
+    // With the Nix entries, not the clipboard's (the user, 2026-11-05: "closer to convert to nix").
+    convert: [{ label: 'Copy as Nix', lead: true, onclick: () => copyPathAsNix(path) }],
   };
 }
 function preview(val, maxlen = 48) {
