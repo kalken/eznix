@@ -3,6 +3,7 @@
 /* ── A document in its panel (eznix.sidePanel(), whose stack and frame are the page's) ── */
 .markdown-content {
   padding: 12px 16px;
+  margin-bottom: 4px; /* the scroll area ends above the window's edge, so text is cut off there and not at the edge itself */
   word-wrap: break-word;
   font-family: var(--font);
   font-size: var(--text-size, 12px);
