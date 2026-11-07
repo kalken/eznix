@@ -5278,15 +5278,24 @@ function initRestartWatcher() {
   // the same second: they had been waiting somewhere on the way, which was not found. So
   // whether this shortens that wait is not known.
   const PING_TIMEOUT_MS = 3000;
+  // A failed ping says so in the status line, and the first answer after it takes it away again,
+  // unless something else has been said there since.
+  const LOST_MSG = 'Connection to the server lost';
+  function lost(is) {
+    const el = document.getElementById('status-info');
+    if (is) { if (el.textContent !== LOST_MSG) setStatus(LOST_MSG, 0, 'err'); }
+    else if (el.textContent === LOST_MSG) setStatus('');
+  }
   async function poll() {
     if (_restartDetected) return; // already decided; nothing left to watch for
     let res;
     const asked = performance.now();
     const giveUp = new AbortController(), timer = setTimeout(() => giveUp.abort(), PING_TIMEOUT_MS);
     try { res = await apiFetch('/ping', { signal: giveUp.signal }); }
-    catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); return; } // still down -- next tick retries
+    catch (err) { eznix.debug('ping failed after', Math.round(performance.now() - asked), 'ms:', String(err)); lost(true); return; } // still down -- next tick retries
     finally { clearTimeout(timer); }
     if (performance.now() - asked > 1000) eznix.debug('ping answered after', Math.round(performance.now() - asked), 'ms');
+    lost(false);
     if (res.status === 401) { onRestartDetected(); return; }
     if (res.ok) {
       try { handlePayload(await res.json()); } catch (err) { /* malformed body — ignore, next tick retries */ }
