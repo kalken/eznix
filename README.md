@@ -210,7 +210,7 @@ last one.
 
 A set whose entries are plain values or lists, such as `networking.hosts` (an address and
 its names), has a last row of its own: type a new entry's name where it says **Add item…**
-and press Enter. A click on an entry's name there renames it.
+and press Enter. Right-click an entry's name to rename it.
 
 In a list of objects (`services.eznix.buttons`, say), right-click an object and choose **Add
 item like…** for a new one with the same settings, all of them empty.
