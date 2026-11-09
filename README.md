@@ -11,7 +11,7 @@ framework: just Python and a browser.
 - Nothing is written until you save; undo and redo, and the earlier versions of every file kept to go back to
 - Files changed on disk while the page is open show in it by themselves
 - Search (Ctrl+F) across all files: type words from an option, a value or a file name, in any order; each result says which file it is in
-- A terminal in the page, with buttons and menus of your own for rebuilding and anything else; drag its edge, or a side panel's, to size it
+- A terminal in the page, with buttons and menus of your own for rebuilding and anything else; drag its edge, or a side panel's, to size it (the terminal's edge catches on 25, 50, 75 and 100% of the editor, and its size button lists the same; it opens at 50%)
 - Double-click the empty part of any name's row to fit the column of names to the longest name on screen (again to go back to the theme's width); with `keyWidthHandle` on, the line between names and values can also be dragged
 - Nothing runs as root: a rebuild goes through `sudo` in that terminal
 - Log in with your system password or a password of its own; HTTPS with a certificate eznix makes itself

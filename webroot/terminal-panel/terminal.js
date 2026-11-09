@@ -36,9 +36,7 @@ document.querySelector('.statusbar').insertAdjacentHTML('beforebegin', `
       <div class="terminal-cmd-btns" id="terminal-cmd-btns"></div>
       <div class="terminal-header-actions">
         <button class="btn" id="term-restart-btn" data-tooltip="Restart terminal service" onclick="restartTerminal()">${_RELOAD_ICON}<span class="hidden">Restart</span></button>
-        <button class="btn" data-tooltip="Quarter screen" onclick="setTerminalSize('quarter')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="16" width="18" height="5" fill="currentColor" stroke="none"/></svg></button>
-        <button class="btn" data-tooltip="Half screen" onclick="setTerminalSize('half')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="3" y="12" width="18" height="9" fill="currentColor" stroke="none"/></svg></button>
-        <button class="btn" data-tooltip="Full screen" onclick="setTerminalSize('full')"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><rect x="4" y="4" width="16" height="16" rx="1" fill="currentColor" stroke="none"/></svg></button>
+        <button class="btn" data-tooltip="Terminal size" onclick="showTerminalSizeMenu(event)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="12" y1="3" x2="12" y2="21"/><polyline points="8 7 12 3 16 7"/><polyline points="8 17 12 21 16 17"/></svg></button>
         <button class="btn" id="term-toggle" data-tooltip="Show" onclick="toggleTerminal(true)"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="18 15 12 9 6 15"/></svg></button>
       </div>
     </div>
@@ -314,9 +312,9 @@ function connectTerminalWs() {
     _setTermStatusBanner(null);
     // Deferred by the same ~200ms the ResizeObserver above debounces by (see its own comment)
     // -- opening the panel and connecting happen in the same breath on a cold start (toggleTerminal()
-    // synchronously starts both), so fit() here can otherwise run mid-transition (the panel's
-    // CSS height animating from collapsed to open, ~180ms) and measure a near-zero-height
-    // container. That produced a degenerate resize (seen in testing: 1 row) sent to a session
+    // synchronously starts both), so fit() here can otherwise run before the panel has its
+    // open height (it animated from collapsed to open until 2026-11-09) and measure a
+    // near-zero-height container. That produced a degenerate resize (seen in testing: 1 row) sent to a session
     // that then ran real commands into an unusably tiny pane -- looking like the command never
     // ran, when it was actually just rendered somewhere no one could see it.
     setTimeout(() => {
@@ -428,7 +426,7 @@ function toggleTerminal(all = false) {
   if (collapsed) {
     _showTermPeek(true);
     panel.classList.remove('collapsed');
-    panel.style.height = panel._openHeight || '25vh';
+    panel.style.height = panel._openHeight || '50vh';
     btn.classList.add('expanded');
     btn.dataset.tooltip = 'Hide';
     _persistTerminalOpen(true);
@@ -439,7 +437,7 @@ function toggleTerminal(all = false) {
       }
     });
   } else {
-    panel._openHeight = panel.style.height || '25vh';
+    panel._openHeight = panel.style.height || '50vh';
     _keepTermHeight();
     if (all) _showTermPeek(false);
     // No need to also set panel.style.height here: the .terminal-panel.collapsed(.install-mode)
@@ -480,23 +478,50 @@ function initTerminalAutoHide() {
   }, true);
 }
 
-// The panel's height for one of the sizes (the buttons', or 'custom', dragged to).
+// The panel's height for one of the sizes (the menu's, or 'custom', dragged to). A size is a
+// share of the editor area (the window less the bars around it), so 'full' covers exactly the
+// editor and the others are true quarters of it.
+const _TERMINAL_SHARES = { quarter: 0.25, half: 0.5, threequarter: 0.75, full: 1 };
+const _BARS = ['.header', '.tab-bar-row', '.force-type-bar', '.statusbar'];
+function _barsPx() {
+  return _BARS.reduce((sum, sel) => {
+    const el = document.querySelector(sel);
+    return sum + (el && !el.classList.contains('hidden') ? el.offsetHeight : 0);
+  }, 0);
+}
+function _editorAreaPx() { return window.innerHeight - _barsPx(); }
+// The sizes are written with var(--editor-taken), kept up to date as the bars change (they get
+// their height after the terminal's script has run, and a font or a wrapping row changes it),
+// so a height set once stays right and nothing has to be measured again.
+function _publishBarsTaken() {
+  document.documentElement.style.setProperty('--editor-taken', _barsPx() + 'px');
+}
+_publishBarsTaken();
+{
+  const bars = new ResizeObserver(_publishBarsTaken);
+  for (const sel of _BARS) { const el = document.querySelector(sel); if (el) bars.observe(el); }
+}
 function _terminalHeight(size) {
-  let h;
-  if (size === 'full') {
-    const taken = ['.header', '.tab-bar-row', '.force-type-bar', '.statusbar']
-      .reduce((sum, sel) => {
-        const el = document.querySelector(sel);
-        return sum + (el && !el.classList.contains('hidden') ? el.offsetHeight : 0);
-      }, 0);
-    h = `calc(100vh - ${taken}px)`;
-  } else if (size === 'custom') {
+  if (size === 'custom') {
     // The height it was dragged to (see eznix.resizable() below).
-    h = localStorage.getItem('eznix-terminal-height') || '25vh';
-  } else {
-    h = size === 'half' ? '50vh' : '25vh';
+    return localStorage.getItem('eznix-terminal-height') || '50vh';
   }
-  return h;
+  const share = _TERMINAL_SHARES[size] || _TERMINAL_SHARES.half;
+  return `calc((100vh - var(--editor-taken, 0px)) * ${share})`;
+}
+
+// The terminal opens at half the editor. One button lists the sizes (a dropup, as a grouped
+// button's menu is, see showButtonMenu()); a dragged height is any size in between.
+function showTerminalSizeMenu(event) {
+  const btn = event.currentTarget;
+  const items = Object.keys(_TERMINAL_SHARES).map(k => ({
+    label: `${_TERMINAL_SHARES[k] * 100}%`,
+    onclick: () => setTerminalSize(k),
+  }));
+  const anchor = {
+    preventDefault: () => event.preventDefault(), stopPropagation: () => event.stopPropagation(),
+  };
+  showContextMenu(anchor, items, { anchorRect: btn.getBoundingClientRect(), triggerEl: btn });
 }
 
 function setTerminalSize(size) {
@@ -1213,7 +1238,7 @@ function _showTermPeek(on) {
 // The height the terminal keeps while hidden: the one it had open.
 function _keepTermHeight() {
   const panel = document.getElementById('terminal-panel');
-  panel.style.setProperty('--term-body-h', panel._openHeight || '25vh');
+  panel.style.setProperty('--term-body-h', panel._openHeight || '50vh');
   _scheduleTermPeek();
 }
 if (TERMINAL_HIDDEN_LINES) {
@@ -1222,7 +1247,7 @@ if (TERMINAL_HIDDEN_LINES) {
   panel.classList.add('has-peek');
   panel.style.setProperty('--term-peek-lines', TERMINAL_HIDDEN_LINES);
   // Hidden from the start: the height it will open at.
-  panel._openHeight = _terminalHeight(localStorage.getItem('eznix-terminal-size') || 'quarter');
+  panel._openHeight = _terminalHeight(localStorage.getItem('eznix-terminal-size') || 'half');
   _keepTermHeight();
   let off = false;
   try { off = localStorage.getItem('eznix-terminal-peek') === 'off'; } catch (e) {}
@@ -1262,11 +1287,12 @@ if (TERMINAL_HIDDEN_LINES) {
   covered();
 }
 
-// The panel's top edge can be dragged to any height between the three the buttons give. That
-// height is then the size remembered ('custom'), until a button is pressed again.
+// The panel's top edge can be dragged to any height, catching on the shares the size menu
+// lists. That height is then the size remembered ('custom'), until a size is picked from it.
 {
   const panel = document.getElementById('terminal-panel');
   eznix.resizable(panel, { edge: 'top', key: 'eznix-terminal-height', min: 110,
+    snap: () => Object.values(_TERMINAL_SHARES).map(s => s * _editorAreaPx()),
     apply: height => { panel._openHeight = height; panel.style.height = height; } })
     .addEventListener('pointerup', () => _persistTerminalSize('custom'));
 }
@@ -1288,7 +1314,7 @@ eznix.on('ready', () => {
   }
   _termTabsReady = true;
   if (localStorage.getItem('eznix-terminal-open') === 'true') {
-    setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'quarter');
+    setTerminalSize(localStorage.getItem('eznix-terminal-size') || 'half');
   } else if (TERMINAL_HIDDEN_LINES) {
     // Connected while hidden, so the lines show what runs (a rebuild that restarted the
     // editor and reloaded this page) without the panel having been opened first. Its size is

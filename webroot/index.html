@@ -305,7 +305,7 @@ const eznix = {
   // For the terminal and the panels on the side, which had fixed sizes (a quarter, half or
   // all of the window; half its width) until the user asked for this on 2026-10-12, "so
   // people can decide how big they want them to be".
-  resizable(el, { edge, key, apply, min = 120 }) {
+  resizable(el, { edge, key, apply, min = 120, snap }) {
     const vertical = edge === 'top', unit = vertical ? 'vh' : 'vw';
     const whole = () => (vertical ? window.innerHeight : window.innerWidth);
     let kept = null;
@@ -323,7 +323,9 @@ const eznix = {
       el.classList.add('resizing');
       document.documentElement.classList.add('is-resizing-' + edge);
       const move = ev => {
-        const px = Math.max(min, Math.min(whole() - 80, size + from - (vertical ? ev.clientY : ev.clientX)));
+        let px = Math.max(min, Math.min(whole() - 80, size + from - (vertical ? ev.clientY : ev.clientX)));
+        // `snap` gives sizes in pixels the edge catches on when within 12px of one.
+        if (snap) { const near = snap().find(s => Math.abs(s - px) < 12); if (near) px = Math.min(near, whole() - 80); }
         value = (px / whole() * 100).toFixed(2) + unit;
         apply(value);
       };

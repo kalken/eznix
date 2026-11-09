@@ -17,7 +17,6 @@
   display: flex;
   flex-direction: column;
   height: 25vh;
-  transition: height .18s ease;
   /* (positioned, above: also the anchor for .terminal-header-group, pinned to its bottom edge) */
   /* How tall one row of buttons is (.terminal-header): 26px of button, 3px under it and 8px
      above it, the 1px line among those. (10px, what the top bar's buttons have to that bar's
@@ -52,6 +51,9 @@
 .terminal-panel.collapsed.has-peek .terminal-body {
   display: flex; position: absolute; left: 0; right: 0; top: 0;
   height: var(--term-body-h, 25vh);
+  /* In the terminal's colour, so that where the last row ends at the window's frame no seam of
+     the panel's own colour shows between them (a hairline, when the cursor is on the bottom row). */
+  background: var(--term-bg);
   transform: translateY(var(--term-peek-shift, 0px));
   pointer-events: none;
 }
@@ -74,7 +76,7 @@
 #terminal-cmd-btns.install-mode-disabled .term-run-btn { pointer-events: none; }
 
 /* position: absolute rather than a plain flex child — pinning it to the panel's bottom edge
-   directly means it stays there through the collapse/expand height transition and the moment
+   directly means it stays there through the collapse/expand and the moment
    .terminal-body gets display:none'd, instead of snapping up to fill the vacated space the way a
    normal flex child sharing the row with a flex:1 sibling would the instant that sibling
    disappears from the layout. */
