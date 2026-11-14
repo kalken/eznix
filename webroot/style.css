@@ -41,7 +41,14 @@ body {
   gap: 8px 14px;
   flex-shrink: 0;
 }
-.header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; margin-left: auto; }
+/* The groups are items of the header itself, so a group that does not fit goes to the next
+   line, at the left. The spacer pushes them to the right while they fit. Log out never moves:
+   it is pinned to the corner, and the header leaves room for it. */
+.header-actions, .header-groups { display: contents; }
+.header-spacer { flex: 1 1 0; min-width: 0; }
+.header { padding-right: 76px; }
+.header-logout { position: absolute; top: 10px; right: 18px; }
+.header .header-sep-end { position: absolute; top: 13px; right: 62px; height: 22px; align-self: auto; margin: 0; }
 /* A line between groups of buttons, shown by the rules after it. */
 .header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
 /* Between the two groups on the left, always. */
