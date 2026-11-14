@@ -1262,7 +1262,10 @@ if (TERMINAL_HIDDEN_LINES) {
   const bars = document.querySelector('#terminal-panel .terminal-header-group');
   const publish = () => {
     document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
-    document.getElementById('terminal-panel').style.setProperty('--term-bars', bars.offsetHeight + 'px');
+    // Only the rows of buttons, not the window onto the last lines (#term-peek), which has its own
+    // height (--term-peek) in the panel's rules.
+    const rows = [...bars.querySelectorAll('.terminal-header')].reduce((sum, el) => sum + el.offsetHeight, 0);
+    document.getElementById('terminal-panel').style.setProperty('--term-bars', rows + 'px');
   };
   new ResizeObserver(publish).observe(bars);
   publish();
