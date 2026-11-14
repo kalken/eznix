@@ -1260,7 +1260,10 @@ if (TERMINAL_HIDDEN_LINES) {
 // move when the terminal opens, which then comes up in front of them.
 {
   const bars = document.querySelector('#terminal-panel .terminal-header-group');
-  const publish = () => document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
+  const publish = () => {
+    document.documentElement.style.setProperty('--below-bar', bars.offsetHeight + 'px');
+    document.getElementById('terminal-panel').style.setProperty('--term-bars', bars.offsetHeight + 'px');
+  };
   new ResizeObserver(publish).observe(bars);
   publish();
   // And how much of the editor the open panel stands in front of (--covered-below): the
