@@ -37,14 +37,14 @@ Don't use subagents for work in this repo. Don't test in a real browser (headles
 **Local test server.** After any change the user can see (`webroot/`, `plugins/`, `bin/eznix.py`), restart it before reporting back, without being asked. Its data lives outside the checkout, in `../.eznix-test/` (`eznix.toml`, state, usually a flake; read `eznix.toml` instead of assuming what it points at). Never run `nix build path:.` inside it: that copies the test state, keys included, into the store. **The test server never points at a flake a real machine builds from**, only a copy or a throwaway flake: a save or import there changes what that machine builds next.
 
 ```sh
-pkill -f "eznix.py --config eznix.toml"; sleep 1
-(cd ../.eznix-test && PYTHONUNBUFFERED=1 nohup python3 ../eznix/bin/eznix.py --config eznix.toml --dev >| server.log 2>&1 &)
-sleep 2; curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/ping   # 401 = up
+../.eznix-test/testserver restart   # or start, stop, status
+curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/ping   # 401 = up
 ```
 
+- The script stops whatever listens on port 9690 (found with `lsof`, whatever its `--config`) and starts `eznix.toml` with `--dev`.
 - http://127.0.0.1:9690, password `eznix`. It starts its own terminal on port 9691, so a restart restarts the shell too.
 - With `--dev` the server rereads the page, themes and plugins when they change and an open tab reloads by itself; only `bin/eznix.py` needs a restart.
-- The `pkill` only matches a server started with exactly that `--config`. A server started with another file keeps the port and keeps serving the old page, the new one fails to start, and the 401 still comes back. If in doubt, see what holds the port (`lsof -nP -iTCP:9690 -sTCP:LISTEN`), restart that command line, and check that the served file has the change.
+- If the 401 comes back but the page looks old, see what holds the port (`lsof -nP -iTCP:9690 -sTCP:LISTEN`) and check that the served file has the change.
 - The Autocomplete button, run from a checkout, types `python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the terminal (`_autocomplete_command()`).
 
 **Checks.** Nothing tests the page's own scripts. At least syntax-check them after editing: without `node`, a Mac can parse and run a function lifted out of them with `osascript -l JavaScript file.js` (wrap a script in `new Function(source)` to check syntax only; don't name a function `run`). `python3 test/test_server.py` checks the server and the plugins' server halves against a throwaway flake: run it after touching `bin/eznix.py` or a plugin's `.py`. It does not cover anything in the page.

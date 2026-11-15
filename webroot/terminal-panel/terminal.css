@@ -108,10 +108,14 @@
 
 .terminal-cmd-btns {
   display: flex;
-  gap: 5px;
+  gap: 5px 9px;
   flex: 1;
   min-width: 0;
   flex-wrap: wrap;
+  /* The line a button's `separator` asks for hangs in the gap before the next button (below),
+     so on the first button of a row it is outside this box and clipped. */
+  overflow-x: clip;
+  overflow-clip-margin: 3px;
   align-items: center;
   justify-content: flex-start;
 }
@@ -124,7 +128,11 @@
 /* The panel's tabs (_renderTermTabs() in terminal.js) are the side panels' (.side-tabs in
    style.css), along the top of the terminal: nothing of their own here. */
 /* The line a button's `separator` puts in front of it (_renderButtonRow() in terminal.js). */
-.term-btn-sep { width: 1px; height: 18px; margin: 0 4px; background: var(--border2); flex-shrink: 0; }
+.term-btn-sep { display: none; }
+.term-btn-sep + * { position: relative; }
+.term-btn-sep + *::before {
+  content: ''; position: absolute; left: -5px; top: 4px; bottom: 4px; width: 1px; background: var(--border2);
+}
 /* On a save_first button, always: greyed until there is something to save (.will-save). See
    _markSaveFirst() in terminal.js. */
 .term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; pointer-events: none; }

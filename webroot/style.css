@@ -35,11 +35,22 @@ body {
   padding: 10px 18px;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+}
+.header-row {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
   /* Whole buttons (and groups of them) move to a new line when the window is narrow, so
      every one stays in view; never a button's own text. */
   flex-wrap: wrap;
-  gap: 8px 14px;
-  flex-shrink: 0;
+  gap: 8px 16px;
+  /* The line before a group (below) hangs in the gap to its left, so on the first group of a
+     line it is outside this box and clipped: no line starts a row. Sideways only, so the
+     tooltips below stay. */
+  overflow-x: clip;
+  overflow-clip-margin: 3px;
 }
 /* The groups are items of the header itself, so a group that does not fit goes to the next
    line, at the left. The spacer pushes them to the right while they fit. Log out never moves:
@@ -49,13 +60,16 @@ body {
 .header { padding-right: 76px; }
 .header-logout { position: absolute; top: 10px; right: 18px; }
 .header .header-sep-end { position: absolute; top: 13px; right: 62px; height: 22px; align-self: auto; margin: 0; }
-/* A line between groups of buttons, shown by the rules after it. */
-.header-sep { display: none; width: 1px; align-self: stretch; margin: 3px 4px; background: var(--border2); }
-/* Between the two groups on the left, always. */
-.header-sep-shown { display: block; }
-/* Between the plugins' two groups when both have a button shown, and before Log out when
-   either has. */
-.header-group:has(.btn:not(.hidden)) + .header-sep-mid:has(+ .header-group .btn:not(.hidden)),
+/* A line before a group, hanging in the gap to its left (see .header-row): between the two
+   groups on the left, and between the plugins' two when both have a button shown. */
+.btn-group + .btn-group,
+.header-group:has(.btn:not(.hidden)) ~ .header-group:has(.btn:not(.hidden)) { position: relative; }
+.btn-group + .btn-group::before,
+.header-group:has(.btn:not(.hidden)) ~ .header-group:has(.btn:not(.hidden))::before {
+  content: ''; position: absolute; left: -8.5px; top: 3px; bottom: 3px; width: 1px; background: var(--border2);
+}
+/* The line before Log out, when a plugin group has a button shown. */
+.header-sep-end { display: none; width: 1px; background: var(--border2); }
 .header-group:has(.btn:not(.hidden)) ~ .header-sep-end { display: block; }
 
 .btn {
