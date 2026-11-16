@@ -743,7 +743,7 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
 }
 
 // What tells that a save_first button saves: the Save button's icon, small, in front of its
-// name. It is always there, so the button keeps its size and look: greyed while there is
+// name (after it on a line of a menu). It is always there, so the button keeps its size and look: greyed while there is
 // nothing to save, and clear, with a tooltip saying so, while a click will save. Only a mark:
 // the name and the colours stay (see runButton() for the louder shapes that were tried).
 // The diskette since 2026-10-11, when Save's icon became one; it has to be changed with it.

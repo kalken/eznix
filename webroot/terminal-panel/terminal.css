@@ -141,9 +141,7 @@
    _markSaveFirst() in terminal.js. */
 .term-save-mark { opacity: .25; flex-shrink: 0; transition: opacity .15s; pointer-events: none; }
 .term-run-btn.will-save .term-save-mark, .context-menu-item.icon-on .term-save-mark { opacity: 1; }
-.context-menu-item .term-save-mark { margin-right: 6px; }
-/* A line without the mark in a menu where another has one: the mark's width (12px + 6px) in front. */
-.context-menu-item.icon-pad { padding-left: 28px; }
+.context-menu-item .term-save-mark { margin-left: 6px; }
 /* The size/hide icons (quarter/half/full/toggle) used to be a smaller .btn-sm variant, which
    visibly mismatched .term-run-btn (the command buttons sharing the same .terminal-header bar)
    in both height and padding/font-size. Switched to plain .btn instead of trying to keep a
