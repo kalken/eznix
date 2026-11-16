@@ -1084,6 +1084,7 @@ function _buildMenuLevel(items, depth) {
     _ctxMenuStack.slice(depth + 1).forEach(m => m.remove());
     _ctxMenuStack = _ctxMenuStack.slice(0, depth + 1);
   };
+  const anyIcon = items.some(i => i.icon);
   items.forEach(item => {
     if (item.separator) {
       const sep = document.createElement('div');
@@ -1103,6 +1104,12 @@ function _buildMenuLevel(items, depth) {
       text.textContent = item.label;
       btn.appendChild(text);
     } else btn.textContent = item.label;
+    // item.icon: markup of the page's own (never a value from a file) put before the label;
+    // item.iconOn marks it as lit (.icon-on), for a stylesheet to tell.
+    if (item.icon) {
+      btn.insertAdjacentHTML('afterbegin', item.icon);
+      btn.classList.toggle('icon-on', !!item.iconOn);
+    } else if (anyIcon) btn.classList.add('icon-pad'); // room for an icon, so the labels line up
     if (item.disabled) btn.disabled = true;
     // Skipped for a submenu-trigger item -- hovering it already opens its full contents
     // instantly (below), so a text tooltip repeating the same info would just be a redundant

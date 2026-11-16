@@ -773,6 +773,9 @@ function _buildButtonMenuItems(entries) {
         label: btn.label || '(no label)',
         title: _buttonSaid(btn),
         titleCode: btn.command,
+        // The same mark as on a button in the bar, greyed while there is nothing to save.
+        icon: btn.save_first ? _SAVE_MARK : undefined,
+        iconOn: isAnyDirty(),
         onclick: () => runButton(idx),
       });
       return;
