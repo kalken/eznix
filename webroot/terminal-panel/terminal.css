@@ -125,6 +125,8 @@
    .context-menu-item, so a button's own dropdown lines up with the button that opened it) can
    drift by a few pixels depending on the browser's font metrics. */
 .term-run-btn { white-space: nowrap; height: 26px; }
+/* A button that opens a menu, in the accent colour so it reads as different from one that runs. */
+.term-menu-btn { color: var(--accent); }
 /* The panel's tabs (_renderTermTabs() in terminal.js) are the side panels' (.side-tabs in
    style.css), along the top of the terminal: nothing of their own here. */
 /* The line a button's `separator` puts in front of it (_renderButtonRow() in terminal.js). */

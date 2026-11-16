@@ -714,7 +714,7 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
       divide(menus[topMenu]);
       const idxs = entries.filter(e => e.btn.menu && e.btn.menu.split('/')[0] === topMenu).map(e => e.idx);
       const b = document.createElement('button');
-      b.className = 'btn term-run-btn';
+      b.className = 'btn term-run-btn term-menu-btn';
       b.textContent = topMenu;
       // No content-listing tooltip here (unlike a plain button's command, below) -- opening the
       // dropdown already shows exactly what's inside, so a hover tooltip would just be a
