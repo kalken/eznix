@@ -1107,7 +1107,7 @@ function _buildMenuLevel(items, depth) {
     // Skipped for a submenu-trigger item -- hovering it already opens its full contents
     // instantly (below), so a text tooltip repeating the same info would just be a redundant
     // popup layered on top of (or beside) the submenu that already answers the same question.
-    if (item.title && !item.items) _wireHoverTooltip(btn, item.title);
+    if ((item.title || item.titleCode) && !item.items) _wireHoverTooltip(btn, item.title, item.titleCode);
     if (item.items) {
       btn._submenuItems = item.items;
       const openSubmenu = () => {
@@ -3576,15 +3576,23 @@ function _wireTooltipAnchor(anchor, opt, typeLabel) {
 let _hoverTooltipEl = null;
 let _hoverTooltipTimer = null;
 let _hoverTooltipOwner = null; // the element whose tooltip is currently pending/shown
-function _showHoverTooltip(text, x, y) {
-  if (!text) return;
+function _showHoverTooltip(text, x, y, code) {
+  if (!text && !code) return;
   if (!_hoverTooltipEl) {
     _hoverTooltipEl = document.createElement('div');
     _hoverTooltipEl.className = 'tooltip hover-tooltip';
     _hoverTooltipEl.style.position = 'fixed';
     document.body.appendChild(_hoverTooltipEl);
   }
-  _hoverTooltipEl.textContent = text;
+  // `code`, when given, is a part of its own (.tt-code, in a colour of its own) after the text:
+  // a button's command under what it says. Built as nodes, never markup.
+  _hoverTooltipEl.textContent = text || '';
+  if (code) {
+    const c = document.createElement('span');
+    c.className = 'tt-code';
+    c.textContent = (text ? '\n' : '') + code;
+    _hoverTooltipEl.appendChild(c);
+  }
   _hoverTooltipEl.classList.add('tt-visible');
   const ttRect = _hoverTooltipEl.getBoundingClientRect();
   // Anchored to the actual cursor position (where mouseenter fired), not the hovered element's
@@ -3609,8 +3617,9 @@ function _hideHoverTooltip() {
 // just (re-)wire listeners onto an element whose data-tooltip is already set in markup, or is
 // updated directly by other code later (e.g. toggleTerminal() swapping Show/Hide) — the listener
 // reads data-tooltip live at hover time either way, so later updates need no re-wiring.
-function _wireHoverTooltip(el, text) {
+function _wireHoverTooltip(el, text, code) {
   if (text !== undefined) el.dataset.tooltip = text;
+  if (code) el.dataset.tooltipCode = code;
   let lastX = 0, lastY = 0;
   // Re-armed on every mouseenter/mousemove, not just once on entry — the delay means "show 1.5s
   // after the pointer stops moving entirely", not "show 1.5s after it first arrived" (which let
@@ -3635,7 +3644,7 @@ function _wireHoverTooltip(el, text) {
     lastX = e.clientX; lastY = e.clientY;
     _hideHoverTooltip();
     _hoverTooltipOwner = el;
-    _hoverTooltipTimer = setTimeout(() => _showHoverTooltip(el.dataset.tooltip, lastX, lastY), 1000);
+    _hoverTooltipTimer = setTimeout(() => _showHoverTooltip(el.dataset.tooltip, lastX, lastY, el.dataset.tooltipCode), 1000);
   };
   el.addEventListener('mouseenter', rearm);
   el.addEventListener('mousemove', rearm);

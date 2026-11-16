@@ -580,10 +580,10 @@ function _unwrapButtonField(v) {
 }
 // What a button's tooltip says: its `description`, where it has one, on a line of its own
 // above the command (the user, 2026-10-13: "so i can write what the button does"). The same
-// for a button in the bar and for one in a menu.
-function _buttonTip(btn) {
-  const said = typeof btn.description === 'string' ? btn.description.trim() : '';
-  return said ? said + '\n' + btn.command : btn.command;
+// for a button in the bar and for one in a menu. The command is the tooltip's code part
+// (_wireHoverTooltip()'s third argument), coloured apart from the description.
+function _buttonSaid(btn) {
+  return typeof btn.description === 'string' ? btn.description.trim() : '';
 }
 function _normalizeButton(b) {
   return {
@@ -729,11 +729,11 @@ function _renderButtonRow(container, entries, buttons, disabledTitle) {
     const b = document.createElement('button');
     b.className = 'btn term-run-btn';
     b.textContent = btn.label || '(no label)';
-    _wireHoverTooltip(b, disabledTitle || _buttonTip(btn));
+    _wireHoverTooltip(b, disabledTitle || _buttonSaid(btn), disabledTitle ? '' : btn.command);
     if (btn.save_first) {
       b.dataset.saveFirst = '1';
-      b.dataset.command = disabledTitle || btn.command;
-      b.dataset.said = disabledTitle ? '' : _buttonTip(btn).slice(0, -btn.command.length);
+      b.dataset.command = disabledTitle ? '' : btn.command;
+      b.dataset.said = disabledTitle || _buttonSaid(btn);
       b.insertAdjacentHTML('afterbegin', _SAVE_MARK);
       _markSaveFirst(b, isAnyDirty());
     }
@@ -753,7 +753,9 @@ const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" h
 // press that began on an icon since replaced would not count as a click.
 function _markSaveFirst(b, dirty) {
   b.classList.toggle('will-save', dirty);
-  b.dataset.tooltip = (b.dataset.said || '') + (dirty ? 'Saves your changes first, then runs: ' + b.dataset.command : b.dataset.command);
+  const saves = dirty && b.dataset.command ? 'Saves your changes first, then runs:' : '';
+  b.dataset.tooltip = [b.dataset.said, saves].filter(Boolean).join('\n');
+  b.dataset.tooltipCode = b.dataset.command || '';
 }
 
 // Turns a flat list of {btn, idx, path} entries into a showContextMenu()-compatible items array,
@@ -769,7 +771,8 @@ function _buildButtonMenuItems(entries) {
       if (_separatorDue(lines, btn.separator, !items.length)) items.push({ separator: true });
       items.push({
         label: btn.label || '(no label)',
-        title: _buttonTip(btn),
+        title: _buttonSaid(btn),
+        titleCode: btn.command,
         onclick: () => runButton(idx),
       });
       return;

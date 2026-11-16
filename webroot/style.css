@@ -329,6 +329,8 @@ input[type=text].key-rename-input {
    ever shows because the user is actively hovering to read it, which should never be obscured
    by a passive notification. */
 .hover-tooltip { min-width: 0; padding: 5px 8px; z-index: 100000; }
+/* The command under a button's description (_showHoverTooltip()), in the accent colour. */
+.hover-tooltip .tt-code { color: var(--accent); }
 /* Tooltip visibility: .tt-anchor wraps just the rendered title text so the hover target is the
    text itself, not the whole reserved-width key column (which is wider than short titles). It's
    JS-driven (_wireTooltipAnchor toggles .tt-visible) rather than plain :hover because .tt-anchor
