@@ -579,7 +579,7 @@ function _unwrapButtonField(v) {
   return isDisabled(v) ? undefined : v;
 }
 // What a button's tooltip says: its `description`, where it has one, on a line of its own
-// above the command (the user, 2026-10-13: "so i can write what the button does"). The same
+// under the command (the user, 2026-10-13: "so i can write what the button does"). The same
 // for a button in the bar and for one in a menu. The command is the tooltip's code part
 // (_wireHoverTooltip()'s third argument), coloured apart from the description.
 function _buttonSaid(btn) {
@@ -753,7 +753,7 @@ const _SAVE_MARK = '<svg class="term-save-mark" viewBox="0 0 24 24" width="12" h
 // press that began on an icon since replaced would not count as a click.
 function _markSaveFirst(b, dirty) {
   b.classList.toggle('will-save', dirty);
-  const saves = dirty && b.dataset.command ? 'Saves your changes first, then runs:' : '';
+  const saves = dirty && b.dataset.command ? 'Saves your changes first.' : '';
   b.dataset.tooltip = [b.dataset.said, saves].filter(Boolean).join('\n');
   b.dataset.tooltipCode = b.dataset.command || '';
 }

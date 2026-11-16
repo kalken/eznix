@@ -3584,15 +3584,16 @@ function _showHoverTooltip(text, x, y, code) {
     _hoverTooltipEl.style.position = 'fixed';
     document.body.appendChild(_hoverTooltipEl);
   }
-  // `code`, when given, is a part of its own (.tt-code, in a colour of its own) after the text:
-  // a button's command under what it says. Built as nodes, never markup.
-  _hoverTooltipEl.textContent = text || '';
+  // `code`, when given, is a part of its own (.tt-code, in a colour of its own) before the text:
+  // a button's command above what it says. Built as nodes, never markup.
+  _hoverTooltipEl.textContent = '';
   if (code) {
     const c = document.createElement('span');
     c.className = 'tt-code';
-    c.textContent = (text ? '\n' : '') + code;
+    c.textContent = code;
     _hoverTooltipEl.appendChild(c);
   }
+  if (text) _hoverTooltipEl.append((code ? '\n' : '') + text);
   _hoverTooltipEl.classList.add('tt-visible');
   const ttRect = _hoverTooltipEl.getBoundingClientRect();
   // Anchored to the actual cursor position (where mouseenter fired), not the hovered element's
