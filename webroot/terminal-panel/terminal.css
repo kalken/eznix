@@ -131,7 +131,9 @@
 .term-btn-sep { display: none; }
 .term-btn-sep + * { position: relative; }
 .term-btn-sep + *::before {
-  content: ''; position: absolute; left: -5px; top: 4px; bottom: 4px; width: 1px; background: var(--border2);
+  /* -6px: an absolute box is placed from the padding edge, 1px inside the button's border, so
+     this puts the 1px line 4px from each button in the 9px gap. */
+  content: ''; position: absolute; left: -6px; top: 4px; bottom: 4px; width: 1px; background: var(--border2);
 }
 /* On a save_first button, always: greyed until there is something to save (.will-save). See
    _markSaveFirst() in terminal.js. */
