@@ -208,8 +208,8 @@ PLUGINS          = {}            # name -> {dir, scripts, styles, config}; see _
 # The terminal's part of the page, in WEBROOT/terminal-panel/: loaded like a plugin's files
 # (after the page's own script, talking to it through the same events), but only when a
 # terminal is set up, and not a plugin -- everything else about the terminal is in this file.
-TERMINAL_PANEL   = {'styles': ['xterm.css', 'terminal.css'],
-                    'scripts': ['xterm.js', 'xterm-addon-fit.js', 'xterm-addon-webgl.js', 'terminal.js']}
+TERMINAL_PANEL   = {'styles': ['xterm-6.0.0.css', 'terminal.css'],
+                    'scripts': ['xterm-6.0.0.js', 'xterm-addon-fit-0.11.0.js', 'xterm-addon-webgl-0.19.0.js', 'terminal.js']}
 
 # This machine's short name: in the page title and the installed app's name, so several eznix
 # windows -- one per machine you look after -- can be told apart.
