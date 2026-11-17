@@ -26,7 +26,7 @@ rec {
     inherit version;
     src = pkgs.lib.fileset.toSource {
       root    = ../.;
-      fileset = pkgs.lib.fileset.unions [ ../bin/eznix.py ../webroot ../plugins ../templates ];
+      fileset = pkgs.lib.fileset.unions [ ../bin/eznix.py ../bin/eznix-autocomplete.py ../webroot ../plugins ../templates ];
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     # pkgs.eznix.autocomplete, pkgs.eznix.terminal: the parts, for installing one by itself.
@@ -39,6 +39,8 @@ rec {
     installPhase = ''
       mkdir -p $out/share/eznix
       cp bin/eznix.py $out/share/eznix/
+      # Run by hand (nix run), the Autocomplete button calls it from here (_autocomplete_command()).
+      cp bin/eznix-autocomplete.py $out/share/eznix/
       cp -r webroot $out/share/eznix/webroot
       cp -r plugins $out/share/eznix/plugins
       # What the system plugin offers as a new system.

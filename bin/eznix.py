@@ -1372,14 +1372,21 @@ def _plugin_file(folder, rel):
 def _autocomplete_command():
     """What the header's Autocomplete button types into the terminal (terminal.js). Installed
     by a module, that is the `eznix-autocomplete` on PATH, which the module has already told the
-    flake and where the suggestions go (autocompleteCommand in nix/options.nix). Run from a
-    checkout there is no such command, and the generator lies beside this file: it is called
-    there, with the two things spelled out. (`nix run` has neither: the package holds only the
-    editor, so the button's command is not found there, as the one in the templates was not.)"""
-    script = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'eznix-autocomplete.py')
+    flake and where the suggestions go (autocompleteCommand in nix/options.nix). A module starts
+    eznix with its settings file from the Nix store, which is how that case is told from the
+    others. Run from a checkout or by hand with `nix run`, there is no such command, and the
+    generator lies beside this file: it is called there, with the things spelled out. (A
+    checkout keeps the plugins beside bin/, where the generator looks for them itself; the
+    package keeps them next to this file, so it is told.)"""
+    if CONFIG_FILE and CONFIG_FILE.startswith('/nix/store/'):
+        return 'eznix-autocomplete'
+    here = os.path.dirname(os.path.abspath(__file__))
+    script = os.path.join(here, 'eznix-autocomplete.py')
     if not os.path.isfile(script):
         return 'eznix-autocomplete'
     argv = [sys.executable, script, '--flake', FLAKE_DIR, '--output', AUTOCOMPLETE_DIR]
+    if os.path.isdir(os.path.join(here, 'plugins')):
+        argv += ['--plugins-dir', os.path.join(here, 'plugins')]
     if CONFIG_FILE:
         argv += ['--config', CONFIG_FILE]     # the plugins that add to the suggestions, as set here
     return ' '.join(shlex.quote(a) for a in argv)

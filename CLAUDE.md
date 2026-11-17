@@ -45,7 +45,7 @@ curl -s -o /dev/null -w "%{http_code}\n" http://127.0.0.1:9690/api/v1/ping   # 4
 - http://127.0.0.1:9690, password `eznix`. It starts its own terminal on port 9691, so a restart restarts the shell too.
 - With `--dev` the server rereads the page, themes and plugins when they change and an open tab reloads by itself; only `bin/eznix.py` needs a restart.
 - If the 401 comes back but the page looks old, see what holds the port (`lsof -nP -iTCP:9690 -sTCP:LISTEN`) and check that the served file has the change.
-- The Autocomplete button, run from a checkout, types `python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the terminal (`_autocomplete_command()`).
+- The Autocomplete button, run from a checkout or by `nix run` (the package keeps the generator next to `eznix.py`, and the command names its `plugins`), types `python3 .../bin/eznix-autocomplete.py --flake FLAKE --output STATE/autocomplete` into the terminal (`_autocomplete_command()`).
 
 **Checks.** Nothing tests the page's own scripts. At least syntax-check them after editing: without `node`, a Mac can parse and run a function lifted out of them with `osascript -l JavaScript file.js` (wrap a script in `new Function(source)` to check syntax only; don't name a function `run`). `python3 test/test_server.py` checks the server and the plugins' server halves against a throwaway flake: run it after touching `bin/eznix.py` or a plugin's `.py`. It does not cover anything in the page.
 
