@@ -6060,7 +6060,7 @@ function _cfgPathFor(name) {
 // that was a bar seven lines tall, which the user did not like. A folder with no files yet
 // still gets its tab, since `folders` is tracked independently of `files`. Tab labels drop the
 // folder prefix and the ".json" suffix (both are redundant: the folder is highlighted in the
-// row above, and every tab is a .json file). Click switches to a file, double-click renames it
+// row above, and every tab is a .json file). Click switches to a file, Rename… on its menu renames it
 // in place, dragging it onto a folder's tab (or onto the first row, for the root) moves it
 // there, and right-click offers Delete.
 //
@@ -6338,7 +6338,7 @@ async function _fileMenuItems(name) {
   // If the file is only disabled because it sits in a disabled folder, toggling its own
   // state here would have no visible effect until the folder itself is re-enabled — so the
   // item is only offered when this file's own disabled-ness is what's being toggled.
-  const item = [];
+  const item = [{ label: 'Rename…', onclick: () => _startTabRename(name) }];
   if (!disabled || ownDisabled) {
     item.push({
       label: ownDisabled ? 'Enable file' : 'Disable file',
@@ -6383,7 +6383,7 @@ function _makeTab(name) {
   tab.dataset.file = name;
   _wireHoverTooltip(tab, onDisk === 'deleted' ? 'Deleted on disk while it had unsaved changes here: Save writes it back, Delete file drops it'
     : onDisk ? 'Changed on disk while it had unsaved changes here: Save writes yours over it, Reload takes what is on disk'
-    : 'Double-click to rename, drag between folders, right-click for options');
+    : 'Drag between folders, right-click for options (Rename…)');
   const label = document.createElement('span');
   label.textContent = _tabLabel(name);
   tab.appendChild(label);
@@ -6463,7 +6463,6 @@ function _makeTab(name) {
   });
 
   tab.addEventListener('click', () => { if (!suppressClick) switchFile(name); });
-  tab.addEventListener('dblclick', e => { e.preventDefault(); _startTabRename(name); });
   tab.oncontextmenu = async e => {
     // Prevented synchronously, up front -- showContextMenu()'s own preventDefault() runs after
     // the async backup fetch below, too late to stop the native menu from flashing up first
