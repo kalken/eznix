@@ -99,7 +99,8 @@ nix run --no-write-lock-file github:kalken/eznix -- --flake /path/to/your/flake 
 
 Open http://localhost:9090 and log in as yourself with that password.
 
-**Install it** in a flake you have. In `flake.nix`:
+**Install it** in a flake you have, in two steps. First add it to your flake, as an input and
+in the modules of your system:
 
 ```nix
 inputs.eznix.url = "github:kalken/eznix";
@@ -112,26 +113,12 @@ modules = [
 ];
 ```
 
-In `configuration.nix`, one of these two.
-
-Used from other computers:
-
-```nix
-services.eznix = {
-  enable       = true;
-  users        = [ "alice" ];       # put your user name here (NixOS: who may log in,
-                                    # with their system password)
-  interfaces   = [ "lo" "enp1s0" ]; # this machine itself and that network; HTTPS is then on by itself
-  openFirewall = true;              # NixOS
-};
-```
-
-Used on the machine itself:
+Then turn it on like any other service, in a few lines, in `configuration.nix`:
 
 ```nix
 services.eznix = {
   enable = true;
-  users  = [ "alice" ];             # put your user name here (NixOS: who may log in,
+  users  = [ "alice" ];             # your user name (NixOS: who may log in,
                                     # with their system password)
   # Optional: HTTPS on localhost too, and its browsers trusting the certificate.
   # enableHttps = true;
@@ -139,10 +126,23 @@ services.eznix = {
 };
 ```
 
-With home-manager, `passwordFile = "/home/alice/.config/eznix-password";` in place of `users`
-(see [Other Linux](#other-linux-home-manager)).
+With home-manager, `passwordFile = "/home/alice/.config/eznix-password";` goes in place of
+`users` (see [Other Linux](#other-linux-home-manager)).
 
-Rebuild, and open eznix on port 9090: `https://192.168.1.2:9090`, or http://localhost:9090.
+Rebuild, and open http://localhost:9090.
+
+To use it from other computers, say which network it listens on; HTTPS is then on by itself:
+
+```nix
+services.eznix = {
+  enable       = true;
+  users        = [ "alice" ];
+  interfaces   = [ "lo" "enp1s0" ]; # this machine itself and that network
+  openFirewall = true;              # NixOS
+};
+```
+
+Then open `https://192.168.1.2:9090`, with the address of that machine.
 
 **No flake yet?** The [Quick Start](#-quick-start) writes one for you.
 
