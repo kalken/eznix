@@ -4,6 +4,8 @@ Change the settings of a Nix system in your browser, instead of editing files by
 works on NixOS, on a Mac (nix-darwin) and on other Linux (home-manager). No build step, no
 framework: just Python and a browser.
 
+**Blog post:** [eznix, a UI for NixOS, nix-darwin and home-manager](https://kalken.github.io/ezblog/#eznix)
+
 ## ✨ Features
 
 - Edit a NixOS, nix-darwin or home-manager configuration in a web page, with suggestions for options and packages taken from your own flake
