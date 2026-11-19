@@ -1,39 +1,57 @@
 # The three programs. `version` ends up in the page's status bar.
-{ pkgs, version ? "dev" }:
+{
+  pkgs,
+  version ? "dev",
+}:
 rec {
   # nixpkgs builds python-pam against its own libpam, which on macOS is a bare OpenPAM in the Nix
   # store: the library path it's patched to doesn't exist there (so every login just failed), and
   # even a working one would know nothing of the system's own /etc/pam.d. Point it at the system
   # library instead. pam_misc is Linux-PAM only; python-pam copes with it being absent.
-  python-pam = ps:
-    if !pkgs.stdenv.hostPlatform.isDarwin then ps.python-pam
-    else ps.python-pam.overridePythonAttrs (_: {
-      postPatch = ''
-        substituteInPlace src/pam/__internals.py \
-          --replace-fail 'find_library("pam")' '"/usr/lib/libpam.dylib"' \
-          --replace-fail 'find_library("pam_misc")' 'None'
-      '';
-      buildInputs = [ ];
-      doCheck     = false;
-    });
+  python-pam =
+    ps:
+    if !pkgs.stdenv.hostPlatform.isDarwin then
+      ps.python-pam
+    else
+      ps.python-pam.overridePythonAttrs (_: {
+        postPatch = ''
+          substituteInPlace src/pam/__internals.py \
+            --replace-fail 'find_library("pam")' '"/usr/lib/libpam.dylib"' \
+            --replace-fail 'find_library("pam_misc")' 'None'
+        '';
+        buildInputs = [ ];
+        doCheck = false;
+      });
 
   # python-pam: system-password login. cryptography: --generate-ca.
-  python = pkgs.python3.withPackages (ps: [ (python-pam ps) ps.cryptography ]);
+  python = pkgs.python3.withPackages (ps: [
+    (python-pam ps)
+    ps.cryptography
+  ]);
 
   # The editor: the server and the page (plugins included).
   eznix = pkgs.stdenv.mkDerivation {
     pname = "eznix";
     inherit version;
     src = pkgs.lib.fileset.toSource {
-      root    = ../.;
-      fileset = pkgs.lib.fileset.unions [ ../bin/eznix.py ../bin/eznix-autocomplete.py ../webroot ../plugins ../templates ];
+      root = ../.;
+      fileset = pkgs.lib.fileset.unions [
+        ../bin/eznix.py
+        ../bin/eznix-autocomplete.py
+        ../webroot
+        ../plugins
+        ../templates
+      ];
     };
     nativeBuildInputs = [ pkgs.makeWrapper ];
     # pkgs.eznix.autocomplete, pkgs.eznix.terminal: the parts, for installing one by itself.
-    passthru = { autocomplete = eznix-autocomplete; terminal = eznix-terminal; };
+    passthru = {
+      autocomplete = eznix-autocomplete;
+      terminal = eznix-terminal;
+    };
     meta = {
       description = "Web-based Nix configuration editor for NixOS, nix-darwin and home-manager";
-      license     = pkgs.lib.licenses.mit;
+      license = pkgs.lib.licenses.mit;
       mainProgram = "eznix";
     };
     installPhase = ''
@@ -62,11 +80,11 @@ rec {
   # changed and in need of a restart on every update -- while the page, which compares the
   # file itself, rightly says nothing.
   eznix-terminal = pkgs.stdenv.mkDerivation {
-    name       = "eznix-terminal";
-    src        = ../bin/eznix-terminal.py;
+    name = "eznix-terminal";
+    src = ../bin/eznix-terminal.py;
     dontUnpack = true;
     nativeBuildInputs = [ pkgs.makeWrapper ];
-    meta.mainProgram  = "eznix-terminal";
+    meta.mainProgram = "eznix-terminal";
     installPhase = ''
       install -Dm644 $src $out/share/eznix-terminal/eznix-terminal.py
       makeWrapper ${pkgs.python3}/bin/python3 $out/bin/eznix-terminal \
@@ -78,10 +96,13 @@ rec {
   #   eznix-autocomplete --flake DIR --output DIR
   # (The modules put a command of the same name on PATH that already knows both.)
   eznix-autocomplete = pkgs.writeShellApplication {
-    name          = "eznix-autocomplete";
-    runtimeInputs = [ pkgs.nix pkgs.python3 ];
+    name = "eznix-autocomplete";
+    runtimeInputs = [
+      pkgs.nix
+      pkgs.python3
+    ];
     # The shipped plugins are given as the folder the generator looks in: what only some systems
     # have (kernels, Homebrew, home-manager) is a plugin of its own.
-    text          = ''exec python3 "${../bin/eznix-autocomplete.py}" --plugins-dir "${../plugins}" "$@"'';
+    text = ''exec python3 "${../bin/eznix-autocomplete.py}" --plugins-dir "${../plugins}" "$@"'';
   };
 }

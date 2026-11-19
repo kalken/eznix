@@ -20,8 +20,8 @@
         # hardware-configuration.nix), your account. Settings can move from there into eznix
         # one at a time; the same one set differently in both places is an error.
         ./configuration.nix
-        eznix.nixosModules.default       # the editor
-        (eznix.lib.jsonDir ./eznix)      # the configuration: the *.json files it edits
+        eznix.nixosModules.default # the editor
+        (eznix.lib.jsonDir ./eznix) # the configuration: the *.json files it edits
       ];
     };
   };

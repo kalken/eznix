@@ -10,55 +10,100 @@
 #
 # Evaluated, never run: no part of this has been started on a real NixOS machine yet.
 self:
-{ config, lib, pkgs, options, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  options,
+  ...
+}:
 let
-  cfg      = config.services.eznix;
-  packages = import ./packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
+  cfg = config.services.eznix;
+  packages = import ./packages.nix {
+    inherit pkgs;
+    version = self.shortRev or "dev";
+  };
   stateDir = "/var/lib/eznix";
 
   termUnit = user: "eznix-terminal-${user}";
-  termDir  = user: "/run/eznix-terminal/${user}";
-  terminals = lib.listToAttrs (lib.imap0 (i: user: {
-    name  = user;
-    value = { port = cfg.terminalPort + i; key_file = "${termDir user}/key"; };
-  }) cfg.users);
+  termDir = user: "/run/eznix-terminal/${user}";
+  terminals = lib.listToAttrs (
+    lib.imap0 (i: user: {
+      name = user;
+      value = {
+        port = cfg.terminalPort + i;
+        key_file = "${termDir user}/key";
+      };
+    }) cfg.users
+  );
 
-  sudo      = "/run/wrappers/bin/sudo";
+  sudo = "/run/wrappers/bin/sudo";
   systemctl = "/run/current-system/sw/bin/systemctl";
 
   # Checks a password for the service: user and password on stdin, one per line; exit 0 when
   # right. A compiled program (eznix-auth.c), since nixpkgs takes nothing else behind a setuid
   # wrapper; the allowed users are compiled into it, and it answers for no one else.
-  authHelper = pkgs.runCommandCC "eznix-auth" {
-    buildInputs = [ pkgs.pam ];
-    allowed = pkgs.writeText "eznix-auth-allowed.h" ''
-      static const char *ALLOWED[] = { ${lib.concatMapStrings (u: "${builtins.toJSON u}, ") cfg.users}0 };
-    '';
-  } ''
-    $CC -O2 -Wall -Werror -include $allowed -o $out ${./eznix-auth.c} -lpam
-  '';
+  authHelper =
+    pkgs.runCommandCC "eznix-auth"
+      {
+        buildInputs = [ pkgs.pam ];
+        allowed = pkgs.writeText "eznix-auth-allowed.h" ''
+          static const char *ALLOWED[] = { ${lib.concatMapStrings (u: "${builtins.toJSON u}, ") cfg.users}0 };
+        '';
+      }
+      ''
+        $CC -O2 -Wall -Werror -include $allowed -o $out ${./eznix-auth.c} -lpam
+      '';
 
   common = import ./options.nix {
-    inherit lib pkgs cfg packages stateDir terminals;
+    inherit
+      lib
+      pkgs
+      cfg
+      packages
+      stateDir
+      terminals
+      ;
     prog = config.programs.eznix;
-    hostNames = let name = config.networking.hostName; in
-      lib.optionals (name != "") [ name config.networking.fqdnOrHostName "${name}.local" ];
+    hostNames =
+      let
+        name = config.networking.hostName;
+      in
+      lib.optionals (name != "") [
+        name
+        config.networking.fqdnOrHostName
+        "${name}.local"
+      ];
     # The theme follows the desktop this machine has, where that is one: Plasma's or GNOME's
     # alone. Both, or neither, and it is the blue one: which of two somebody logs in to is
     # not known here (the user's rule, 2026-10-13: "go back to blue if nothing fits"). `or
     # false`, since a nixpkgs from before the options had these names has neither.
     defaults = {
       flake = "/etc/nixos";
-      theme = let
-        plasma = config.services.desktopManager.plasma6.enable or false;
-        gnome  = config.services.desktopManager.gnome.enable or false;
-      in if plasma && !gnome then "breeze" else if gnome && !plasma then "gnome" else "nixos";
+      theme =
+        let
+          plasma = config.services.desktopManager.plasma6.enable or false;
+          gnome = config.services.desktopManager.gnome.enable or false;
+        in
+        if plasma && !gnome then
+          "breeze"
+        else if gnome && !plasma then
+          "gnome"
+        else
+          "nixos";
       themeText = ''"breeze" with Plasma as the only desktop, "gnome" with GNOME as the only one, otherwise "nixos"'';
     };
     extra = {
       auth_helper = "/run/wrappers/bin/eznix-auth";
-    } // lib.optionalAttrs cfg.terminal {
-      terminal_restart = [ sudo "-n" systemctl "restart" "eznix-terminal-{user}.service" ];
+    }
+    // lib.optionalAttrs cfg.terminal {
+      terminal_restart = [
+        sudo
+        "-n"
+        systemctl
+        "restart"
+        "eznix-terminal-{user}.service"
+      ];
     };
   };
 in
@@ -66,25 +111,33 @@ in
   # generateCert was the name of enableHttps until 2026-10; a configuration that still sets it
   # keeps working, with a note to rename it.
   imports = [
-    (lib.mkRenamedOptionModule [ "services" "eznix" "generateCert" ] [ "services" "eznix" "enableHttps" ])
+    (lib.mkRenamedOptionModule
+      [ "services" "eznix" "generateCert" ]
+      [ "services" "eznix" "enableHttps" ]
+    )
     # sections = "collapsed" | "expanded" became collapseLevel, a number, on 2026-10-12.
     (lib.mkChangedOptionModule [ "services" "eznix" "sections" ] [ "services" "eznix" "collapseLevel" ]
-      (config: if config.services.eznix.sections == "expanded" then null else 3))
+      (config: if config.services.eznix.sections == "expanded" then null else 3)
+    )
     # The menu entry opened a Chromium-family browser in app mode until 2026-10-15; it opens
     # the default browser now.
     (lib.mkRemovedOptionModule [ "programs" "eznix" "browser" ] "The entry opens the default browser.")
-    (lib.mkRemovedOptionModule [ "programs" "eznix" "windowClass" ] "The entry opens the default browser, in a tab of its own.")
+    (lib.mkRemovedOptionModule [
+      "programs"
+      "eznix"
+      "windowClass"
+    ] "The entry opens the default browser, in a tab of its own.")
   ];
 
   options.services.eznix = common.options // {
     openFirewall = lib.mkOption {
-      type        = lib.types.bool;
-      default     = false;
+      type = lib.types.bool;
+      default = false;
       description = "Open the editor's port in the firewall, on the interfaces eznix is reached through. It has to be told where, by `interfaces` (the ones to open it on, or an empty list for every one) or by `listenAddresses` (then on every interface, eznix answering on those addresses alone); with neither set the build stops. The terminals' ports are never opened.";
     };
     flakeWritable = lib.mkOption {
-      type        = lib.types.bool;
-      default     = true;
+      type = lib.types.bool;
+      default = true;
       description = "Let the editor, and the people in `users`, write the whole flake and not only configDir: its files and folders are given to the `eznix` group (their owner is left as it is, and dot-folders such as .git are not touched). This is what lets the system plugin import or restore a whole flake. Off, the editor can change nothing outside configDir.";
     };
   };
@@ -92,191 +145,224 @@ in
   options.programs.eznix = common.programOptions;
 
   config = lib.mkMerge [
-   # By itself, so that a machine can have the entry for another machine's editor without
-   # running one.
-   (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
-   (lib.mkIf cfg.enable {
-    assertions = common.assertions ++ [
-      {
-        # Opening the firewall is said together with where, so that whoever opens a port
-        # has read what these two settings do: interfaces written (the ones to open it on,
-        # or [ ] for every one) or listenAddresses. With only addresses it is one rule for
-        # every interface, which is what naming an address and no interface asks for, eznix
-        # itself answering on that address alone. Left to the defaults it opened nothing,
-        # the machine itself having no firewall, and said nothing. Settled with the user on
-        # 2026-10-13; "all" as a name in the list for every interface was built that day
-        # and dropped again, a word in a list of names looking strange.
-        assertion = !cfg.openFirewall
-          || ((options.services.eznix.interfaces.highestPrio < 1500 || cfg.listenAddresses != [ ])
-              && (cfg.interfaces == [ ] || lib.any (i: i != "lo") cfg.interfaces));
-        message   = "services.eznix.openFirewall needs to be told where: set services.eznix.interfaces (the interfaces to open the port on, or [ ] for every one) or services.eznix.listenAddresses.";
-      }
-      {
-        assertion = cfg.users != [ ];
-        message   = "services.eznix.users needs at least one name: they are who can log in, and whose terminals it runs.";
-      }
-      {
-        assertion = !lib.hasPrefix "~" cfg.flake && !lib.hasPrefix "~" cfg.configDir;
-        message   = "services.eznix on NixOS serves several people from its own account, so `~` in flake or configDir is nobody's home in particular: give the whole path.";
-      }
-      {
-        assertion = cfg.password == null && cfg.passwordFile == null;
-        message   = "services.eznix on NixOS logs people in with their system passwords; password and passwordFile are for the home-manager and nix-darwin modules.";
-      }
-    ];
+    # By itself, so that a machine can have the entry for another machine's editor without
+    # running one.
+    (lib.mkIf (common.apps != [ ]) { environment.systemPackages = common.apps; })
+    (lib.mkIf cfg.enable {
+      assertions = common.assertions ++ [
+        {
+          # Opening the firewall is said together with where, so that whoever opens a port
+          # has read what these two settings do: interfaces written (the ones to open it on,
+          # or [ ] for every one) or listenAddresses. With only addresses it is one rule for
+          # every interface, which is what naming an address and no interface asks for, eznix
+          # itself answering on that address alone. Left to the defaults it opened nothing,
+          # the machine itself having no firewall, and said nothing. Settled with the user on
+          # 2026-10-13; "all" as a name in the list for every interface was built that day
+          # and dropped again, a word in a list of names looking strange.
+          assertion =
+            !cfg.openFirewall
+            || (
+              (options.services.eznix.interfaces.highestPrio < 1500 || cfg.listenAddresses != [ ])
+              && (cfg.interfaces == [ ] || lib.any (i: i != "lo") cfg.interfaces)
+            );
+          message = "services.eznix.openFirewall needs to be told where: set services.eznix.interfaces (the interfaces to open the port on, or [ ] for every one) or services.eznix.listenAddresses.";
+        }
+        {
+          assertion = cfg.users != [ ];
+          message = "services.eznix.users needs at least one name: they are who can log in, and whose terminals it runs.";
+        }
+        {
+          assertion = !lib.hasPrefix "~" cfg.flake && !lib.hasPrefix "~" cfg.configDir;
+          message = "services.eznix on NixOS serves several people from its own account, so `~` in flake or configDir is nobody's home in particular: give the whole path.";
+        }
+        {
+          assertion = cfg.password == null && cfg.passwordFile == null;
+          message = "services.eznix on NixOS logs people in with their system passwords; password and passwordFile are for the home-manager and nix-darwin modules.";
+        }
+      ];
 
-    environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
-    # On the interfaces eznix is reached through, alone (lo has no firewall); on every one
-    # where none is named.
-    networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interfaces == [ ]) [ cfg.port ];
-    networking.firewall.interfaces = lib.mkIf cfg.openFirewall
-      (lib.genAttrs (lib.filter (i: i != "lo") cfg.interfaces) (_: { allowedTCPPorts = [ cfg.port ]; }));
+      environment.systemPackages = [ (common.autocompleteCommand "${stateDir}/autocomplete") ];
+      # On the interfaces eznix is reached through, alone (lo has no firewall); on every one
+      # where none is named.
+      networking.firewall.allowedTCPPorts = lib.mkIf (cfg.openFirewall && cfg.interfaces == [ ]) [
+        cfg.port
+      ];
+      networking.firewall.interfaces = lib.mkIf cfg.openFirewall (
+        lib.genAttrs (lib.filter (i: i != "lo") cfg.interfaces) (_: {
+          allowedTCPPorts = [ cfg.port ];
+        })
+      );
 
-    users.users.eznix = {
-      isSystemUser = true;
-      group        = "eznix";
-      home         = stateDir;
-    };
-    # The people who log in share the *.json files with the service (their own terminal and
-    # git edit the same files), and write the suggestions it reads.
-    users.groups.eznix.members = cfg.users;
+      users.users.eznix = {
+        isSystemUser = true;
+        group = "eznix";
+        home = stateDir;
+      };
+      # The people who log in share the *.json files with the service (their own terminal and
+      # git edit the same files), and write the suggestions it reads.
+      users.groups.eznix.members = cfg.users;
 
-    security.wrappers.eznix-auth = {
-      source      = authHelper;
-      owner       = "root";
-      group       = "eznix";
-      setuid      = true;
-      permissions = "u+rx,g+x";
-    };
-    security.sudo.extraRules = lib.mkIf cfg.terminal [ {
-      users    = [ "eznix" ];
-      commands = map (user: {
-        command = "${systemctl} restart ${termUnit user}.service";
-        options = [ "NOPASSWD" ];
-      }) cfg.users;
-    } ];
+      security.wrappers.eznix-auth = {
+        source = authHelper;
+        owner = "root";
+        group = "eznix";
+        setuid = true;
+        permissions = "u+rx,g+x";
+      };
+      security.sudo.extraRules = lib.mkIf cfg.terminal [
+        {
+          users = [ "eznix" ];
+          commands = map (user: {
+            command = "${systemctl} restart ${termUnit user}.service";
+            options = [ "NOPASSWD" ];
+          }) cfg.users;
+        }
+      ];
 
-    # The one place eznix takes ownership of: its own folder of *.json files, group-shared
-    # (setgid, and a default ACL so a file is writable by the group whoever made it).
-    #
-    # The rest of the flake, with flakeWritable: the same sharing through the group, but the
-    # owner of each file stays who it was. That is on purpose -- git, and Nix reading a git
-    # flake, refuse a repository that belongs to somebody else, and /etc/nixos is usually
-    # root's. Dot-folders are skipped (.git, .direnv): the editor never writes into one, and
-    # they are what those ownership checks look at. Symlinks (`result`) are not followed: find
-    # lists none, and chgrp -h and setfacl -P leave one that appears after it alone (chmod has no
-    # such switch). People in the group can write here while this runs as root, so a path that is
-    # swapped between the listing and the change is not ruled out; it gives them no more than the
-    # group already has (a .nix file they write is built as root at the next rebuild).
-    # It is no wider a door than configDir already was: a *.json file there can hold any Nix
-    # expression, and what it says is built as root at the next rebuild either way.
-    system.activationScripts.eznix = {
-      deps = [ "users" "groups" ];
-      text = common.configDirScript + ''
-        chown -R eznix:eznix ${lib.escapeShellArg cfg.configDir}
-        chmod -R g+rwX ${lib.escapeShellArg cfg.configDir}
-        chmod g+s ${lib.escapeShellArg cfg.configDir}
-        ${pkgs.acl}/bin/setfacl -R -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.configDir} 2>/dev/null || true
-      '' + lib.optionalString cfg.flakeWritable ''
-        if [ -d ${lib.escapeShellArg cfg.flake} ]; then
-          shared() { ${pkgs.findutils}/bin/find ${lib.escapeShellArg cfg.flake} -mindepth 1 -name '.*' -prune -o -type "$1" -print0; }
-          chgrp eznix ${lib.escapeShellArg cfg.flake}
-          chmod g+rwxs ${lib.escapeShellArg cfg.flake}
-          ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.flake} 2>/dev/null || true
-          shared d | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
-          shared d | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rwxs
-          shared d | ${pkgs.findutils}/bin/xargs -0 -r ${pkgs.acl}/bin/setfacl -P -m g:eznix:rwX -d -m g:eznix:rwX 2>/dev/null || true
-          shared f | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
-          shared f | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rw
-        fi
-      '';
-    };
+      # The one place eznix takes ownership of: its own folder of *.json files, group-shared
+      # (setgid, and a default ACL so a file is writable by the group whoever made it).
+      #
+      # The rest of the flake, with flakeWritable: the same sharing through the group, but the
+      # owner of each file stays who it was. That is on purpose -- git, and Nix reading a git
+      # flake, refuse a repository that belongs to somebody else, and /etc/nixos is usually
+      # root's. Dot-folders are skipped (.git, .direnv): the editor never writes into one, and
+      # they are what those ownership checks look at. Symlinks (`result`) are not followed: find
+      # lists none, and chgrp -h and setfacl -P leave one that appears after it alone (chmod has no
+      # such switch). People in the group can write here while this runs as root, so a path that is
+      # swapped between the listing and the change is not ruled out; it gives them no more than the
+      # group already has (a .nix file they write is built as root at the next rebuild).
+      # It is no wider a door than configDir already was: a *.json file there can hold any Nix
+      # expression, and what it says is built as root at the next rebuild either way.
+      system.activationScripts.eznix = {
+        deps = [
+          "users"
+          "groups"
+        ];
+        text =
+          common.configDirScript
+          + ''
+            chown -R eznix:eznix ${lib.escapeShellArg cfg.configDir}
+            chmod -R g+rwX ${lib.escapeShellArg cfg.configDir}
+            chmod g+s ${lib.escapeShellArg cfg.configDir}
+            ${pkgs.acl}/bin/setfacl -R -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.configDir} 2>/dev/null || true
+          ''
+          + lib.optionalString cfg.flakeWritable ''
+            if [ -d ${lib.escapeShellArg cfg.flake} ]; then
+              shared() { ${pkgs.findutils}/bin/find ${lib.escapeShellArg cfg.flake} -mindepth 1 -name '.*' -prune -o -type "$1" -print0; }
+              chgrp eznix ${lib.escapeShellArg cfg.flake}
+              chmod g+rwxs ${lib.escapeShellArg cfg.flake}
+              ${pkgs.acl}/bin/setfacl -m g:eznix:rwX -d -m g:eznix:rwX ${lib.escapeShellArg cfg.flake} 2>/dev/null || true
+              shared d | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
+              shared d | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rwxs
+              shared d | ${pkgs.findutils}/bin/xargs -0 -r ${pkgs.acl}/bin/setfacl -P -m g:eznix:rwX -d -m g:eznix:rwX 2>/dev/null || true
+              shared f | ${pkgs.findutils}/bin/xargs -0 -r chgrp -h eznix
+              shared f | ${pkgs.findutils}/bin/xargs -0 -r chmod g+rw
+            fi
+          '';
+      };
 
-    systemd.tmpfiles.rules = [ "d ${stateDir}/autocomplete 2775 eznix eznix -" ];
+      systemd.tmpfiles.rules = [ "d ${stateDir}/autocomplete 2775 eznix eznix -" ];
 
-    systemd.services = {
-      eznix = {
-        description = "eznix configuration editor";
-        wantedBy    = [ "multi-user.target" ];
-        after       = [ "network.target" ];
-        serviceConfig = {
-          User               = "eznix";
-          Group              = "eznix";
-          UMask              = "0002";      # its files stay writable by the group
-          StateDirectory     = "eznix";
-          StateDirectoryMode = "0750";
-          ExecStartPre       = lib.mkIf common.generateCert
-            (pkgs.writeShellScript "eznix-certificate" (common.generateCa "${packages.eznix}/bin/eznix"));
-          ExecStart          = "${packages.eznix}/bin/eznix --config ${common.toml}";
-          Restart            = "on-failure";
+      systemd.services = {
+        eznix = {
+          description = "eznix configuration editor";
+          wantedBy = [ "multi-user.target" ];
+          after = [ "network.target" ];
+          serviceConfig = {
+            User = "eznix";
+            Group = "eznix";
+            UMask = "0002"; # its files stay writable by the group
+            StateDirectory = "eznix";
+            StateDirectoryMode = "0750";
+            ExecStartPre = lib.mkIf common.generateCert (
+              pkgs.writeShellScript "eznix-certificate" (common.generateCa "${packages.eznix}/bin/eznix")
+            );
+            ExecStart = "${packages.eznix}/bin/eznix --config ${common.toml}";
+            Restart = "on-failure";
+          };
         };
-      };
-    } // lib.optionalAttrs cfg.trustCert (lib.listToAttrs (map (user: lib.nameValuePair "eznix-trust-${user}" {
-      # trustCert: once at every boot and rebuild, as the person whose browsers it is for, after
-      # the editor has made the authority (its ExecStartPre). They read it through the eznix
-      # group, like everything else in the state folder.
-      description = "eznix: trust its certificate authority in ${user}'s browsers";
-      wantedBy    = [ "multi-user.target" ];
-      after       = [ "eznix.service" ];
-      wants       = [ "eznix.service" ];
-      serviceConfig = {
-        Type      = "oneshot";
-        User      = user;
-        ExecStart = common.trustCertScript {
-          firefoxProfiles = ''"$HOME"/.mozilla/firefox/*/ "$HOME"/.config/mozilla/firefox/*/'';
-        };
-      };
-    }) cfg.users)) // lib.optionalAttrs cfg.terminal (lib.mapAttrs' (user: t: lib.nameValuePair (termUnit user) {
-      description      = "eznix terminal for ${user}";
-      wantedBy         = [ "multi-user.target" ];
-      # It forks the shell as its own child: restarting the unit kills whatever runs there,
-      # most likely the very rebuild that would be doing the restarting. The page offers a
-      # restart when the running terminal is out of date.
-      restartIfChanged = false;
-      serviceConfig = {
-        User         = user;
-        # The secret between this terminal and the editor: readable by this user and by the
-        # service account `eznix` alone, by an ACL entry for that one account -- not by the
-        # other users, who could otherwise reach each other's shells over loopback. It was
-        # owned by the user with the group `eznix` and mode 640 until 2026-10-16, and every
-        # user in `users` is in that group, so each could read the others' keys. The mode
-        # first, then the ACL: setfacl works the mask out from the entries it is given. A
-        # failing setfacl stops the unit (no `|| true` here, unlike the folders above): a
-        # terminal the editor cannot reach is better seen than one with an open key.
-        #
-        # This step is root's, so what it works in must be root's: the folder is root:root and
-        # the user has only the key file. It was the user's own folder (chown -R, mode 700),
-        # and the user could put a symlink where the key goes and press Restart: root then ran
-        # chmod and setfacl on whatever the link named, or made a file at its end (2026-10-17,
-        # found in review; confirmed by reading, not on a machine). The folder is taken over
-        # first, before anything in it is looked at, and a leftover that is not a plain file
-        # (a link from when it was the user's) is removed.
-        ExecStartPre = "+" + pkgs.writeShellScript "eznix-terminal-key-${user}" ''
-          set -e
-          dir=${lib.escapeShellArg (termDir user)}
-          key=${lib.escapeShellArg t.key_file}
-          mkdir -p -m 755 /run/eznix-terminal
-          mkdir -p "$dir"
-          chown root:root "$dir"
-          # The ACL first: chmod on a folder that has one changes only its mask, and removing the
-          # ACL afterwards left the group bits it had before (seen on the Pi as 705, not 755).
-          ${pkgs.acl}/bin/setfacl -b "$dir"
-          chmod 755 "$dir"
-          if [ -L "$key" ] || { [ -e "$key" ] && [ ! -f "$key" ]; }; then
-            rm -rf "$key"
-          fi
-          if [ ! -s "$key" ]; then
-            ( umask 077; ${pkgs.openssl}/bin/openssl rand -hex 32 > "$key" )
-          fi
-          chown ${lib.escapeShellArg user}: "$key"
-          chmod 600 "$key"
-          ${pkgs.acl}/bin/setfacl -b "$key"
-          ${pkgs.acl}/bin/setfacl -m u:eznix:r "$key"
-        '';
-        ExecStart    = "${packages.eznix-terminal}/bin/eznix-terminal ${common.terminalArgs t}";
-        Restart      = "on-failure";
-      };
-    }) terminals);
-   })
+      }
+      // lib.optionalAttrs cfg.trustCert (
+        lib.listToAttrs (
+          map (
+            user:
+            lib.nameValuePair "eznix-trust-${user}" {
+              # trustCert: once at every boot and rebuild, as the person whose browsers it is for, after
+              # the editor has made the authority (its ExecStartPre). They read it through the eznix
+              # group, like everything else in the state folder.
+              description = "eznix: trust its certificate authority in ${user}'s browsers";
+              wantedBy = [ "multi-user.target" ];
+              after = [ "eznix.service" ];
+              wants = [ "eznix.service" ];
+              serviceConfig = {
+                Type = "oneshot";
+                User = user;
+                ExecStart = common.trustCertScript {
+                  firefoxProfiles = ''"$HOME"/.mozilla/firefox/*/ "$HOME"/.config/mozilla/firefox/*/'';
+                };
+              };
+            }
+          ) cfg.users
+        )
+      )
+      // lib.optionalAttrs cfg.terminal (
+        lib.mapAttrs' (
+          user: t:
+          lib.nameValuePair (termUnit user) {
+            description = "eznix terminal for ${user}";
+            wantedBy = [ "multi-user.target" ];
+            # It forks the shell as its own child: restarting the unit kills whatever runs there,
+            # most likely the very rebuild that would be doing the restarting. The page offers a
+            # restart when the running terminal is out of date.
+            restartIfChanged = false;
+            serviceConfig = {
+              User = user;
+              # The secret between this terminal and the editor: readable by this user and by the
+              # service account `eznix` alone, by an ACL entry for that one account -- not by the
+              # other users, who could otherwise reach each other's shells over loopback. It was
+              # owned by the user with the group `eznix` and mode 640 until 2026-10-16, and every
+              # user in `users` is in that group, so each could read the others' keys. The mode
+              # first, then the ACL: setfacl works the mask out from the entries it is given. A
+              # failing setfacl stops the unit (no `|| true` here, unlike the folders above): a
+              # terminal the editor cannot reach is better seen than one with an open key.
+              #
+              # This step is root's, so what it works in must be root's: the folder is root:root and
+              # the user has only the key file. It was the user's own folder (chown -R, mode 700),
+              # and the user could put a symlink where the key goes and press Restart: root then ran
+              # chmod and setfacl on whatever the link named, or made a file at its end (2026-10-17,
+              # found in review; confirmed by reading, not on a machine). The folder is taken over
+              # first, before anything in it is looked at, and a leftover that is not a plain file
+              # (a link from when it was the user's) is removed.
+              ExecStartPre =
+                "+"
+                + pkgs.writeShellScript "eznix-terminal-key-${user}" ''
+                  set -e
+                  dir=${lib.escapeShellArg (termDir user)}
+                  key=${lib.escapeShellArg t.key_file}
+                  mkdir -p -m 755 /run/eznix-terminal
+                  mkdir -p "$dir"
+                  chown root:root "$dir"
+                  # The ACL first: chmod on a folder that has one changes only its mask, and removing the
+                  # ACL afterwards left the group bits it had before (seen on the Pi as 705, not 755).
+                  ${pkgs.acl}/bin/setfacl -b "$dir"
+                  chmod 755 "$dir"
+                  if [ -L "$key" ] || { [ -e "$key" ] && [ ! -f "$key" ]; }; then
+                    rm -rf "$key"
+                  fi
+                  if [ ! -s "$key" ]; then
+                    ( umask 077; ${pkgs.openssl}/bin/openssl rand -hex 32 > "$key" )
+                  fi
+                  chown ${lib.escapeShellArg user}: "$key"
+                  chmod 600 "$key"
+                  ${pkgs.acl}/bin/setfacl -b "$key"
+                  ${pkgs.acl}/bin/setfacl -m u:eznix:r "$key"
+                '';
+              ExecStart = "${packages.eznix-terminal}/bin/eznix-terminal ${common.terminalArgs t}";
+              Restart = "on-failure";
+            };
+          }
+        ) terminals
+      );
+    })
   ];
 }

@@ -10,25 +10,55 @@
 # taken literally; "**" as a whole name is any number of folders. The last entry that matches
 # decides. A folder that is left out takes everything under it along: whoever asks has to ask
 # about the folders above a path too, or not go into them.
-{ lib }: exclude: let
-  excludeName = name: lib.concatMapStrings (part:
-    if builtins.isList part then (let w = builtins.head part; in
-      if w == "*" then "[^/]*"
-      else if w == "?" then "[^/]"
-      else if lib.hasPrefix "[!" w then "[^" + builtins.substring 2 (-1) w
-      else w)
-    else lib.escapeRegex part
-  ) (builtins.split "(\\*|\\?|\\[[^]]*])" name);
-  excludeRule = entry: let
-    negated = lib.hasPrefix "!" entry;
-    pattern = if negated then lib.removePrefix "!" entry else entry;
-    names = builtins.filter (n: n != "") (lib.splitString "/" pattern);
-    count = builtins.length names;
-    anchored = lib.hasPrefix "/" pattern || count > 1;
-    body = lib.concatStrings (lib.imap0 (i: n: let last = i == count - 1; in
-      if n == "**" then (if last then ".*" else "(.*/)?")
-      else excludeName n + (if last then "" else "/")
-    ) names);
-  in { inherit negated count; regex = (if anchored then "" else "(.*/)?") + body; };
+{ lib }:
+exclude:
+let
+  excludeName =
+    name:
+    lib.concatMapStrings (
+      part:
+      if builtins.isList part then
+        (
+          let
+            w = builtins.head part;
+          in
+          if w == "*" then
+            "[^/]*"
+          else if w == "?" then
+            "[^/]"
+          else if lib.hasPrefix "[!" w then
+            "[^" + builtins.substring 2 (-1) w
+          else
+            w
+        )
+      else
+        lib.escapeRegex part
+    ) (builtins.split "(\\*|\\?|\\[[^]]*])" name);
+  excludeRule =
+    entry:
+    let
+      negated = lib.hasPrefix "!" entry;
+      pattern = if negated then lib.removePrefix "!" entry else entry;
+      names = builtins.filter (n: n != "") (lib.splitString "/" pattern);
+      count = builtins.length names;
+      anchored = lib.hasPrefix "/" pattern || count > 1;
+      body = lib.concatStrings (
+        lib.imap0 (
+          i: n:
+          let
+            last = i == count - 1;
+          in
+          if n == "**" then (if last then ".*" else "(.*/)?") else excludeName n + (if last then "" else "/")
+        ) names
+      );
+    in
+    {
+      inherit negated count;
+      regex = (if anchored then "" else "(.*/)?") + body;
+    };
   excludeRules = builtins.filter (r: r.count > 0) (map excludeRule exclude);
-in relPath: lib.foldl' (out: r: if builtins.match r.regex relPath != null then !r.negated else out) false excludeRules
+in
+relPath:
+lib.foldl' (
+  out: r: if builtins.match r.regex relPath != null then !r.negated else out
+) false excludeRules

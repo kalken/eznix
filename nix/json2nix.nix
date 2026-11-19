@@ -14,12 +14,14 @@
 {
   dir,
   exclude ? [ ],
-}: args @ {
+}:
+args@{
   pkgs,
   lib,
   config,
   ...
-}: let
+}:
+let
   # What a raw expression ("_expr") can name: everything this module is given. That is `lib`,
   # `config`, `options`, whatever the flake put in `specialArgs` (`inputs`, usually) and
   # `modulesPath` on NixOS, plus `pkgs`, which is only handed to a module that names it, as
@@ -46,39 +48,56 @@
   # the real NixOS module system performs the merge (list concat, attrset merge, scalar
   # conflict = eval error) — same as splitting configuration.nix across files. Mirrors
   # list_config_files() in bin/eznix.py, `exclude` (_excluded() there) included.
-  walk = dir: prefix:
-    lib.concatLists (lib.mapAttrsToList (
-      name: type: let relPath = prefix + name; in
-        if excluded relPath then []
-        else if type == "directory"
-        then (if lib.hasPrefix "." name || lib.hasSuffix ".disabled" name then [] else walk (dir + "/${name}") "${relPath}/")
-        else if type == "regular" && lib.hasSuffix ".json" name
-        then [relPath]
-        else []
-    ) (builtins.readDir dir));
+  walk =
+    dir: prefix:
+    lib.concatLists (
+      lib.mapAttrsToList (
+        name: type:
+        let
+          relPath = prefix + name;
+        in
+        if excluded relPath then
+          [ ]
+        else if type == "directory" then
+          (
+            if lib.hasPrefix "." name || lib.hasSuffix ".disabled" name then
+              [ ]
+            else
+              walk (dir + "/${name}") "${relPath}/"
+          )
+        else if type == "regular" && lib.hasSuffix ".json" name then
+          [ relPath ]
+        else
+          [ ]
+      ) (builtins.readDir dir)
+    );
 
   # No folder yet is no files: it can be imported before the first rebuild has made it, and in
   # a git flake an empty folder isn't there at all (git keeps no empty folders).
   jsonFileNames = if builtins.pathExists dir then walk dir "" else [ ];
 
-  resolveExprs = val:
-    if builtins.isAttrs val && val ? "_expr"
-    then
+  resolveExprs =
+    val:
+    if builtins.isAttrs val && val ? "_expr" then
       import (builtins.toFile "expr.nix" ''
         { pkgs, lib, config, ... } @ args: with args; ${val._expr}
-      '')
-      scope
-    else if builtins.isList val
-    then map resolveExprs val
-    else if builtins.isAttrs val
-    then
-      let active = lib.filterAttrs (_: v: !(builtins.isAttrs v && v ? "_disabled")) val;
-      in lib.mapAttrs (_: resolveExprs) active
-    else val;
+      '') scope
+    else if builtins.isList val then
+      map resolveExprs val
+    else if builtins.isAttrs val then
+      let
+        active = lib.filterAttrs (_: v: !(builtins.isAttrs v && v ? "_disabled")) val;
+      in
+      lib.mapAttrs (_: resolveExprs) active
+    else
+      val;
 
-  evaluatedConfigs = map (n: resolveExprs (builtins.fromJSON (builtins.readFile (dir + "/${n}")))) jsonFileNames;
-in {
+  evaluatedConfigs = map (
+    n: resolveExprs (builtins.fromJSON (builtins.readFile (dir + "/${n}")))
+  ) jsonFileNames;
+in
+{
   # What an error names as the place a value was set.
-  _file  = "${toString dir} (*.json, edited in eznix)";
+  _file = "${toString dir} (*.json, edited in eznix)";
   config = lib.mkMerge evaluatedConfigs;
 }

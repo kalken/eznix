@@ -7,31 +7,50 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   };
 
-  outputs = { self, nixpkgs }:
+  outputs =
+    { self, nixpkgs }:
     let
       # No x86_64-darwin: nixpkgs dropped it in 26.11, and listing it fails `nix flake check`.
-      systems       = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+        "aarch64-darwin"
+      ];
       forAllSystems = nixpkgs.lib.genAttrs systems;
-      mkApp         = drv: bin: { type = "app"; program = "${drv}/bin/${bin}"; };
+      mkApp = drv: bin: {
+        type = "app";
+        program = "${drv}/bin/${bin}";
+      };
 
-      perSystem = forAllSystems (system:
+      perSystem = forAllSystems (
+        system:
         let
           pkgs = nixpkgs.legacyPackages.${system};
-          p    = import ./nix/packages.nix { inherit pkgs; version = self.shortRev or "dev"; };
-        in {
+          p = import ./nix/packages.nix {
+            inherit pkgs;
+            version = self.shortRev or "dev";
+          };
+        in
+        {
           packages = {
             default = p.eznix;
             inherit (p) eznix eznix-terminal eznix-autocomplete;
           };
 
           apps = {
-            default            = mkApp p.eznix              "eznix";
-            eznix              = mkApp p.eznix              "eznix";
-            eznix-terminal     = mkApp p.eznix-terminal     "eznix-terminal";
+            default = mkApp p.eznix "eznix";
+            eznix = mkApp p.eznix "eznix";
+            eznix-terminal = mkApp p.eznix-terminal "eznix-terminal";
             eznix-autocomplete = mkApp p.eznix-autocomplete "eznix-autocomplete";
           };
 
-          devShells.default = pkgs.mkShell { packages = [ p.python pkgs.nix pkgs.nodejs ]; };
+          devShells.default = pkgs.mkShell {
+            packages = [
+              p.python
+              pkgs.nix
+              pkgs.nodejs
+            ];
+          };
 
           # lib.jsonDir over test/json: files merge, subfolders count, and what is excluded,
           # hidden or disabled stays out (each of those holds an option that doesn't exist).
@@ -41,20 +60,38 @@
           checks.json-dir =
             let
               inherit (pkgs) lib;
-              got = (lib.evalModules {
-                modules = [
-                  (self.lib.jsonDir { dir = ./test/json; exclude = [ "skip.json" "vendor/" ]; })
-                  {
-                    options.t.list = lib.mkOption { type = lib.types.listOf lib.types.int; };
-                    options.t.vals = lib.mkOption { type = lib.types.attrsOf lib.types.str; };
-                    config._module.args.pkgs = pkgs;
-                  }
+              got =
+                (lib.evalModules {
+                  modules = [
+                    (self.lib.jsonDir {
+                      dir = ./test/json;
+                      exclude = [
+                        "skip.json"
+                        "vendor/"
+                      ];
+                    })
+                    {
+                      options.t.list = lib.mkOption { type = lib.types.listOf lib.types.int; };
+                      options.t.vals = lib.mkOption { type = lib.types.attrsOf lib.types.str; };
+                      config._module.args.pkgs = pkgs;
+                    }
+                  ];
+                }).config.t;
+              want = {
+                list = [
+                  1
+                  2
                 ];
-              }).config.t;
-              want = { list = [ 1 2 ]; vals = { a = "from a"; b = "from b"; }; };
+                vals = {
+                  a = "from a";
+                  b = "from b";
+                };
+              };
             in
-            if got // { list = lib.sort builtins.lessThan got.list; } == want then pkgs.emptyFile
-            else throw "lib.jsonDir: got ${builtins.toJSON got}, wanted ${builtins.toJSON want}";
+            if got // { list = lib.sort builtins.lessThan got.list; } == want then
+              pkgs.emptyFile
+            else
+              throw "lib.jsonDir: got ${builtins.toJSON got}, wanted ${builtins.toJSON want}";
 
           # What `exclude` leaves out (nix/exclude.nix), against the cases of test/exclude.json:
           # the table test/test_server.py runs through the editor's own reading of the same
@@ -64,27 +101,39 @@
             let
               inherit (pkgs) lib;
               cases = builtins.fromJSON (builtins.readFile ./test/exclude.json);
-              out = case: let
-                names = builtins.filter (n: n != "") (lib.splitString "/" case.path);
-                above = map (n: lib.concatStringsSep "/" (lib.take n names)) (lib.range 1 (builtins.length names));
-              in lib.any (import ./nix/exclude.nix { inherit lib; } case.exclude) above;
+              out =
+                case:
+                let
+                  names = builtins.filter (n: n != "") (lib.splitString "/" case.path);
+                  above = map (n: lib.concatStringsSep "/" (lib.take n names)) (lib.range 1 (builtins.length names));
+                in
+                lib.any (import ./nix/exclude.nix { inherit lib; } case.exclude) above;
               wrong = builtins.filter (case: out case != case.out) cases;
             in
-            if wrong == [ ] then pkgs.emptyFile
-            else throw "exclude: wrong for ${builtins.toJSON wrong}";
-        });
-    in {
-      packages  = builtins.mapAttrs (_: s: s.packages)  perSystem;
-      apps      = builtins.mapAttrs (_: s: s.apps)      perSystem;
+            if wrong == [ ] then pkgs.emptyFile else throw "exclude: wrong for ${builtins.toJSON wrong}";
+        }
+      );
+    in
+    {
+      packages = builtins.mapAttrs (_: s: s.packages) perSystem;
+      apps = builtins.mapAttrs (_: s: s.apps) perSystem;
       devShells = builtins.mapAttrs (_: s: s.devShells) perSystem;
-      checks    = builtins.mapAttrs (_: s: { inherit (s.checks) json-dir exclude; }) perSystem;
+      checks = builtins.mapAttrs (_: s: { inherit (s.checks) json-dir exclude; }) perSystem;
 
       # pkgs.eznix, and its parts as pkgs.eznix.autocomplete / pkgs.eznix.terminal (also
       # pkgs.eznix-autocomplete, pkgs.eznix-terminal), for a configuration that wants one of
       # them without the modules.
-      overlays.default = final: prev:
-        let p = import ./nix/packages.nix { pkgs = final; version = self.shortRev or "dev"; };
-        in { inherit (p) eznix eznix-terminal eznix-autocomplete; };
+      overlays.default =
+        final: prev:
+        let
+          p = import ./nix/packages.nix {
+            pkgs = final;
+            version = self.shortRev or "dev";
+          };
+        in
+        {
+          inherit (p) eznix eznix-terminal eznix-autocomplete;
+        };
 
       # The folder of *.json files eznix edits, as a module for `imports`:
       #   eznix.lib.jsonDir ./eznix
@@ -96,7 +145,7 @@
       # configuration is called "default" in all of them, so no host name has to be filled in.
       templates = {
         darwin = {
-          path        = ./templates/darwin;
+          path = ./templates/darwin;
           description = "A nix-darwin flake edited in eznix, for ~/.config/nix-darwin";
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your macOS user name.
@@ -105,7 +154,7 @@
           '';
         };
         nixos = {
-          path        = ./templates/nixos;
+          path = ./templates/nixos;
           description = "eznix added to an installed NixOS, for /etc/nixos (keeps configuration.nix)";
           welcomeText = ''
             1. In eznix/system.json, replace YOUR-USER-NAME with your user name.
@@ -114,7 +163,7 @@
           '';
         };
         home = {
-          path        = ./templates/home;
+          path = ./templates/home;
           description = "A standalone home-manager flake edited in eznix, for ~/.config/home-manager";
           welcomeText = ''
             1. In eznix/home.json, replace YOUR-USER-NAME (three times) with your user name.
@@ -125,10 +174,10 @@
         };
       };
 
-      nixosModules.default  = import ./nix/nixos.nix self;
+      nixosModules.default = import ./nix/nixos.nix self;
       darwinModules.default = import ./nix/darwin.nix self;
       # Standalone home-manager, for a Linux distribution that isn't NixOS.
-      homeModules.default        = import ./nix/home.nix self;
+      homeModules.default = import ./nix/home.nix self;
       homeManagerModules.default = import ./nix/home.nix self;
     };
 }

@@ -16,14 +16,21 @@
     };
   };
 
-  outputs = { nixpkgs, nix-darwin, eznix, ... }: {
-    # "default" and not this Mac's name, so nothing here has to be changed. It is why a rebuild
-    # names it:  sudo darwin-rebuild switch --flake "$HOME/.config/nix-darwin#default"
-    darwinConfigurations.default = nix-darwin.lib.darwinSystem {
-      modules = [
-        eznix.darwinModules.default      # the editor
-        (eznix.lib.jsonDir ./eznix)      # the configuration: the *.json files it edits
-      ];
+  outputs =
+    {
+      nixpkgs,
+      nix-darwin,
+      eznix,
+      ...
+    }:
+    {
+      # "default" and not this Mac's name, so nothing here has to be changed. It is why a rebuild
+      # names it:  sudo darwin-rebuild switch --flake "$HOME/.config/nix-darwin#default"
+      darwinConfigurations.default = nix-darwin.lib.darwinSystem {
+        modules = [
+          eznix.darwinModules.default # the editor
+          (eznix.lib.jsonDir ./eznix) # the configuration: the *.json files it edits
+        ];
+      };
     };
-  };
 }
